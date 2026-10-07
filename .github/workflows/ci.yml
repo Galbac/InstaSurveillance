@@ -1,0 +1,73 @@
+name: Project checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      performance:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Local private environment and development images
+        run: |
+          python3 deploy/scripts/setup-env.py
+          docker compose --env-file .env.dev -f compose.dev.yml build backend frontend
+          docker compose --env-file .env.dev -f compose.dev.yml up -d db redis auth-vault mail storage
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm migrate
+      - name: Python lint, types, lock and isolated PostgreSQL tests
+        run: |
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps backend sh -c 'poetry check --lock && ruff check app tests && ruff format --check app tests && pyright'
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps -e TEST_POSTGRES_ENABLED=1 migrate pytest -q
+          docker run --rm --network instasurveillance-dev_default --env-file .env.dev -v "$PWD/deploy/scripts/verify-boundaries.py:/verify.py:ro" instasurveillance-dev-backend python /verify.py
+      - name: API contract, frontend lint, types and build
+        run: |
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps -v "$PWD/docs/api:/reports" backend python -m app.schema --output /reports/openapi.json
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps -v "$PWD/docs:/docs:ro" frontend npm run api:generate
+          git diff --exit-code -- docs/api/openapi.json frontend/src/lib/generated-api.ts
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps frontend sh -c 'npm run test && npm run lint && npm run typecheck && npm run build'
+      - name: Synthetic HTTP, SMTP, broker and worker workflow
+        run: |
+          docker compose --env-file .env.dev -f compose.dev.yml up -d --no-build
+          python3 deploy/scripts/verify-dev-stack.py
+      - name: Private S3 multipart, read, delete and anonymous denial
+        run: make s3-drill
+      - name: Dependency and license scans
+        run: |
+          mkdir -p docs/reports
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps -v "$PWD/docs/reports:/reports" backend sh -c 'pip-audit --progress-spinner off -f json -o /reports/python-audit.json && python -m app.licenses --output /reports/python-licenses.json'
+          docker compose --env-file .env.dev -f compose.dev.yml run --rm --no-deps -v "$PWD/docs/reports:/reports" frontend sh -c 'npm audit --audit-level=low --json > /reports/npm-audit.json && node scripts/licenses.mjs /reports/frontend-licenses.json'
+      - name: Clean source copy with new credentials and empty volumes
+        run: python3 deploy/scripts/verify-clean-start.py
+      - name: Production images and isolated restore drill
+        run: |
+          docker build --target prod -t instasurveillance-backend:ci backend
+          docker build --target prod -t instasurveillance-frontend:ci frontend
+          docker build --target backup -t instasurveillance-backup:ci backend
+          docker build --target verification -t instasurveillance-verification:ci backend
+          docker run --rm --user 0 --network instasurveillance-dev_default --env-file .env.dev -e PYTHONPATH=/app -e DRILL_REPORT_PATH=/reports/restore-drill.json -v "$PWD/deploy/scripts/verify-backup.py:/verify-backup.py:ro" -v "$PWD/docs/reports:/reports" instasurveillance-backup:ci python /verify-backup.py
+      - name: Production image advisory gate
+        run: ./deploy/scripts/scan-images.sh ci
+      - name: Optional synthetic load stand
+        if: ${{ inputs.performance }}
+        run: docker run --rm --network instasurveillance-dev_default --env-file .env.dev -e TEST_POSTGRES_ENABLED=1 -e RUN_PERFORMANCE=1 -e PERF_REPORT_PATH=/reports/performance-alpine.json -v "$PWD/docs/reports:/reports" instasurveillance-verification:ci sh -c 'export DATABASE_URL="$MIGRATION_DATABASE_URL"; pytest tests/test_performance.py -q' 
+      - name: Check workspace contains no caches
+        run: python3 deploy/scripts/check-workspace.py
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: reports
+          path: docs/reports/
+      - name: Stop isolated development services
+        if: always()
+        run: docker compose --env-file .env.dev -f compose.dev.yml down -v

@@ -1,0 +1,31 @@
+{
+  "stand": {
+    "python": "3.14.8",
+    "platform": "Linux-6.12.54-linuxkit-aarch64-with-musl1",
+    "api_transport": "ASGI TestClient; no TLS/proxy/network latency",
+    "database_io": "SQLAlchemy AsyncSession + psycopg.AsyncConnection (HTTP); sync Celery",
+    "test_db_pool": {
+      "size": 20,
+      "max_overflow": 30
+    },
+    "registered_users": 1000,
+    "concurrent_distinct_users": 100,
+    "member_rows_largest_snapshot": 100000,
+    "small_profiles": 99,
+    "request_count": 500,
+    "notes": "Local Docker stand; repeat on agreed 4 vCPU / 8 GB deployment for production acceptance."
+  },
+  "import": {
+    "records": 100000,
+    "seconds": 3.422
+  },
+  "reads": {
+    "seconds": 1.969,
+    "p50_seconds": 0.372,
+    "p95_seconds": 0.631,
+    "errors": 0,
+    "summary_p95_seconds": 0.638,
+    "people_p95_seconds": 0.616
+  },
+  "process_peak_rss_kib": 223840
+}

@@ -1,0 +1,264 @@
+name: instasurveillance-dev
+x-settings: &settings
+  APP_ENV: '${APP_ENV}'
+  APP_BASE_URL: '${APP_BASE_URL}'
+  REDIS_URL: '${REDIS_URL}'
+  AUTH_VAULT_URL: '${AUTH_VAULT_URL}'
+  BROKER_PUBLISH_TIMEOUT_SECONDS: ${BROKER_PUBLISH_TIMEOUT_SECONDS:-3}
+  CSRF_SECRET: '${CSRF_SECRET}'
+  INSTAGRAM_PENDING_ENCRYPTION_KEY: '${INSTAGRAM_PENDING_ENCRYPTION_KEY}'
+  SESSION_COOKIE_NAME: '${SESSION_COOKIE_NAME}'
+  SESSION_COOKIE_SECURE: '${SESSION_COOKIE_SECURE}'
+  INSTAGRAM_PRIVATE_ENABLED: '${INSTAGRAM_PRIVATE_ENABLED}'
+  INSTAGRAM_SYNC_INTERVAL_HOURS: '${INSTAGRAM_SYNC_INTERVAL_HOURS}'
+  INSTAGRAM_MANUAL_MIN_INTERVAL_HOURS: '${INSTAGRAM_MANUAL_MIN_INTERVAL_HOURS}'
+  INSTAGRAM_MAX_RUNS_PER_24H: '${INSTAGRAM_MAX_RUNS_PER_24H}'
+  INSTAGRAM_REQUEST_BUDGET: '${INSTAGRAM_REQUEST_BUDGET}'
+  INSTAGRAM_REQUEST_SPACING_SECONDS: '${INSTAGRAM_REQUEST_SPACING_SECONDS}'
+  INSTAGRAM_PLATFORM_COOLDOWN_HOURS: '${INSTAGRAM_PLATFORM_COOLDOWN_HOURS}'
+  INSTAGRAM_CREDENTIAL_TTL_SECONDS: '${INSTAGRAM_CREDENTIAL_TTL_SECONDS}'
+  MAX_PROFILES_PER_USER: '${MAX_PROFILES_PER_USER}'
+  MAX_UPLOAD_BYTES: '${MAX_UPLOAD_BYTES}'
+  MAX_UNPACKED_BYTES: '${MAX_UNPACKED_BYTES}'
+  MAX_ARCHIVE_ENTRIES: '${MAX_ARCHIVE_ENTRIES}'
+  MAX_SNAPSHOT_MEMBERS: '${MAX_SNAPSHOT_MEMBERS}'
+  SMTP_HOST: '${SMTP_HOST}'
+  SMTP_PORT: '${SMTP_PORT}'
+  SMTP_TLS_MODE: '${SMTP_TLS_MODE}'
+  MAIL_FROM: '${MAIL_FROM}'
+  S3_ENDPOINT: '${S3_ENDPOINT}'
+  S3_REGION: '${S3_REGION}'
+  S3_BUCKET: '${S3_BUCKET}'
+  S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
+  S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+  TRUSTED_HOSTS: '${TRUSTED_HOSTS}'
+  STORAGE_BACKEND: '${STORAGE_BACKEND}'
+  STORAGE_DIRECTORY: '${STORAGE_DIRECTORY}'
+  ENCRYPTION_KEY: '${ENCRYPTION_KEY}'
+  METRICS_TOKEN: '${METRICS_TOKEN}'
+  LEDGER_DIRECTORY: '${LEDGER_DIRECTORY}'
+  OPERATOR_NAME: '${OPERATOR_NAME}'
+  OPERATOR_ADDRESS: '${OPERATOR_ADDRESS}'
+  OPERATOR_JURISDICTION: '${OPERATOR_JURISDICTION}'
+  SUPPORT_EMAIL: '${SUPPORT_EMAIL}'
+  LEDGER_S3_BUCKET: '${LEDGER_S3_BUCKET}'
+  LEDGER_S3_ENDPOINT: '${LEDGER_S3_ENDPOINT}'
+  LEDGER_S3_ACCESS_KEY_ID: '${LEDGER_S3_ACCESS_KEY_ID}'
+  LEDGER_S3_SECRET_ACCESS_KEY: '${LEDGER_S3_SECRET_ACCESS_KEY}'
+  USER_STORAGE_QUOTA_BYTES: '${USER_STORAGE_QUOTA_BYTES}'
+  MAX_ACTIVE_HEAVY_JOBS_PER_USER: '${MAX_ACTIVE_HEAVY_JOBS_PER_USER}'
+  IMPORTS_PER_HOUR: '${IMPORTS_PER_HOUR}'
+  JOB_SOFT_TIMEOUT: '${JOB_SOFT_TIMEOUT}'
+  JOB_HARD_TIMEOUT: '${JOB_HARD_TIMEOUT}'
+  INSTAGRAM_SYNC_SOFT_TIMEOUT: '${INSTAGRAM_SYNC_SOFT_TIMEOUT}'
+  INSTAGRAM_SYNC_HARD_TIMEOUT: '${INSTAGRAM_SYNC_HARD_TIMEOUT}'
+  TRUSTED_PROXY_CIDRS: '${TRUSTED_PROXY_CIDRS}'
+  RELEASE_VERSION: '${RELEASE_VERSION}'
+  DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-3}
+  DB_POOL_SIZE: '${DB_POOL_SIZE}'
+  DB_MAX_OVERFLOW: '${DB_MAX_OVERFLOW}'
+  SESSION_TTL_SECONDS: '${SESSION_TTL_SECONDS}'
+  SESSION_ABSOLUTE_TTL_SECONDS: '${SESSION_ABSOLUTE_TTL_SECONDS}'
+  ENCRYPTION_PREVIOUS_KEYS: ${ENCRYPTION_PREVIOUS_KEYS}
+  JOB_STALE_SECONDS: ${JOB_STALE_SECONDS:-120}
+  ENCRYPTION_KEY_VERSION: '${ENCRYPTION_KEY_VERSION}'
+  TERMS_VERSION: '${TERMS_VERSION}'
+  PRIVACY_VERSION: '${PRIVACY_VERSION}'
+  CONNECTION_TERMS_VERSION: '${CONNECTION_TERMS_VERSION}'
+  MAX_ACTIVE_IMPORTS_PER_PROFILE: '${MAX_ACTIVE_IMPORTS_PER_PROFILE}'
+  RAW_FILE_TTL_HOURS: '${RAW_FILE_TTL_HOURS}'
+  IMPORT_CONFIRM_TTL_HOURS: '${IMPORT_CONFIRM_TTL_HOURS}'
+  EXPORT_TTL_HOURS: '${EXPORT_TTL_HOURS}'
+  JOB_METADATA_RETENTION_DAYS: '${JOB_METADATA_RETENTION_DAYS}'
+  NOTIFICATION_RETENTION_DAYS: '${NOTIFICATION_RETENTION_DAYS}'
+  AUDIT_RETENTION_DAYS: '${AUDIT_RETENTION_DAYS}'
+  LOG_RETENTION_DAYS: '${LOG_RETENTION_DAYS}'
+  BACKUP_RETENTION_DAYS: '${BACKUP_RETENTION_DAYS}'
+  INSTAGRAM_LOGIN_MAX_ATTEMPTS: '${INSTAGRAM_LOGIN_MAX_ATTEMPTS}'
+  INSTAGRAM_LARGE_CHANGE_FRACTION: '${INSTAGRAM_LARGE_CHANGE_FRACTION}'
+  INSTAGRAM_LARGE_CHANGE_MIN_MEMBERS: '${INSTAGRAM_LARGE_CHANGE_MIN_MEMBERS}'
+  ENABLE_EMAIL_NOTIFICATIONS: '${ENABLE_EMAIL_NOTIFICATIONS}'
+  ENABLE_PWA: '${ENABLE_PWA}'
+  ENABLE_OFFICIAL_INSTAGRAM: '${ENABLE_OFFICIAL_INSTAGRAM}'
+  ERROR_TRACKING_DSN: ${ERROR_TRACKING_DSN:-}
+  METRICS_ENABLED: '${METRICS_ENABLED}'
+  WORKER_CONCURRENCY: '${WORKER_CONCURRENCY}'
+  CELERY_BROKER_URL: '${CELERY_BROKER_URL}'
+  S3_SERVER_SIDE_ENCRYPTION: '${S3_SERVER_SIDE_ENCRYPTION-AES256}'
+  S3_STORAGE_QUOTA_BYTES: ${S3_STORAGE_QUOTA_BYTES:-0}
+  S3_KMS_KEY_ID: ${S3_KMS_KEY_ID:-}
+  STORAGE_WRITE_TIMEOUT_SECONDS: ${STORAGE_WRITE_TIMEOUT_SECONDS:-300}
+  TMPDIR: /work
+  S3_USE_TLS: '${S3_USE_TLS}'
+  APP_NAME: '${APP_NAME}'
+  LOG_LEVEL: '${LOG_LEVEL}'
+x-worker-settings: &worker-settings
+  <<: *settings
+  INSTAGRAM_SESSION_ENCRYPTION_KEY: '${INSTAGRAM_SESSION_ENCRYPTION_KEY}'
+  INSTAGRAM_SESSION_PREVIOUS_KEYS: '${INSTAGRAM_SESSION_PREVIOUS_KEYS}'
+  INSTAGRAM_SESSION_KEY_VERSION: '${INSTAGRAM_SESSION_KEY_VERSION}'
+  SMTP_USERNAME: '${SMTP_USERNAME}'
+  SMTP_PASSWORD: '${SMTP_PASSWORD}'
+  DATABASE_URL: '${WORKER_DATABASE_URL}'
+x-backend: &backend
+  image: instasurveillance-dev-backend
+  build:
+    context: ./backend
+    target: dev
+  volumes:
+    - ./backend:/app
+    - dev_uploads:/uploads
+    - dev_ledger:/ledger
+    - dev_work:/work
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    auth-vault: {condition: service_healthy}
+    storage: {condition: service_healthy}
+  restart: unless-stopped
+services:
+  storage-config:
+    image: instasurveillance-dev-backend
+    user: '0:0'
+    environment:
+      GARAGE_RPC_SECRET: '${GARAGE_RPC_SECRET:?Run make setup}'
+      METRICS_TOKEN: '${METRICS_TOKEN}'
+      S3_REGION: '${S3_REGION}'
+    volumes:
+      - ./deploy/storage/render.py:/render.py:ro
+      - dev_storage_config:/storage-config
+      - dev_storage_data:/storage-data
+      - dev_storage_meta:/storage-meta
+    command: python /render.py
+    restart: 'no'
+  storage:
+    image: dxflrs/garage:v2.4.1
+    user: '10001:10001'
+    command: ['/garage', 'server', '--single-node', '--default-bucket']
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: '${S3_ACCESS_KEY_ID}'
+      GARAGE_DEFAULT_SECRET_KEY: '${S3_SECRET_ACCESS_KEY}'
+      GARAGE_DEFAULT_BUCKET: '${S3_BUCKET}'
+    volumes:
+      - dev_storage_config:/etc:ro
+      - dev_storage_data:/var/lib/garage/data
+      - dev_storage_meta:/var/lib/garage/meta
+    depends_on: {storage-config: {condition: service_completed_successfully}}
+    healthcheck: {test: [CMD, /garage, status], interval: 3s, retries: 30}
+    restart: unless-stopped
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: insta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: insta
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?}
+    volumes:
+      - dev_db:/var/lib/postgresql
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/01-api.sql:ro
+    healthcheck: {test: [CMD-SHELL, 'pg_isready -U insta'], interval: 3s, retries: 20}
+  redis:
+    image: redis:8-alpine
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [dev_redis:/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 3s, retries: 20}
+  auth-vault:
+    image: redis:8-alpine
+    command: [redis-server, --save, '', --appendonly, 'no']
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 3s, retries: 20}
+  mail:
+    image: axllent/mailpit:v1.29.4
+    ports: ['127.0.0.1:${DEV_MAIL_PORT:-8026}:8025']
+  migrate:
+    <<: *backend
+    environment:
+      <<: *settings
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL}
+    command: alembic upgrade head
+    restart: 'no'
+  backend:
+    <<: *backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --no-access-log --proxy-headers --forwarded-allow-ips '*' 
+    environment:
+      <<: *settings
+      DATABASE_URL: ${DATABASE_URL}
+      INSTAGRAM_SESSION_ENCRYPTION_KEY: ''
+    ports: ['127.0.0.1:${DEV_API_PORT:-8100}:8000']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  worker:
+    <<: *backend
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: default
+    command: celery -A app.jobs.celery_app:celery worker -Q default -c ${WORKER_CONCURRENCY:-2} --loglevel=WARNING
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  auth-worker:
+    <<: *backend
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: auth
+    command: celery -A app.jobs.celery_app:celery worker -Q auth -c 1 --loglevel=WARNING
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  maintenance:
+    <<: *backend
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: maintenance
+    command: celery -A app.jobs.celery_app:celery worker -Q maintenance -c 1 --loglevel=WARNING
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  scheduler:
+    <<: *backend
+    environment: *worker-settings
+    command: celery -A app.jobs.celery_app:celery beat --schedule=/tmp/celerybeat --loglevel=WARNING
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  operator:
+    <<: *backend
+    profiles: [operator]
+    environment:
+      <<: *worker-settings
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?}
+    command: python -m app.cli --help
+    restart: 'no'
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  frontend:
+    build: {context: ./frontend, target: dev}
+    environment:
+      INTERNAL_API_BASE_URL: http://backend:8000
+      NEXT_TELEMETRY_DISABLED: '1'
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/tests:/app/tests:ro
+      - ./frontend/scripts:/app/scripts
+      - ./frontend/package.json:/app/package.json:ro
+      - ./frontend/package-lock.json:/app/package-lock.json:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./frontend/next.config.ts:/app/next.config.ts:ro
+      - ./frontend/postcss.config.mjs:/app/postcss.config.mjs:ro
+      - ./frontend/eslint.config.mjs:/app/eslint.config.mjs:ro
+      - dev_node_modules:/app/node_modules
+      - dev_next:/app/.next
+    depends_on: [backend]
+  edge:
+    image: caddy:2.10.2-alpine
+    ports: ['127.0.0.1:${DEV_WEB_PORT:-3100}:80']
+    volumes: ['./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro']
+    depends_on: [frontend]
+volumes:
+  dev_db:
+  dev_redis:
+  dev_uploads:
+  dev_ledger:
+  dev_node_modules:
+  dev_next:
+  dev_work:
+  dev_storage_config:
+  dev_storage_data:
+  dev_storage_meta:

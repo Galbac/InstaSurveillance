@@ -1,0 +1,93 @@
+groups:
+  - name: instasurveillance
+    rules:
+      - alert: ServiceUnavailable
+        expr: up{job="instasurveillance"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "API metrics endpoint unavailable"}
+      - alert: QueueDelayed
+        expr: insta_queue_oldest_seconds > 300
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Queue oldest job exceeds 5 minutes"}
+      - alert: CleanupLate
+        expr: insta_deletion_deadline_backlog > 0 or insta_cleanup_backlog > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Cleanup requires operator attention"}
+      - alert: DeliveryFailed
+        expr: insta_outbox_failed > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Outbox exhausted retries"}
+      - alert: BackupStale
+        expr: time() - insta_backup_last_success_timestamp > 90000
+        for: 15m
+        labels: {severity: critical}
+        annotations: {summary: "Encrypted off-host backup exceeds 25 hours"}
+      - alert: ApiErrorRate
+        expr: sum(rate(insta_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(insta_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "More than 5 percent API errors"}
+      - alert: ApiLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(insta_http_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "API p95 exceeds one second"}
+
+      - alert: WorkerUnavailable
+        expr: insta_worker_up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "A required worker queue has no heartbeat"}
+      - alert: ScratchStorageFull
+        expr: insta_scratch_available_bytes / insta_scratch_capacity_bytes < 0.1
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Less than 10 percent scratch disk available"}
+
+      - alert: DatabaseUnavailable
+        expr: insta_db_up == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Database probe failed"}
+      - alert: ObjectStorageUnavailable
+        expr: insta_storage_up == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Private object storage probe failed"}
+      - alert: VolumeStorageFull
+        expr: insta_volume_available_bytes / insta_volume_capacity_bytes < 0.1
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Database, scratch or backup staging volume has less than 10 percent free"}
+      - alert: VolumeExporterUnavailable
+        expr: up{job="volumes"} == 0 or insta_volume_up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Volume capacity measurements unavailable"}
+
+      - alert: ObjectStorageQuotaHigh
+        expr: insta_storage_used_bytes / clamp_min(insta_storage_quota_bytes, 1) > 0.9 and insta_storage_quota_bytes > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Private bucket exceeds 90 percent of configured logical quota"}
+
+      - alert: ObjectUsageProbeStale
+        expr: absent(insta_storage_usage_timestamp) or time() - insta_storage_usage_timestamp > 900
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "Periodic object usage measurement unavailable"}
+
+      - alert: ObjectStoreDiskFull
+        expr: garage_local_disk_avail / garage_local_disk_total < 0.1
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Self-hosted private or backup object-store disk has less than 10 percent free"}
+      - alert: ObjectStoreExporterUnavailable
+        expr: up{job=~"storage-capacity|backup-capacity"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Configured object-store capacity exporter unavailable"}

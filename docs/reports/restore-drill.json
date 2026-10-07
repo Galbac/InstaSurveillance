@@ -1,0 +1,13 @@
+{
+  "drill": "isolated PostgreSQL 18 migration -> encrypted backup -> empty database restore",
+  "deletion_after_backup_replayed": true,
+  "private_sessions_excluded": true,
+  "logout_capabilities_excluded": true,
+  "history_deletion_replayed": true,
+  "service_sessions_revoked": true,
+  "instagram_reconnect_required": true,
+  "restore_seconds": 0.112,
+  "total_seconds": 3.192,
+  "production_rpo_rto_verified": false,
+  "notes": "Local restore drill. Daily off-host uploads and RPO24h/RTO8h must be measured on the configured cloud."
+}

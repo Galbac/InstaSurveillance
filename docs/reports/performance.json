@@ -1,0 +1,26 @@
+{
+  "stand": {
+    "python": "3.14.8",
+    "platform": "Linux-6.12.54-linuxkit-aarch64-with-glibc2.41",
+    "api_transport": "ASGI TestClient; no TLS/proxy/network latency",
+    "registered_users": 1000,
+    "concurrent_distinct_users": 100,
+    "member_rows_largest_snapshot": 100000,
+    "small_profiles": 99,
+    "request_count": 500,
+    "notes": "Local Docker stand; repeat on agreed 4 vCPU / 8 GB deployment for production acceptance."
+  },
+  "import": {
+    "records": 100000,
+    "seconds": 5.434
+  },
+  "reads": {
+    "seconds": 4.436,
+    "p50_seconds": 0.738,
+    "p95_seconds": 0.98,
+    "errors": 0,
+    "summary_p95_seconds": 0.986,
+    "people_p95_seconds": 0.978
+  },
+  "process_peak_rss_kib": 230596
+}

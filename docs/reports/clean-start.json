@@ -1,0 +1,18 @@
+{
+  "stand": "clean source copy; new 0600 env; empty isolated Docker volumes",
+  "source_is_git_checkout": false,
+  "storage_backend": "s3",
+  "local_s3_provider": "Garage v2.4.1",
+  "full_http_workflow": {
+    "stand": "local Docker stack over HTTP; Mailpit + Redis + Celery + PostgreSQL",
+    "registration_email_verification": true,
+    "two_archives_and_comparison": true,
+    "private_export_download": true,
+    "account_deletion": true,
+    "real_instagram_requests": false,
+    "browser_qa": false,
+    "seconds": 60.308
+  },
+  "seconds": 76.599,
+  "cloud_acceptance": false
+}

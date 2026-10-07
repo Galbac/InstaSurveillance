@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-10-07T21:05:39.850511+00:00",
+  "origin": "http://localhost:3100",
+  "tls_verified": false,
+  "passed": true,
+  "checks": [
+    {
+      "path": "/",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.138
+    },
+    {
+      "path": "/api/v1/health/live",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.017
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.08
+    },
+    {
+      "path": "/api/v1/profiles",
+      "expected_status": [
+        401
+      ],
+      "passed": true,
+      "status": 401,
+      "seconds": 0.056
+    },
+    {
+      "path": "/api/v1/metrics",
+      "expected_status": [
+        404
+      ],
+      "passed": true,
+      "status": 404,
+      "seconds": 0.044
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.004
+    },
+    {
+      "path": "/sw.js",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.002
+    },
+    {
+      "path": "/offline.html",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.002
+    },
+    {
+      "path": "/icon-192.png",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.003
+    },
+    {
+      "path": "/icon-512.png",
+      "expected_status": [
+        200
+      ],
+      "passed": true,
+      "status": 200,
+      "seconds": 0.004
+    }
+  ],
+  "scope": "Read-only HTTP: health, security headers, auth boundary and PWA assets",
+  "not_checked": [
+    "browser/device layout",
+    "PWA installation/offline/update UX",
+    "SMTP delivery",
+    "S3 permissions/lifecycle",
+    "Instagram",
+    "cloud load/RPO/RTO",
+    "alert delivery"
+  ]
+}

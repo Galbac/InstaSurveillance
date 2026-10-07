@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-10-07T20:25:05.499815+00:00",
+  "source_sha256": "fb633fea7b8082005e7bb252f2db7175b3e10e76e773f53d32c73a26503d1d50",
+  "backend": {
+    "passed": 65,
+    "skipped": 1,
+    "skip_reason": "Load test is opt-in; separately passed",
+    "runtime": "Python 3.14.8, Alpine/musl"
+  },
+  "frontend": {
+    "unit_passed": 5,
+    "lint": true,
+    "typecheck": true,
+    "production_build": true
+  },
+  "python_lint_types_lock": true,
+  "strict_openapi_operations": 79,
+  "private_s3_drill": true,
+  "clean_source_empty_volumes_http_workflow": true,
+  "restricted_api_disconnect_drill": true,
+  "nonroot_readonly_restore_history_ledger": true,
+  "prometheus_rule_count": 17,
+  "prometheus_failure_rule_tests": true,
+  "volume_and_object_disk_probes": true,
+  "images": {
+    "backend": {
+      "image_id": "sha256:7637b15545b0630f27c671b6d66476ec35dcdc81fbe6d4b7bd79a5cf777e6edb",
+      "findings": 0
+    },
+    "frontend": {
+      "image_id": "sha256:9212a7db8af494744b9d4fe94eba46942c9554b0d8a3e0bf1855b5cbab7404aa",
+      "findings": 0
+    },
+    "backup": {
+      "image_id": "sha256:3bc7f0c3276e6d1880f0420f5b0b2f6db5ff481672372a2eb418d241ebbafd00",
+      "findings": 0
+    }
+  },
+  "browser_qa": false,
+  "real_instagram_qa": false,
+  "public_cloud_acceptance": false,
+  "technology_variants_documented": "docs/adr/001-v1-decisions.md"
+}

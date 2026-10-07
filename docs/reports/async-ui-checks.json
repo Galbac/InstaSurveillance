@@ -1,0 +1,64 @@
+{
+  "timestamp": "2026-10-07T21:09:18.448558+00:00",
+  "source_sha256": "98ad5b215e831269ff6b72d481aa3511df2ee80fea9757d60eb1926abda94380",
+  "backend": {
+    "passed": 66,
+    "skipped": 1,
+    "runtime": "Python 3.14.8/Alpine",
+    "opt_in_load_separately_passed": true,
+    "native_psycopg_async_connection_test": true,
+    "event_loop_heartbeat_and_cancel_pool_release": true
+  },
+  "frontend": {
+    "unit_passed": 7,
+    "lint": true,
+    "typecheck": true,
+    "production_build": true,
+    "stack": "Tailwind/Radix/RHF/Zod (auth/settings)"
+  },
+  "python_lint_types_lock": true,
+  "strict_json_success_schema_operations": 79,
+  "clean_start_report": "clean-start.json",
+  "clean_source_empty_volumes_s3_http_workflow": true,
+  "private_s3_drill": true,
+  "restricted_role_disconnect_http": true,
+  "runtime_role_boundaries": true,
+  "native_async_metrics_db_storage_probe": true,
+  "nonroot_readonly_encrypted_restore_ledger": true,
+  "public_http_local": {
+    "checks_passed": 10,
+    "tls_verified": false
+  },
+  "performance_report": "performance-async.json",
+  "read_p95_seconds": 0.631,
+  "read_errors": 0,
+  "npm_advisory_findings": 0,
+  "images": {
+    "backend": {
+      "image_id": "sha256:ee68a34d9ebaa0f72d43532fe1f986ada089e250ddbb6fd845e3b1bd45324eb3",
+      "findings": 0
+    },
+    "frontend": {
+      "image_id": "sha256:fef11a2fe00c05e44698f3d642824f1f12bf71d1e8618f075031359696d3fbb3",
+      "findings": 0
+    },
+    "backup": {
+      "image_id": "sha256:abf7cdf1220764e83cff3b19e0e2e333bdb837053058f4f374efe59b9b788e55",
+      "findings": 0
+    }
+  },
+  "repository_cache_check": true,
+  "browser_device_qa": false,
+  "live_instagram_qa": false,
+  "public_cloud_qa": false,
+  "remote_ci_run": false,
+  "pending": [
+    "Browser widths/a11y/focus/navigation",
+    "Android/iOS PWA device acceptance",
+    "Live Instagram login/2FA/session/logout",
+    "Public DNS/TLS/SMTP/private S3/lifecycle/alert delivery",
+    "Cloud load/Web Vitals/outage/rollback/off-host RPO/RTO",
+    "Operator legal/support configuration"
+  ],
+  "notes": "Local observed checks. HTTP and unit checks do not prove browser/device or public cloud acceptance; historical reports retain their original scope."
+}

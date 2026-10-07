@@ -1,0 +1,45 @@
+services:
+  monitoring-config:
+    image: instasurveillance-backend:${RELEASE_TAG:-local}
+    user: '0:0'
+    command: python /render.py
+    environment:
+      METRICS_TOKEN: ${METRICS_TOKEN:?}
+      STORAGE_METRICS_TARGET: ${STORAGE_METRICS_TARGET:-}
+      STORAGE_METRICS_TOKEN: ${STORAGE_METRICS_TOKEN:-}
+      STORAGE_METRICS_SCHEME: ${STORAGE_METRICS_SCHEME:-https}
+      BACKUP_METRICS_TARGET: ${BACKUP_METRICS_TARGET:-}
+      BACKUP_METRICS_TOKEN: ${BACKUP_METRICS_TOKEN:-}
+      BACKUP_METRICS_SCHEME: ${BACKUP_METRICS_SCHEME:-https}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    volumes: [monitor_config:/monitor-config, ./deploy/monitoring/render.py:/render.py:ro]
+    restart: 'no'
+    profiles: [observability]
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command: ['--config.file=/monitor-config/prometheus.yml', '--storage.tsdb.path=/prometheus', '--storage.tsdb.retention.time=30d']
+    volumes: [monitor_config:/monitor-config:ro, prometheus_data:/prometheus, ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro]
+    depends_on: {monitoring-config: {condition: service_completed_successfully}}
+    ports: ['127.0.0.1:9090:9090']
+    restart: unless-stopped
+    profiles: [observability]
+    mem_limit: 512m
+    cpus: 0.5
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command: ['--config.file=/monitor-config/alertmanager.yml', '--storage.path=/alertmanager']
+    volumes: [monitor_config:/monitor-config:ro, alertmanager_data:/alertmanager]
+    depends_on: {monitoring-config: {condition: service_completed_successfully}}
+    ports: ['127.0.0.1:9093:9093']
+    restart: unless-stopped
+    profiles: [observability]
+    mem_limit: 128m
+    cpus: 0.25
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+volumes:
+  monitor_config:
+  prometheus_data:
+  alertmanager_data:

@@ -1,0 +1,16 @@
+:80 {
+  request_body {
+    max_size 101MB
+  }
+  handle /api/v1/metrics {
+    respond 404
+  }
+  handle /api/* {
+    reverse_proxy backend:8000 {
+      header_up X-Forwarded-For {remote_host}
+    }
+  }
+  handle {
+    reverse_proxy frontend:3000
+  }
+}

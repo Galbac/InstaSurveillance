@@ -1,0 +1,29 @@
+rule_files: [/alerts.yml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: insta_db_up
+        values: '0x10'
+      - series: insta_storage_up
+        values: '0x10'
+      - series: 'insta_volume_available_bytes{volume="db"}'
+        values: '50x10'
+      - series: 'insta_volume_capacity_bytes{volume="db"}'
+        values: '1000x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: DatabaseUnavailable
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations: {summary: "Database probe failed"}
+      - eval_time: 6m
+        alertname: ObjectStorageUnavailable
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations: {summary: "Private object storage probe failed"}
+      - eval_time: 6m
+        alertname: VolumeStorageFull
+        exp_alerts:
+          - exp_labels: {volume: db, severity: critical}
+            exp_annotations: {summary: "Database, scratch or backup staging volume has less than 10 percent free"}

@@ -1,0 +1,10 @@
+{
+  "stand": "local Docker stack over HTTP; Mailpit + Redis + Celery + PostgreSQL",
+  "registration_email_verification": true,
+  "two_archives_and_comparison": true,
+  "private_export_download": true,
+  "account_deletion": true,
+  "real_instagram_requests": false,
+  "browser_qa": false,
+  "seconds": 70.962
+}

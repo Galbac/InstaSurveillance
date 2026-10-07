@@ -1,0 +1,300 @@
+name: instasurveillance-prod
+x-settings: &settings
+  APP_ENV: '${APP_ENV}'
+  APP_BASE_URL: '${APP_BASE_URL}'
+  REDIS_URL: '${REDIS_URL}'
+  AUTH_VAULT_URL: '${AUTH_VAULT_URL}'
+  BROKER_PUBLISH_TIMEOUT_SECONDS: ${BROKER_PUBLISH_TIMEOUT_SECONDS:-3}
+  CSRF_SECRET: '${CSRF_SECRET}'
+  INSTAGRAM_PENDING_ENCRYPTION_KEY: '${INSTAGRAM_PENDING_ENCRYPTION_KEY}'
+  SESSION_COOKIE_NAME: '${SESSION_COOKIE_NAME}'
+  SESSION_COOKIE_SECURE: '${SESSION_COOKIE_SECURE}'
+  INSTAGRAM_PRIVATE_ENABLED: '${INSTAGRAM_PRIVATE_ENABLED}'
+  INSTAGRAM_SYNC_INTERVAL_HOURS: '${INSTAGRAM_SYNC_INTERVAL_HOURS}'
+  INSTAGRAM_MANUAL_MIN_INTERVAL_HOURS: '${INSTAGRAM_MANUAL_MIN_INTERVAL_HOURS}'
+  INSTAGRAM_MAX_RUNS_PER_24H: '${INSTAGRAM_MAX_RUNS_PER_24H}'
+  INSTAGRAM_REQUEST_BUDGET: '${INSTAGRAM_REQUEST_BUDGET}'
+  INSTAGRAM_REQUEST_SPACING_SECONDS: '${INSTAGRAM_REQUEST_SPACING_SECONDS}'
+  INSTAGRAM_PLATFORM_COOLDOWN_HOURS: '${INSTAGRAM_PLATFORM_COOLDOWN_HOURS}'
+  INSTAGRAM_CREDENTIAL_TTL_SECONDS: '${INSTAGRAM_CREDENTIAL_TTL_SECONDS}'
+  MAX_PROFILES_PER_USER: '${MAX_PROFILES_PER_USER}'
+  MAX_UPLOAD_BYTES: '${MAX_UPLOAD_BYTES}'
+  MAX_UNPACKED_BYTES: '${MAX_UNPACKED_BYTES}'
+  MAX_ARCHIVE_ENTRIES: '${MAX_ARCHIVE_ENTRIES}'
+  MAX_SNAPSHOT_MEMBERS: '${MAX_SNAPSHOT_MEMBERS}'
+  SMTP_HOST: '${SMTP_HOST}'
+  SMTP_PORT: '${SMTP_PORT}'
+  SMTP_TLS_MODE: '${SMTP_TLS_MODE}'
+  MAIL_FROM: '${MAIL_FROM}'
+  S3_ENDPOINT: '${S3_ENDPOINT}'
+  S3_REGION: '${S3_REGION}'
+  S3_BUCKET: '${S3_BUCKET}'
+  S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
+  S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+  TRUSTED_HOSTS: '${TRUSTED_HOSTS}'
+  STORAGE_BACKEND: '${STORAGE_BACKEND}'
+  STORAGE_DIRECTORY: '${STORAGE_DIRECTORY}'
+  ENCRYPTION_KEY: '${ENCRYPTION_KEY}'
+  BACKUP_STATUS_DIRECTORY: ${BACKUP_STATUS_DIRECTORY:-/backup-status}
+  METRICS_TOKEN: '${METRICS_TOKEN}'
+  LEDGER_DIRECTORY: '${LEDGER_DIRECTORY}'
+  OPERATOR_NAME: '${OPERATOR_NAME}'
+  OPERATOR_ADDRESS: '${OPERATOR_ADDRESS}'
+  OPERATOR_JURISDICTION: '${OPERATOR_JURISDICTION}'
+  SUPPORT_EMAIL: '${SUPPORT_EMAIL}'
+  LEDGER_S3_BUCKET: '${LEDGER_S3_BUCKET}'
+  LEDGER_S3_ENDPOINT: '${LEDGER_S3_ENDPOINT}'
+  LEDGER_S3_ACCESS_KEY_ID: '${LEDGER_S3_ACCESS_KEY_ID}'
+  LEDGER_S3_SECRET_ACCESS_KEY: '${LEDGER_S3_SECRET_ACCESS_KEY}'
+  USER_STORAGE_QUOTA_BYTES: '${USER_STORAGE_QUOTA_BYTES}'
+  MAX_ACTIVE_HEAVY_JOBS_PER_USER: '${MAX_ACTIVE_HEAVY_JOBS_PER_USER}'
+  IMPORTS_PER_HOUR: '${IMPORTS_PER_HOUR}'
+  JOB_SOFT_TIMEOUT: '${JOB_SOFT_TIMEOUT}'
+  JOB_HARD_TIMEOUT: '${JOB_HARD_TIMEOUT}'
+  INSTAGRAM_SYNC_SOFT_TIMEOUT: '${INSTAGRAM_SYNC_SOFT_TIMEOUT}'
+  INSTAGRAM_SYNC_HARD_TIMEOUT: '${INSTAGRAM_SYNC_HARD_TIMEOUT}'
+  TRUSTED_PROXY_CIDRS: '${TRUSTED_PROXY_CIDRS}'
+  RELEASE_VERSION: '${RELEASE_VERSION}'
+  DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-3}
+  DB_POOL_SIZE: '${DB_POOL_SIZE}'
+  DB_MAX_OVERFLOW: '${DB_MAX_OVERFLOW}'
+  SESSION_TTL_SECONDS: '${SESSION_TTL_SECONDS}'
+  SESSION_ABSOLUTE_TTL_SECONDS: '${SESSION_ABSOLUTE_TTL_SECONDS}'
+  ENCRYPTION_PREVIOUS_KEYS: ${ENCRYPTION_PREVIOUS_KEYS}
+  JOB_STALE_SECONDS: ${JOB_STALE_SECONDS:-120}
+  ENCRYPTION_KEY_VERSION: '${ENCRYPTION_KEY_VERSION}'
+  TERMS_VERSION: '${TERMS_VERSION}'
+  PRIVACY_VERSION: '${PRIVACY_VERSION}'
+  CONNECTION_TERMS_VERSION: '${CONNECTION_TERMS_VERSION}'
+  MAX_ACTIVE_IMPORTS_PER_PROFILE: '${MAX_ACTIVE_IMPORTS_PER_PROFILE}'
+  RAW_FILE_TTL_HOURS: '${RAW_FILE_TTL_HOURS}'
+  IMPORT_CONFIRM_TTL_HOURS: '${IMPORT_CONFIRM_TTL_HOURS}'
+  EXPORT_TTL_HOURS: '${EXPORT_TTL_HOURS}'
+  JOB_METADATA_RETENTION_DAYS: '${JOB_METADATA_RETENTION_DAYS}'
+  NOTIFICATION_RETENTION_DAYS: '${NOTIFICATION_RETENTION_DAYS}'
+  AUDIT_RETENTION_DAYS: '${AUDIT_RETENTION_DAYS}'
+  LOG_RETENTION_DAYS: '${LOG_RETENTION_DAYS}'
+  BACKUP_RETENTION_DAYS: '${BACKUP_RETENTION_DAYS}'
+  INSTAGRAM_LOGIN_MAX_ATTEMPTS: '${INSTAGRAM_LOGIN_MAX_ATTEMPTS}'
+  INSTAGRAM_LARGE_CHANGE_FRACTION: '${INSTAGRAM_LARGE_CHANGE_FRACTION}'
+  INSTAGRAM_LARGE_CHANGE_MIN_MEMBERS: '${INSTAGRAM_LARGE_CHANGE_MIN_MEMBERS}'
+  ENABLE_EMAIL_NOTIFICATIONS: '${ENABLE_EMAIL_NOTIFICATIONS}'
+  ENABLE_PWA: '${ENABLE_PWA}'
+  ENABLE_OFFICIAL_INSTAGRAM: '${ENABLE_OFFICIAL_INSTAGRAM}'
+  ERROR_TRACKING_DSN: ${ERROR_TRACKING_DSN:-}
+  METRICS_ENABLED: '${METRICS_ENABLED}'
+  WORKER_CONCURRENCY: '${WORKER_CONCURRENCY}'
+  CELERY_BROKER_URL: '${CELERY_BROKER_URL}'
+  S3_SERVER_SIDE_ENCRYPTION: ${S3_SERVER_SIDE_ENCRYPTION:-AES256}
+  S3_STORAGE_QUOTA_BYTES: ${S3_STORAGE_QUOTA_BYTES:-0}
+  S3_KMS_KEY_ID: ${S3_KMS_KEY_ID:-}
+  STORAGE_WRITE_TIMEOUT_SECONDS: ${STORAGE_WRITE_TIMEOUT_SECONDS:-300}
+  LOG_DIRECTORY: ${LOG_DIRECTORY:-/logs}
+  TMPDIR: /work
+  S3_USE_TLS: '${S3_USE_TLS}'
+  APP_NAME: '${APP_NAME}'
+  LOG_LEVEL: '${LOG_LEVEL}'
+x-worker-settings: &worker-settings
+  <<: *settings
+  INSTAGRAM_SESSION_ENCRYPTION_KEY: '${INSTAGRAM_SESSION_ENCRYPTION_KEY}'
+  INSTAGRAM_SESSION_PREVIOUS_KEYS: '${INSTAGRAM_SESSION_PREVIOUS_KEYS}'
+  INSTAGRAM_SESSION_KEY_VERSION: '${INSTAGRAM_SESSION_KEY_VERSION}'
+  SMTP_USERNAME: '${SMTP_USERNAME}'
+  SMTP_PASSWORD: '${SMTP_PASSWORD}'
+  DATABASE_URL: '${WORKER_DATABASE_URL}'
+x-runtime: &runtime
+  image: instasurveillance-backend:${RELEASE_TAG:-local}
+  build: {context: ./backend, target: prod}
+  restart: unless-stopped
+  init: true
+  mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
+  cpus: ${BACKEND_CPU_LIMIT:-1.0}
+  pids_limit: 256
+  logging: {driver: none}
+  read_only: true
+  tmpfs: [/tmp]
+  volumes: [prod_work:/work, prod_logs:/logs]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    auth-vault: {condition: service_healthy}
+services:
+  volume-metrics:
+    mem_limit: ${VOLUME_METRICS_MEMORY_LIMIT:-64m}
+    cpus: 0.25
+    image: instasurveillance-backend:${RELEASE_TAG:-local}
+    user: '10001:10001'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    environment: {METRICS_TOKEN: '${METRICS_TOKEN:?}', PYTHONDONTWRITEBYTECODE: '1'}
+    volumes:
+      - ./deploy/monitoring/disks.py:/disks.py:ro
+      - prod_db:/volumes/db:ro
+      - prod_work:/volumes/scratch:ro
+      - prod_backup_status:/volumes/backup:ro
+    command: python /disks.py
+    restart: unless-stopped
+  db:
+    mem_limit: ${DB_MEMORY_LIMIT:-2g}
+    cpus: 2.0
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: insta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: insta
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?}
+    volumes:
+      - prod_db:/var/lib/postgresql
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/01-api.sql:ro
+    healthcheck: {test: [CMD-SHELL, 'pg_isready -U insta'], interval: 5s, retries: 20}
+  redis:
+    mem_limit: ${REDIS_MEMORY_LIMIT:-256m}
+    cpus: 0.5
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [prod_redis:/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 5s, retries: 20}
+  auth-vault:
+    mem_limit: ${REDIS_MEMORY_LIMIT:-256m}
+    cpus: 0.5
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: [redis-server, --save, '', --appendonly, 'no']
+    tmpfs: [/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 5s, retries: 20}
+  migrate:
+    <<: *runtime
+    environment:
+      <<: *settings
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD:?}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?}
+    command: alembic upgrade head
+    restart: 'no'
+  backend:
+    <<: *runtime
+    environment:
+      <<: *settings
+      DATABASE_URL: ${DATABASE_URL:?}
+      INSTAGRAM_SESSION_ENCRYPTION_KEY: ''
+    volumes: [prod_work:/work, prod_logs:/logs, prod_backup_status:/backup-status:ro]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
+      interval: 15s
+      retries: 5
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  worker:
+    <<: *runtime
+    mem_limit: ${WORKER_MEMORY_LIMIT:-1g}
+    cpus: ${WORKER_CPU_LIMIT:-1.5}
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: default
+    command: celery -A app.jobs.celery_app:celery worker -Q default -c ${WORKER_CONCURRENCY:-2} --loglevel=WARNING
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  auth-worker:
+    <<: *runtime
+    mem_limit: ${AUTH_WORKER_MEMORY_LIMIT:-512m}
+    cpus: ${AUTH_WORKER_CPU_LIMIT:-0.5}
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: auth
+    command: celery -A app.jobs.celery_app:celery worker -Q auth -c 1 --loglevel=WARNING
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  maintenance:
+    <<: *runtime
+    mem_limit: ${MAINTENANCE_MEMORY_LIMIT:-256m}
+    cpus: 0.25
+    environment:
+      <<: *worker-settings
+      WORKER_KIND: maintenance
+    command: celery -A app.jobs.celery_app:celery worker -Q maintenance -c 1 --loglevel=WARNING
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  scheduler:
+    <<: *runtime
+    mem_limit: ${SCHEDULER_MEMORY_LIMIT:-128m}
+    cpus: 0.1
+    environment: *worker-settings
+    command: celery -A app.jobs.celery_app:celery beat --schedule=/tmp/celerybeat --loglevel=WARNING
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  operator:
+    <<: *runtime
+    profiles: [operator]
+    environment:
+      <<: *worker-settings
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?}
+    command: python -m app.cli --help
+    restart: 'no'
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  frontend:
+    image: instasurveillance-frontend:${RELEASE_TAG:-local}
+    build: {context: ./frontend, target: prod}
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-768m}
+    cpus: 1.0
+    environment:
+      INTERNAL_API_BASE_URL: http://backend:8000
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache:uid=1001,gid=1001,mode=0700]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on: {backend: {condition: service_healthy}}
+  backup:
+    build: {context: ./backend, target: backup}
+    image: instasurveillance-backup:${RELEASE_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    volumes: [prod_work:/work, prod_logs:/logs, prod_backup_status:/backup-status]
+    environment:
+      <<: *settings
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:?}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:?}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:?}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:?}
+      BACKUP_STATUS_DIRECTORY: /backup-status
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 0.5
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  edge:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?}
+      MAX_HTTP_BODY_BYTES: ${MAX_HTTP_BODY_BYTES:-105906176}
+    networks:
+      default:
+        ipv4_address: ${APP_EDGE_IP:-172.28.24.10}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - prod_caddy_data:/data
+      - prod_caddy_config:/config
+    depends_on: [frontend]
+volumes:
+  prod_db:
+  prod_redis:
+  prod_caddy_data:
+  prod_caddy_config:
+  prod_backup_status:
+  prod_logs:
+  prod_work:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${APP_NETWORK_CIDR:-172.28.24.0/24}
