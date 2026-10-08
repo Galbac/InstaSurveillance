@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=None, extra="ignore", hide_input_in_errors=True)
-    app_env: str = "development"
+    app_env: Literal["local", "development", "staging", "production"] = "development"
     app_base_url: str = "http://localhost:3100"
     database_url: str
     redis_url: str = "redis://redis:6379/0"
@@ -115,6 +116,12 @@ class Settings(BaseSettings):
     def validate_runtime(self):
         from cryptography.fernet import Fernet
 
+        if self.app_env == "local" and urlsplit(self.app_base_url).hostname not in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }:
+            raise ValueError("Local-only authentication shortcuts require a loopback APP_BASE_URL")
         Fernet(self.instagram_pending_encryption_key.get_secret_value().encode())
         if self.instagram_session_encryption_key:
             Fernet(self.instagram_session_encryption_key.get_secret_value().encode())

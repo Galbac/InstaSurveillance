@@ -479,6 +479,7 @@ def annotate(profile_id: str, identity_key: str, body: NoteInput, user: Verified
 def public_config(db: DB):
     s = get_settings()
     return {
+        "local_email_verification": s.app_env == "local",
         "instagram_enabled": s.instagram_private_enabled,
         "max_upload_bytes": s.max_upload_bytes,
         "sync_interval_hours": s.instagram_sync_interval_hours,

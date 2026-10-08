@@ -1,6 +1,7 @@
 import io
 import json
 import zipfile
+from types import SimpleNamespace
 
 import pytest
 from cryptography.exceptions import InvalidTag
@@ -40,6 +41,37 @@ def test_rfc6238_totp_and_replay_guard():
     assert totp(seed, 1) == "287082"
     assert matching_counter(seed, "287082", -1, 59) == 1
     assert matching_counter(seed, "287082", 1, 59) is None
+
+
+def test_local_email_code_is_only_accepted_in_local_environment(monkeypatch):
+    from app.modules import auth
+
+    user = SimpleNamespace(email="owner@example.com", verified=False, id="user-1")
+    commits = []
+
+    class FakeDB:
+        def __init__(self, return_user):
+            self.return_user = return_user
+
+        def scalar(self, _query):
+            return user if self.return_user else None
+
+        def execute(self, _query):
+            return None
+
+        def commit(self):
+            commits.append(True)
+
+    monkeypatch.setattr(auth, "get_settings", lambda: SimpleNamespace(app_env="local"))
+    monkeypatch.setattr(auth, "email_limits", lambda *_args: None)
+    auth.verify_email(auth.VerifyEmailInput(token="1234", email="owner@example.com"), None, FakeDB(True))
+    assert user.verified is True
+    assert commits == [True]
+
+    monkeypatch.setattr(auth, "get_settings", lambda: SimpleNamespace(app_env="development"))
+    with pytest.raises(AppError) as result:
+        auth.verify_email(auth.VerifyEmailInput(token="1234", email="owner@example.com"), None, FakeDB(False))
+    assert result.value.code == "invalid_token"
 
 
 def test_archive_part_gaps_and_nested_zip_rejected():

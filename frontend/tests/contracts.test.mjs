@@ -84,6 +84,8 @@ test('auth schemas enforce email, password bounds and registration consent',()=>
  assert.equal(authSchema('register').safeParse({...value,password:'x'.repeat(257)}).success,false);
  assert.equal(authSchema('forgot-password').safeParse({...value,password:''}).success,true);
  assert.equal(authSchema('verify-email').safeParse({...value,email:'',password:''}).success,true);
+ assert.equal(authSchema('verify-email',true).safeParse({...value,email:'owner@example.org',verification_code:'1234'}).success,true);
+ assert.equal(authSchema('verify-email',true).safeParse({...value,email:'owner@example.org',verification_code:'bad'}).success,false);
 });
 
 test('settings schema validates form fields and preserves notification booleans',()=>{

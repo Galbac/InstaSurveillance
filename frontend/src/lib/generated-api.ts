@@ -1958,6 +1958,8 @@ export interface components {
             enable_pwa: boolean;
             /** Instagram Enabled */
             instagram_enabled: boolean;
+            /** Local Email Verification */
+            local_email_verification: boolean;
             /** Manual Min Interval Hours */
             manual_min_interval_hours: number;
             /** Max Runs Per 24H */
@@ -2185,6 +2187,13 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VerifyEmailInput */
+        VerifyEmailInput: {
+            /** Email */
+            email?: string | null;
+            /** Token */
+            token: string;
         };
         /** VerifyInput */
         VerifyInput: {
@@ -2799,7 +2808,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TokenInput"];
+                "application/json": components["schemas"]["VerifyEmailInput"];
             };
         };
         responses: {

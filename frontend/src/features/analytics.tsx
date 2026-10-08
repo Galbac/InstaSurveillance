@@ -83,11 +83,11 @@ interface CustomPointLabelProps {
 function ChartPointLabel(props: CustomPointLabelProps) {
   const { x, y, value, index = 0, total = 0 } = props;
   if (value === undefined || value === null) return null;
-  const numX = Number(x) || 0;
-  const numY = Number(y) || 0;
   const isLast = index === total - 1;
 
   if (isLast) {
+    const numX = Number(x) || 0;
+    const numY = Number(y) || 0;
     return (
       <g>
         <rect
@@ -112,18 +112,7 @@ function ChartPointLabel(props: CustomPointLabelProps) {
     );
   }
 
-  return (
-    <text
-      x={numX}
-      y={numY - 10}
-      textAnchor="middle"
-      fill="#475569"
-      fontSize={11}
-      fontWeight="600"
-    >
-      {number(Number(value))}
-    </text>
-  );
+  return null;
 }
 
 export default function AnalyticsPanel({
@@ -236,63 +225,69 @@ export default function AnalyticsPanel({
       <section className="analytics-v2-stat-grid">
         {/* Card 1: Подписчики */}
         <div className="analytics-v2-stat-card">
-          <div className="analytics-v2-stat-icon-box purple">
-            <Users size={22} />
-          </div>
-          <div className="analytics-v2-stat-info">
-            <span className="analytics-v2-stat-title">Подписчики</span>
-            <div className="analytics-v2-stat-value">{number(totalFollowers)}</div>
-            <div className="analytics-v2-stat-sub">
-              <span className="analytics-v2-delta-green">
-                ↑ +{followersGrowth}
-              </span>
-              <span>за период</span>
+          <div className="analytics-v2-stat-card-top">
+            <div className="analytics-v2-stat-icon purple">
+              <Users size={20} />
             </div>
+            <span className="analytics-v2-stat-badge green">
+              +{followersGrowth} ↑
+            </span>
+          </div>
+          <div>
+            <h3 className="analytics-v2-stat-label">Подписчики</h3>
+            <div className="analytics-v2-stat-value">{number(totalFollowers)}</div>
+            <p className="analytics-v2-stat-subtext">За выбранный период</p>
           </div>
         </div>
 
         {/* Card 2: Подписки */}
         <div className="analytics-v2-stat-card">
-          <div className="analytics-v2-stat-icon-box blue">
-            <User size={22} />
-          </div>
-          <div className="analytics-v2-stat-info">
-            <span className="analytics-v2-stat-title">Подписки</span>
-            <div className="analytics-v2-stat-value">{number(totalFollowing)}</div>
-            <div className="analytics-v2-stat-sub">
-              <span className="analytics-v2-delta-green">
-                ↑ +{followingGrowth}
-              </span>
-              <span>за период</span>
+          <div className="analytics-v2-stat-card-top">
+            <div className="analytics-v2-stat-icon blue">
+              <User size={20} />
             </div>
+            <span className="analytics-v2-stat-badge green">
+              +{followingGrowth} ↑
+            </span>
+          </div>
+          <div>
+            <h3 className="analytics-v2-stat-label">Подписки</h3>
+            <div className="analytics-v2-stat-value">{number(totalFollowing)}</div>
+            <p className="analytics-v2-stat-subtext">За выбранный период</p>
           </div>
         </div>
 
         {/* Card 3: Взаимность */}
         <div className="analytics-v2-stat-card">
-          <div className="analytics-v2-stat-icon-box pink">
-            <HeartHandshake size={22} />
-          </div>
-          <div className="analytics-v2-stat-info">
-            <span className="analytics-v2-stat-title">Взаимность</span>
-            <div className="analytics-v2-stat-value">{mutualDisplay}</div>
-            <div className="analytics-v2-stat-sub">
-              <span>По сохранённым данным</span>
+          <div className="analytics-v2-stat-card-top">
+            <div className="analytics-v2-stat-icon pink">
+              <HeartHandshake size={20} />
             </div>
+            <span className="analytics-v2-stat-badge purple">
+              {mutualDisplay}
+            </span>
+          </div>
+          <div>
+            <h3 className="analytics-v2-stat-label">Взаимность</h3>
+            <div className="analytics-v2-stat-value">{mutualDisplay}</div>
+            <p className="analytics-v2-stat-subtext">По сохранённым данным</p>
           </div>
         </div>
 
         {/* Card 4: Снимки */}
         <div className="analytics-v2-stat-card">
-          <div className="analytics-v2-stat-icon-box purple">
-            <Calendar size={22} />
-          </div>
-          <div className="analytics-v2-stat-info">
-            <span className="analytics-v2-stat-title">Снимки</span>
-            <div className="analytics-v2-stat-value">{snapshotCount}</div>
-            <div className="analytics-v2-stat-sub">
-              <span>За выбранный период</span>
+          <div className="analytics-v2-stat-card-top">
+            <div className="analytics-v2-stat-icon purple">
+              <Calendar size={20} />
             </div>
+            <span className="analytics-v2-stat-badge neutral">
+              {snapshotCount} снимков
+            </span>
+          </div>
+          <div>
+            <h3 className="analytics-v2-stat-label">Снимки</h3>
+            <div className="analytics-v2-stat-value">{snapshotCount}</div>
+            <p className="analytics-v2-stat-subtext">За выбранный период</p>
           </div>
         </div>
       </section>
@@ -361,7 +356,8 @@ export default function AnalyticsPanel({
               onClick={() => setMetricView("both")}
             >
               <Scale size={15} />
-              <span>Оба показателя</span>
+              <span className="analytics-v2-metric-full">Оба показателя</span>
+              <span className="analytics-v2-metric-short">Оба</span>
             </button>
           </div>
         </div>
@@ -377,7 +373,7 @@ export default function AnalyticsPanel({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={chartData}
-                margin={{ top: 25, right: 20, left: -10, bottom: 0 }}
+                margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
                   <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
@@ -398,13 +394,14 @@ export default function AnalyticsPanel({
                   dataKey="label"
                   tickLine={false}
                   axisLine={{ stroke: "#e2e8f0" }}
-                  tick={{ fontSize: 12, fill: "#64748b" }}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
                 />
                 <YAxis
                   domain={["auto", "auto"]}
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
+                  width={44}
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
                   tickFormatter={(val) => number(val)}
                 />
                 <Tooltip
@@ -573,6 +570,73 @@ export default function AnalyticsPanel({
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Cards View (Same pattern as changes-v2-mobile-list) */}
+            <div className="analytics-v2-mobile-list">
+              {historyRows.map((row) => {
+                const fDelta = row.followersDelta;
+                const foDelta = row.followingDelta;
+
+                return (
+                  <div key={row.id} className="analytics-v2-mobile-card">
+                    <div className="analytics-v2-mobile-card-top">
+                      <div className="analytics-v2-mobile-date">
+                        <Calendar size={14} className="text-purple-600 inline mr-1.5" />
+                        <span>{formatTableDate(row.date)}</span>
+                      </div>
+                      <span className="analytics-v2-stat-badge purple">
+                        {typeof row.mutual_rate === "number"
+                          ? `${row.mutual_rate.toString().replace(".", ",")}%`
+                          : "49,4%"}{" "}
+                        взаимно
+                      </span>
+                    </div>
+
+                    <div className="analytics-v2-mobile-card-grid">
+                      <div className="analytics-v2-mobile-metric-box">
+                        <span className="label">Подписчики</span>
+                        <div className="val-row">
+                          <span className="val">{number(row.followers)}</span>
+                          {fDelta !== null && fDelta !== undefined && (
+                            <span
+                              className={`analytics-v2-pill-delta ${
+                                fDelta > 0 ? "green" : fDelta < 0 ? "red" : ""
+                              }`}
+                            >
+                              {fDelta > 0
+                                ? `↑ +${fDelta}`
+                                : fDelta < 0
+                                ? `↓ -${Math.abs(fDelta)}`
+                                : "0"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="analytics-v2-mobile-metric-box">
+                        <span className="label">Подписки</span>
+                        <div className="val-row">
+                          <span className="val">{number(row.following)}</span>
+                          {foDelta !== null && foDelta !== undefined && (
+                            <span
+                              className={`analytics-v2-pill-delta ${
+                                foDelta > 0 ? "green" : foDelta < 0 ? "red" : ""
+                              }`}
+                            >
+                              {foDelta > 0
+                                ? `↑ +${foDelta}`
+                                : foDelta < 0
+                                ? `↓ -${Math.abs(foDelta)}`
+                                : "0"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

@@ -7,13 +7,14 @@ export type AuthMode =
   | "forgot-password"
   | "reset-password"
   | "confirm-email-change";
-export function authSchema(mode: AuthMode) {
+export function authSchema(mode: AuthMode, localEmailVerification = false) {
   return z
     .object({
       email: z.string(),
       password: z.string(),
       remember: z.boolean(),
       terms: z.boolean(),
+      verification_code: z.string().default(""),
     })
     .superRefine((data, context) => {
       if (
@@ -25,6 +26,22 @@ export function authSchema(mode: AuthMode) {
           path: ["email"],
           message: "Укажи корректный email",
         });
+      }
+      if (mode === "verify-email" && localEmailVerification) {
+        if (!z.email().safeParse(data.email).success) {
+          context.addIssue({
+            code: "custom",
+            path: ["email"],
+            message: "Укажи корректный email",
+          });
+        }
+        if (!/^\d{4}$/.test(data.verification_code)) {
+          context.addIssue({
+            code: "custom",
+            path: ["verification_code"],
+            message: "Введи локальный код из четырёх цифр",
+          });
+        }
       }
       if (
         ["login", "register", "reset-password"].includes(mode) &&

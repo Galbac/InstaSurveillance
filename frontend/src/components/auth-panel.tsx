@@ -12,13 +12,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { authSchema, type AuthMode as Mode } from "@/lib/form-schemas";
 export default function AuthPanel({ mode }: { mode: Mode }) {
   const router = useRouter();
-  const form = useForm({
-    resolver: zodResolver(authSchema(mode)),
-    defaultValues: { email: "", password: "", remember: false, terms: false },
-  });
   const config = useQuery({
     queryKey: ["public-config"],
     queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+  });
+  const form = useForm({
+    resolver: zodResolver(
+      authSchema(mode, config.data?.local_email_verification ?? false),
+    ),
+    defaultValues: {
+      email: "",
+      password: "",
+      remember: false,
+      terms: false,
+      verification_code: "",
+    },
   });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -36,6 +44,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
     password: string;
     remember: boolean;
     terms: boolean;
+    verification_code: string;
   }) {
     setError("");
     setBusy(true);
@@ -67,7 +76,11 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
           privacy_version: config.data?.privacy_version,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
-        setMessage(result.message);
+        setMessage(
+          config.data?.local_email_verification
+            ? "Аккаунт создан. В локальном режиме подтверди email кодом 1234."
+            : result.message,
+        );
       }
       if (mode === "forgot-password") {
         const result = await post<{ message: string }>(
@@ -82,7 +95,12 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
         setMessage("Email изменён. Войдите с новым адресом.");
       }
       if (mode === "verify-email") {
-        await post("/auth/verify-email", { token: rawToken });
+        await post(
+          "/auth/verify-email",
+          config.data?.local_email_verification
+            ? { token: data.verification_code, email: data.email }
+            : { token: rawToken },
+        );
         window.history.replaceState(null, "", window.location.pathname);
         setMessage("Email подтвержден. Теперь можно войти в кабинет.");
       }
@@ -149,13 +167,25 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
           {message ? (
             <div className="notice success" role="status">
               {message}
-              <Link href="/login" className="text-link">
-                Перейти ко входу <ArrowRight size={16} />
+              <Link
+                href={
+                  mode === "register" &&
+                  config.data?.local_email_verification
+                    ? "/verify-email"
+                    : "/login"
+                }
+                className="text-link"
+              >
+                {mode === "register" &&
+                config.data?.local_email_verification
+                  ? "Подтвердить email кодом"
+                  : "Перейти ко входу"} <ArrowRight size={16} />
               </Link>
             </div>
           ) : (
             <form noValidate onSubmit={form.handleSubmit(submit)}>
-              {mode !== "verify-email" &&
+              {(mode !== "verify-email" ||
+                config.data?.local_email_verification) &&
                 mode !== "reset-password" &&
                 mode !== "confirm-email-change" && (
                   <label>
@@ -174,6 +204,32 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                       placeholder="you@example.com"
                     />
                   </label>
+                )}
+              {mode === "verify-email" &&
+                config.data?.local_email_verification && (
+                  <>
+                    <label>
+                      Код подтверждения
+                      <input
+                        {...form.register("verification_code")}
+                        aria-invalid={
+                          !!form.formState.errors.verification_code
+                        }
+                        aria-describedby={
+                          form.formState.errors.verification_code
+                            ? "auth-verification_code-error"
+                            : "local-verification-hint"
+                        }
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={4}
+                        placeholder="1234"
+                      />
+                      <small id="local-verification-hint">
+                        Локальный код для всех адресов: 1234
+                      </small>
+                    </label>
+                  </>
                 )}
               {["login", "register", "reset-password"].includes(mode) && (
                 <label>
@@ -251,7 +307,11 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
               )}
               <button
                 className="button full"
-                disabled={busy || (mode === "register" && !config.data)}
+                disabled={
+                  busy ||
+                  (["register", "verify-email"].includes(mode) &&
+                    !config.data)
+                }
               >
                 {busy
                   ? "Подождите…"

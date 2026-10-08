@@ -2246,6 +2246,10 @@
             "title": "Instagram Enabled",
             "type": "boolean"
           },
+          "local_email_verification": {
+            "title": "Local Email Verification",
+            "type": "boolean"
+          },
           "manual_min_interval_hours": {
             "title": "Manual Min Interval Hours",
             "type": "integer"
@@ -2292,6 +2296,7 @@
           }
         },
         "required": [
+          "local_email_verification",
           "instagram_enabled",
           "max_upload_bytes",
           "sync_interval_hours",
@@ -2836,6 +2841,33 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerifyEmailInput": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "token": {
+            "maxLength": 200,
+            "minLength": 4,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "VerifyEmailInput",
         "type": "object"
       },
       "VerifyInput": {
@@ -3678,7 +3710,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TokenInput"
+                "$ref": "#/components/schemas/VerifyEmailInput"
               }
             }
           },

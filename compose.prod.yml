@@ -1,6 +1,6 @@
 name: instasurveillance-prod
 x-settings: &settings
-  APP_ENV: '${APP_ENV}'
+  APP_ENV: production
   APP_BASE_URL: '${APP_BASE_URL}'
   REDIS_URL: '${REDIS_URL}'
   AUTH_VAULT_URL: '${AUTH_VAULT_URL}'

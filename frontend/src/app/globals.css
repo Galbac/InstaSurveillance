@@ -5726,28 +5726,35 @@ button.icon-button {
   flex-direction: column;
   gap: 20px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   margin: 0;
+  overflow-x: clip;
 }
 
-/* 1. Stat Grid (4 KPI Cards) */
+/* 1. Stat Grid (4 KPI Cards - exact design pattern as changes-v2) */
 .analytics-v2-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .analytics-v2-stat-card {
   background: #ffffff;
   border: 1px solid rgba(228, 233, 243, 0.9);
   border-radius: 20px;
-  padding: 20px 22px;
+  padding: 20px 24px;
   box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -5756,42 +5763,69 @@ button.icon-button {
   transform: translateY(-1px);
 }
 
-.analytics-v2-stat-icon-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+.analytics-v2-stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.analytics-v2-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.analytics-v2-stat-icon-box.purple {
+.analytics-v2-stat-icon.purple {
   background: #f5f3ff;
   color: #7c3aed;
   border: 1px solid #ede9fe;
 }
 
-.analytics-v2-stat-icon-box.blue {
+.analytics-v2-stat-icon.blue {
   background: #eff6ff;
   color: #3b82f6;
   border: 1px solid #dbeafe;
 }
 
-.analytics-v2-stat-icon-box.pink {
+.analytics-v2-stat-icon.pink {
   background: #faf5ff;
   color: #a855f7;
   border: 1px solid #f3e8ff;
 }
 
-.analytics-v2-stat-info {
-  display: flex;
-  flex-direction: column;
+.analytics-v2-stat-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
   gap: 2px;
-  min-width: 0;
+  white-space: nowrap;
 }
 
-.analytics-v2-stat-title {
+.analytics-v2-stat-badge.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.analytics-v2-stat-badge.purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ede9fe;
+}
+
+.analytics-v2-stat-badge.neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.analytics-v2-stat-label {
   font-size: 13px;
   font-weight: 500;
   color: #64748b;
@@ -5799,31 +5833,18 @@ button.icon-button {
 }
 
 .analytics-v2-stat-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
   color: #171a27;
-  line-height: 1.1;
+  line-height: 1;
   letter-spacing: -0.03em;
-  margin: 2px 0 3px;
+  margin: 2px 0;
 }
 
-.analytics-v2-stat-sub {
+.analytics-v2-stat-subtext {
   font-size: 12px;
   color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   margin: 0;
-}
-
-.analytics-v2-delta-green {
-  color: #16a34a;
-  font-weight: 700;
-}
-
-.analytics-v2-delta-red {
-  color: #dc2626;
-  font-weight: 700;
 }
 
 /* 2. Main Dynamic Chart Card */
@@ -5834,10 +5855,13 @@ button.icon-button {
   box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow: hidden;
 }
 
 .analytics-v2-chart-header {
@@ -5846,6 +5870,8 @@ button.icon-button {
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
 
 .analytics-v2-chart-title {
@@ -5868,6 +5894,8 @@ button.icon-button {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
 
 .analytics-v2-metric-group {
@@ -5940,8 +5968,11 @@ button.icon-button {
 
 .analytics-v2-chart-wrapper {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 290px;
   margin-top: 6px;
+  overflow: hidden;
 }
 
 .analytics-v2-chart-footer {
@@ -5958,13 +5989,15 @@ button.icon-button {
 /* 3. Bottom Grid (2 Cards) */
 .analytics-v2-bottom-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   gap: 20px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
-/* Bottom Left Card: History Table */
+/* Bottom Left Card: History */
 .analytics-v2-history-card {
   background: #ffffff;
   border: 1px solid rgba(228, 233, 243, 0.9);
@@ -5975,6 +6008,9 @@ button.icon-button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .analytics-v2-card-header {
@@ -5982,6 +6018,8 @@ button.icon-button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .analytics-v2-card-title {
@@ -6000,7 +6038,9 @@ button.icon-button {
 
 .analytics-v2-table-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 
 .analytics-v2-history-table {
@@ -6046,6 +6086,7 @@ button.icon-button {
   border-radius: 9999px;
   font-size: 11.5px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .analytics-v2-pill-delta.green {
@@ -6063,6 +6104,78 @@ button.icon-button {
   font-weight: 600;
 }
 
+/* Mobile cards list for history */
+.analytics-v2-mobile-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.analytics-v2-mobile-card {
+  background: #f8fafc;
+  border: 1px solid #e6e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.analytics-v2-mobile-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.analytics-v2-mobile-date {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+}
+
+.analytics-v2-mobile-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.analytics-v2-mobile-metric-box {
+  background: #ffffff;
+  border: 1px solid #edf0f5;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analytics-v2-mobile-metric-box .label {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.analytics-v2-mobile-metric-box .val-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.analytics-v2-mobile-metric-box .val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #171a27;
+}
+
 /* Bottom Right Card: Period Comparison */
 .analytics-v2-compare-card {
   background: #ffffff;
@@ -6074,13 +6187,18 @@ button.icon-button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .analytics-v2-compare-boxes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .analytics-v2-compare-box {
@@ -6091,6 +6209,8 @@ button.icon-button {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .analytics-v2-compare-box-head {
@@ -6144,6 +6264,8 @@ button.icon-button {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .analytics-v2-insight-icon {
@@ -6163,6 +6285,7 @@ button.icon-button {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .analytics-v2-insight-title {
@@ -6180,58 +6303,196 @@ button.icon-button {
 }
 
 /* ==========================================================================
-   ANALYTICS RESPONSIVENESS (< 960px and < 640px)
+   ANALYTICS RESPONSIVENESS (< 860px and < 640px)
    ========================================================================== */
 
-@media (max-width: 960px) {
+@media (max-width: 860px) {
   .analytics-v2-stat-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analytics-v2-bottom-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analytics-v2-table-wrapper {
+    display: none;
+  }
+
+  .analytics-v2-mobile-list {
+    display: flex;
   }
 }
 
 @media (max-width: 640px) {
-  .analytics-v2-stat-grid {
-    grid-template-columns: 1fr;
+  .analytics-v2-container {
     gap: 12px;
   }
 
-  .analytics-v2-stat-card {
-    padding: 16px 18px;
-    border-radius: 16px;
+  .analytics-v2-metric-full {
+    display: none;
   }
 
+  .analytics-v2-metric-short {
+    display: inline;
+  }
+
+  /* 1. Stat Grid (2 columns, identical to changes-v2) */
+  .analytics-v2-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .analytics-v2-stat-card {
+    padding: 14px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+
+  .analytics-v2-stat-value {
+    font-size: 26px;
+  }
+
+  .analytics-v2-stat-label {
+    font-size: 12px;
+  }
+
+  .analytics-v2-stat-subtext {
+    font-size: 11px;
+  }
+
+  /* 2. Chart Card */
   .analytics-v2-chart-card {
-    padding: 18px 16px;
+    padding: 16px 14px;
     border-radius: 18px;
+    gap: 14px;
+  }
+
+  .analytics-v2-chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .analytics-v2-chart-title {
+    font-size: 16px;
+  }
+
+  .analytics-v2-chart-subtitle {
+    font-size: 12px;
+  }
+
+  .analytics-v2-timeframe-group {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    padding: 2.5px;
+    gap: 2px;
+    box-sizing: border-box;
+  }
+
+  .analytics-v2-timeframe-btn {
+    text-align: center;
+    padding: 6px 2px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .analytics-v2-chart-controls {
+    width: 100%;
+    margin-top: -2px;
+  }
+
+  .analytics-v2-metric-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    gap: 6px;
+  }
+
+  .analytics-v2-metric-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 7px 4px;
+    font-size: 11.5px;
+    gap: 4px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+
+  .analytics-v2-metric-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .analytics-v2-chart-wrapper {
+    height: 200px;
+    margin-top: 2px;
+  }
+
+  .analytics-v2-chart-footer {
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* 3. Bottom Grid Cards */
+  .analytics-v2-bottom-grid {
+    gap: 12px;
   }
 
   .analytics-v2-history-card,
   .analytics-v2-compare-card {
-    padding: 18px 16px;
+    padding: 16px 14px;
     border-radius: 18px;
+    gap: 14px;
+  }
+
+  .analytics-v2-card-title {
+    font-size: 16px;
+  }
+
+  .analytics-v2-card-subtitle {
+    font-size: 12px;
   }
 
   .analytics-v2-compare-boxes {
     grid-template-columns: 1fr;
-  }
-
-  .analytics-v2-chart-controls {
-    flex-direction: column;
-    align-items: flex-start;
     gap: 10px;
   }
 
-  .analytics-v2-timeframe-group {
-    width: 100%;
-    justify-content: space-between;
+  .analytics-v2-compare-box {
+    padding: 12px 14px;
+    border-radius: 14px;
+    gap: 10px;
   }
 
-  .analytics-v2-timeframe-btn {
-    padding: 5px 8px;
+  .analytics-v2-box-dates {
+    font-size: 12.5px;
+  }
+
+  .analytics-v2-metric-val {
+    font-size: 19px;
+  }
+
+  .analytics-v2-compare-insight {
+    padding: 12px 14px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+
+  .analytics-v2-insight-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .analytics-v2-insight-title {
+    font-size: 12.5px;
+  }
+
+  .analytics-v2-insight-desc {
     font-size: 11.5px;
   }
 }

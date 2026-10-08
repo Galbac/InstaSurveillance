@@ -4,9 +4,11 @@
 
 Secrets не передаются frontend. API не получает owner/worker URL и session encryption key; worker получает свой DB URL и session key. SMTP password получает maintenance, owner connection — migrate/operator/backup. Настройки compose берутся из одного приватного файла на host, но не весь файл доставляется каждому runtime.
 
+`APP_ENV=local` предназначен только для локального Compose: при базовом URL на loopback регистрация подтверждается кодом `1234` без отправки письма. В `development`, `staging` и `production` действует только одноразовая ссылка из email. Production Compose принудительно устанавливает `APP_ENV=production`, поэтому локальный код нельзя включить настройкой `.env.prod`.
+
 | Переменная | Тип | Default / обязательность |
 | --- | --- | --- |
-| `APP_ENV` | `str` | `development` |
+| `APP_ENV` | `local`, `development`, `staging`, or `production` | `development` |
 | `APP_BASE_URL` | `str` | `http://localhost:3100` |
 | `DATABASE_URL` | `str` | `обязательно` |
 | `REDIS_URL` | `str` | `redis://redis:6379/0` |

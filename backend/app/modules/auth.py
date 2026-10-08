@@ -40,6 +40,11 @@ class TokenInput(BaseModel):
     token: str = Field(min_length=16, max_length=200)
 
 
+class VerifyEmailInput(BaseModel):
+    token: str = Field(min_length=4, max_length=200)
+    email: EmailStr | None = None
+
+
 class ResetInput(TokenInput):
     password: str = Field(min_length=12, max_length=256)
 
@@ -150,7 +155,8 @@ def register(body: Registration, request: Request, db: DB):
             ]
         )
         audit(db, user.id, "user.register", user.id, request.state.request_id)
-        issue_email_token(db, user, "verify")
+        if settings.app_env != "local":
+            issue_email_token(db, user, "verify")
         db.commit()
     return {"message": "Если адрес доступен для регистрации, мы отправили письмо. Проверьте почту."}
 
@@ -202,7 +208,18 @@ def logout(request: Request, response: Response, db: DB):
 
 
 @router.post("/auth/verify-email", status_code=204)
-def verify_email(body: TokenInput, db: DB):
+def verify_email(body: VerifyEmailInput, request: Request, db: DB):
+    settings = get_settings()
+    if settings.app_env == "local" and body.token == "1234" and body.email:
+        email = str(body.email).lower()
+        email_limits(request, email, "verify", 10)
+        user = db.scalar(select(User).where(User.email == email).with_for_update())
+        if not user or user.verified:
+            raise AppError("invalid_token", "Код недействителен или email уже подтвержден")
+        user.verified = True
+        db.execute(delete(AuthToken).where(AuthToken.user_id == user.id, AuthToken.purpose == "verify"))
+        db.commit()
+        return
     entry = db.scalar(
         select(AuthToken)
         .where(

@@ -229,6 +229,7 @@ class TicketDTO(BaseModel):
 
 
 class PublicConfigDTO(BaseModel):
+    local_email_verification: bool
     instagram_enabled: bool
     max_upload_bytes: int
     sync_interval_hours: int
