@@ -222,10 +222,26 @@ export default function SettingsPanel({
     }
   };
 
+  // Password and Email validation error states
+  const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string }>({});
+  const [emailErrors, setEmailErrors] = useState<{ email?: string; password?: string }>({});
+
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg("");
+    const errs: { current?: string; new?: string } = {};
+    if (!currentPassword) {
+      errs.current = "Введи текущий пароль";
+    }
+    if (!newPassword || newPassword.length < 12) {
+      errs.new = "Пароль должен содержать от 12 до 256 символов";
+    }
+    if (Object.keys(errs).length > 0) {
+      setPasswordErrors(errs);
+      return;
+    }
+    setPasswordErrors({});
     try {
       guard();
       setBusy(true);
@@ -249,6 +265,18 @@ export default function SettingsPanel({
     e.preventDefault();
     setError(null);
     setSuccessMsg("");
+    const errs: { email?: string; password?: string } = {};
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      errs.email = "Укажи корректный email";
+    }
+    if (!emailCurrentPassword) {
+      errs.password = "Введи текущий пароль";
+    }
+    if (Object.keys(errs).length > 0) {
+      setEmailErrors(errs);
+      return;
+    }
+    setEmailErrors({});
     try {
       guard();
       setBusy(true);
@@ -420,14 +448,24 @@ export default function SettingsPanel({
           <form onSubmit={handleSavePassword} className="settings-v2-form-body">
             <div className="settings-v2-field">
               <label className="settings-v2-label">Текущий пароль</label>
-              <div className="settings-v2-input-wrap">
+              <div
+                className={`settings-v2-input-wrap ${
+                  passwordErrors.current ? "has-error" : ""
+                }`}
+              >
                 <Lock size={16} className="text-gray-400 shrink-0" />
                 <input
                   type={showCurrentPass ? "text" : "password"}
                   className="settings-v2-input"
                   placeholder="Введите текущий пароль"
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordErrors.current) {
+                      setPasswordErrors((p) => ({ ...p, current: undefined }));
+                    }
+                  }}
+                  aria-invalid={!!passwordErrors.current}
                   maxLength={256}
                 />
                 <button
@@ -439,18 +477,33 @@ export default function SettingsPanel({
                   {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {passwordErrors.current && (
+                <span className="field-error" role="alert">
+                  {passwordErrors.current}
+                </span>
+              )}
             </div>
 
             <div className="settings-v2-field">
               <label className="settings-v2-label">Новый пароль</label>
-              <div className="settings-v2-input-wrap">
+              <div
+                className={`settings-v2-input-wrap ${
+                  passwordErrors.new ? "has-error" : ""
+                }`}
+              >
                 <Lock size={16} className="text-gray-400 shrink-0" />
                 <input
                   type={showNewPass ? "text" : "password"}
                   className="settings-v2-input"
                   placeholder="Введите новый пароль"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordErrors.new) {
+                      setPasswordErrors((p) => ({ ...p, new: undefined }));
+                    }
+                  }}
+                  aria-invalid={!!passwordErrors.new}
                   minLength={12}
                   maxLength={256}
                 />
@@ -463,6 +516,11 @@ export default function SettingsPanel({
                   {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {passwordErrors.new && (
+                <span className="field-error" role="alert">
+                  {passwordErrors.new}
+                </span>
+              )}
             </div>
 
             <p className="settings-v2-hint">
@@ -501,29 +559,57 @@ export default function SettingsPanel({
           <div className="settings-v2-fields-row">
             <div className="settings-v2-field">
               <label className="settings-v2-label">Новый email</label>
-              <div className="settings-v2-input-wrap">
+              <div
+                className={`settings-v2-input-wrap ${
+                  emailErrors.email ? "has-error" : ""
+                }`}
+              >
                 <Mail size={16} className="text-gray-400 shrink-0" />
                 <input
                   type="email"
                   className="settings-v2-input"
                   placeholder="example@domain.com"
                   value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
+                  onChange={(e) => {
+                    setNewEmail(e.target.value);
+                    if (emailErrors.email) {
+                      setEmailErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  aria-invalid={!!emailErrors.email}
                   autoComplete="email"
                 />
               </div>
+              {emailErrors.email && (
+                <span className="field-error" role="alert">
+                  {emailErrors.email}
+                </span>
+              )}
             </div>
 
             <div className="settings-v2-field">
               <label className="settings-v2-label">Текущий пароль</label>
-              <div className="settings-v2-input-wrap">
+              <div
+                className={`settings-v2-input-wrap ${
+                  emailErrors.password ? "has-error" : ""
+                }`}
+              >
                 <Lock size={16} className="text-gray-400 shrink-0" />
                 <input
                   type={showEmailPass ? "text" : "password"}
                   className="settings-v2-input"
                   placeholder="Введите пароль"
                   value={emailCurrentPassword}
-                  onChange={(e) => setEmailCurrentPassword(e.target.value)}
+                  onChange={(e) => {
+                    setEmailCurrentPassword(e.target.value);
+                    if (emailErrors.password) {
+                      setEmailErrors((prev) => ({
+                        ...prev,
+                        password: undefined,
+                      }));
+                    }
+                  }}
+                  aria-invalid={!!emailErrors.password}
                   autoComplete="current-password"
                 />
                 <button
@@ -535,6 +621,11 @@ export default function SettingsPanel({
                   {showEmailPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {emailErrors.password && (
+                <span className="field-error" role="alert">
+                  {emailErrors.password}
+                </span>
+              )}
             </div>
           </div>
 

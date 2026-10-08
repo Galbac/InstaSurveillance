@@ -101,6 +101,10 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
   const qc = useQueryClient(),
     [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false);
+  const [ticketErrors, setTicketErrors] = useState<{
+    body?: string;
+    request_id?: string;
+  }>({});
   const q = useInfiniteQuery({
     queryKey: ["tickets"],
     initialPageParam: "",
@@ -135,10 +139,28 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
         <h2>Обратиться в поддержку</h2>
         <ErrorNotice error={error || q.error} />
         <form
+          noValidate
           onSubmit={async (e) => {
             e.preventDefault();
             const form = e.currentTarget,
               data = new FormData(form);
+            const body = String(data.get("body") || "").trim(),
+              requestId = String(data.get("request_id") || "").trim();
+
+            const errs: { body?: string; request_id?: string } = {};
+            if (!body || body.length < 10) {
+              errs.body = "Опиши проблему подробнее (не менее 10 символов)";
+            }
+            if (requestId && !/^[a-zA-Z0-9-]+$/.test(requestId)) {
+              errs.request_id = "Номер запроса может содержать только латиницу, цифры и дефис";
+            }
+
+            if (Object.keys(errs).length > 0) {
+              setTicketErrors(errs);
+              return;
+            }
+
+            setTicketErrors({});
             setBusy(true);
             setError(null);
             try {
@@ -146,8 +168,8 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
                 throw new Error("Обращения доступны после регистрации.");
               await post("/support/tickets", {
                 category: data.get("category"),
-                body: data.get("body"),
-                request_id: data.get("request_id") || null,
+                body,
+                request_id: requestId || null,
               });
               form.reset();
               qc.invalidateQueries({ queryKey: ["tickets"] });
@@ -182,11 +204,37 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
               minLength={10}
               maxLength={5000}
               rows={5}
+              aria-invalid={!!ticketErrors.body}
+              onChange={() => {
+                if (ticketErrors.body) {
+                  setTicketErrors((p) => ({ ...p, body: undefined }));
+                }
+              }}
             />
+            {ticketErrors.body && (
+              <span className="field-error" role="alert">
+                {ticketErrors.body}
+              </span>
+            )}
           </label>
           <label>
             Номер запроса, если есть
-            <input name="request_id" maxLength={40} pattern="[a-zA-Z0-9-]+" />
+            <input
+              name="request_id"
+              maxLength={40}
+              pattern="[a-zA-Z0-9-]+"
+              aria-invalid={!!ticketErrors.request_id}
+              onChange={() => {
+                if (ticketErrors.request_id) {
+                  setTicketErrors((p) => ({ ...p, request_id: undefined }));
+                }
+              }}
+            />
+            {ticketErrors.request_id && (
+              <span className="field-error" role="alert">
+                {ticketErrors.request_id}
+              </span>
+            )}
           </label>
           <button className="button" disabled={busy}>
             Отправить

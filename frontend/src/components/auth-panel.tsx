@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import Brand from "./brand";
@@ -31,13 +31,18 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const localCodeStep =
     mode === "register" &&
     !!verificationEmail &&
     !!config.data?.local_email_verification;
+  useEffect(() => {
+    if (mode === "login" && new URLSearchParams(window.location.search).get("verified") === "1") {
+      setEmailVerified(true);
+    }
+  }, [mode]);
   const titles = {
     login: "С возвращением",
     register: "Твой круг начинается здесь",
@@ -118,7 +123,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
             : { token: rawToken },
         );
         window.history.replaceState(null, "", window.location.pathname);
-        setMessage("Email подтвержден. Теперь можно войти в кабинет.");
+        router.replace("/login?verified=1");
       }
       if (mode === "reset-password") {
         await post("/auth/reset-password", {
@@ -150,8 +155,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
         email: verificationEmail,
       });
       setVerificationEmail("");
-      setEmailVerified(true);
-      setMessage("Email подтвержден. Теперь можно войти в кабинет.");
+      router.replace("/login?verified=1");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Не удалось подтвердить email",
@@ -206,6 +210,11 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                 ? "Войди, чтобы увидеть изменения в твоем круге."
                 : "Мы поможем продолжить безопасно."}
           </p>
+          {emailVerified && (
+            <div className="notice success" role="status">
+              Email подтверждён. Теперь войди в аккаунт.
+            </div>
+          )}
           {message ? (
             <div className="notice success" role="status">
               {message}
@@ -275,6 +284,15 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                       required
                       placeholder="you@example.com"
                     />
+                    {form.formState.errors.email && (
+                      <span
+                        id="auth-email-error"
+                        className="field-error"
+                        role="alert"
+                      >
+                        {String(form.formState.errors.email.message)}
+                      </span>
+                    )}
                   </label>
                 )}
               {mode === "verify-email" &&
@@ -287,16 +305,27 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                         aria-invalid={
                           !!form.formState.errors.verification_code
                         }
-                      aria-describedby={
-                        form.formState.errors.verification_code
-                          ? "auth-verification_code-error"
-                          : undefined
-                      }
+                        aria-describedby={
+                          form.formState.errors.verification_code
+                            ? "auth-verification_code-error"
+                            : undefined
+                        }
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={4}
                         placeholder="••••"
                       />
+                      {form.formState.errors.verification_code && (
+                        <span
+                          id="auth-verification_code-error"
+                          className="field-error"
+                          role="alert"
+                        >
+                          {String(
+                            form.formState.errors.verification_code.message,
+                          )}
+                        </span>
+                      )}
                     </label>
                   </>
                 )}
@@ -320,55 +349,76 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                     required
                     placeholder="Не менее 12 символов"
                   />
+                  {form.formState.errors.password && (
+                    <span
+                      id="auth-password-error"
+                      className="field-error"
+                      role="alert"
+                    >
+                      {String(form.formState.errors.password.message)}
+                    </span>
+                  )}
                 </label>
               )}
               {mode === "login" && (
                 <div className="form-inline">
-                  <label className="check">
-                    <input
-                      type="checkbox"
-                      {...form.register("remember")}
-                      aria-invalid={!!form.formState.errors.remember}
-                      aria-describedby={
-                        form.formState.errors.remember
-                          ? "auth-remember-error"
-                          : undefined
-                      }
-                    />
-                    Запомнить меня
-                  </label>
+                  <div>
+                    <label className="check">
+                      <input
+                        type="checkbox"
+                        {...form.register("remember")}
+                        aria-invalid={!!form.formState.errors.remember}
+                        aria-describedby={
+                          form.formState.errors.remember
+                            ? "auth-remember-error"
+                            : undefined
+                        }
+                      />
+                      Запомнить меня
+                    </label>
+                    {form.formState.errors.remember && (
+                      <span
+                        id="auth-remember-error"
+                        className="field-error"
+                        role="alert"
+                      >
+                        {String(form.formState.errors.remember.message)}
+                      </span>
+                    )}
+                  </div>
                   <Link href="/forgot-password">Забыли пароль?</Link>
                 </div>
               )}
               {mode === "register" && (
-                <label className="check">
-                  <input
-                    {...form.register("terms")}
-                    aria-invalid={!!form.formState.errors.terms}
-                    aria-describedby={
-                      form.formState.errors.terms
-                        ? "auth-terms-error"
-                        : undefined
-                    }
-                    type="checkbox"
-                    required
-                  />
-                  <span>
-                    Принимаю <Link href="/terms">условия</Link> и{" "}
-                    <Link href="/privacy">политику обработки данных</Link>
-                  </span>
-                </label>
+                <div style={{ margin: "18px 0" }}>
+                  <label className="check" style={{ margin: 0 }}>
+                    <input
+                      {...form.register("terms")}
+                      aria-invalid={!!form.formState.errors.terms}
+                      aria-describedby={
+                        form.formState.errors.terms
+                          ? "auth-terms-error"
+                          : undefined
+                      }
+                      type="checkbox"
+                      required
+                    />
+                    <span>
+                      Принимаю <Link href="/terms">условия</Link> и{" "}
+                      <Link href="/privacy">политику обработки данных</Link>
+                    </span>
+                  </label>
+                  {form.formState.errors.terms && (
+                    <span
+                      id="auth-terms-error"
+                      className="field-error"
+                      role="alert"
+                    >
+                      {String(form.formState.errors.terms.message)}
+                    </span>
+                  )}
+                </div>
               )}
-              {Object.entries(form.formState.errors).map(([name, field]) => (
-                <p
-                  key={name}
-                  id={`auth-${name}-error`}
-                  className="notice error"
-                  role="alert"
-                >
-                  {String(field.message)}
-                </p>
-              ))}
               {error && (
                 <div className="notice error" role="alert">
                   {error}

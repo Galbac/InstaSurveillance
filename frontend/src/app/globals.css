@@ -2979,10 +2979,51 @@ button.icon-button {
 }
 
 .field-error {
-  display: block;
-  color: #b42318;
-  font-size: 13px;
-  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #e11d48;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 6px;
+  animation: fieldErrorFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fieldErrorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Red outline and soft red glow for invalid form fields */
+input:not([type="checkbox"])[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #f43f5e !important;
+  background-color: #fff1f2 !important;
+  color: #111827 !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.14) !important;
+}
+
+input:not([type="checkbox"])[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  border-color: #e11d48 !important;
+  box-shadow: 0 0 0 3.5px rgba(225, 29, 72, 0.22) !important;
+}
+
+/* Settings v2 wrapper invalid state */
+.settings-v2-input-wrap.has-error,
+.settings-v2-input-wrap:has(input[aria-invalid="true"]) {
+  border-color: #f43f5e !important;
+  background-color: #fff1f2 !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.14) !important;
 }
 
 /* ========================================================

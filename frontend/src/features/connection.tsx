@@ -52,14 +52,38 @@ export default function ConnectionPanel({
   const current = q.data || job || connection.data?.job;
   const pending = !!current && !terminalStates.includes(current.status);
   const enabled = flags.data?.instagram_enabled === true && !demo;
+  const [connectErrors, setConnectErrors] = useState<{
+    username?: string;
+    password?: string;
+    consent?: string;
+    code?: string;
+  }>({});
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
       data = new FormData(form);
-    const username = String(data.get("username")),
-      password = String(data.get("password")),
+    const username = String(data.get("username") || "").trim(),
+      password = String(data.get("password") || ""),
       accepted = !!data.get("consent");
-    form.reset();
+
+    const errs: { username?: string; password?: string; consent?: string } = {};
+    if (!username) {
+      errs.username = "Укажи username Instagram";
+    }
+    if (!password) {
+      errs.password = "Укажи пароль Instagram";
+    }
+    if (!accepted) {
+      errs.consent = "Необходимо подтвердить условия подключения";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setConnectErrors(errs);
+      return;
+    }
+
+    setConnectErrors({});
     setBusy(true);
     setError(null);
     try {
@@ -88,8 +112,14 @@ export default function ConnectionPanel({
   async function verify(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
-      code = String(new FormData(form).get("code"));
-    form.reset();
+      code = String(new FormData(form).get("code") || "").trim();
+
+    if (!code || !/^[0-9]{6,8}$/.test(code)) {
+      setConnectErrors({ code: "Введи 6-8 цифр кода подтверждения" });
+      return;
+    }
+
+    setConnectErrors({});
     setBusy(true);
     setError(null);
     try {
@@ -133,7 +163,7 @@ export default function ConnectionPanel({
         {current && <JobProgress job={current} />}
         <ErrorNotice error={error || q.error || connection.error} />
         {current?.status === "awaiting_2fa" ? (
-          <form onSubmit={verify}>
+          <form noValidate onSubmit={verify}>
             <p>
               Введите код из{" "}
               {current.details.method === "totp"
@@ -150,7 +180,18 @@ export default function ConnectionPanel({
                 pattern="[0-9]{6,8}"
                 required
                 maxLength={8}
+                aria-invalid={!!connectErrors.code}
+                onChange={() => {
+                  if (connectErrors.code) {
+                    setConnectErrors((prev) => ({ ...prev, code: undefined }));
+                  }
+                }}
               />
+              {connectErrors.code && (
+                <span className="field-error" role="alert">
+                  {connectErrors.code}
+                </span>
+              )}
             </label>
             <button className="button" disabled={busy}>
               Подтвердить код
@@ -159,7 +200,7 @@ export default function ConnectionPanel({
         ) : pending ? (
           <Loader />
         ) : (
-          <form onSubmit={submit}>
+          <form noValidate onSubmit={submit}>
             <label>
               Username Instagram
               <input
@@ -169,7 +210,21 @@ export default function ConnectionPanel({
                 defaultValue={profile?.username}
                 autoComplete="username"
                 readOnly={!!profile}
+                aria-invalid={!!connectErrors.username}
+                onChange={() => {
+                  if (connectErrors.username) {
+                    setConnectErrors((prev) => ({
+                      ...prev,
+                      username: undefined,
+                    }));
+                  }
+                }}
               />
+              {connectErrors.username && (
+                <span className="field-error" role="alert">
+                  {connectErrors.username}
+                </span>
+              )}
             </label>
             <label>
               Пароль Instagram
@@ -179,15 +234,49 @@ export default function ConnectionPanel({
                 autoComplete="off"
                 maxLength={256}
                 required
+                aria-invalid={!!connectErrors.password}
+                onChange={() => {
+                  if (connectErrors.password) {
+                    setConnectErrors((prev) => ({
+                      ...prev,
+                      password: undefined,
+                    }));
+                  }
+                }}
               />
+              {connectErrors.password && (
+                <span className="field-error" role="alert">
+                  {connectErrors.password}
+                </span>
+              )}
             </label>
-            <label className="check">
-              <input type="checkbox" name="consent" required />
-              <span>
-                Подключаю свой аккаунт и принимаю риски неофициального доступа,
-                версия {flags.data?.connection_terms_version}.
-              </span>
-            </label>
+            <div style={{ margin: "16px 0" }}>
+              <label className="check" style={{ margin: 0 }}>
+                <input
+                  type="checkbox"
+                  name="consent"
+                  required
+                  aria-invalid={!!connectErrors.consent}
+                  onChange={() => {
+                    if (connectErrors.consent) {
+                      setConnectErrors((prev) => ({
+                        ...prev,
+                        consent: undefined,
+                      }));
+                    }
+                  }}
+                />
+                <span>
+                  Подключаю свой аккаунт и принимаю риски неофициального доступа,
+                  версия {flags.data?.connection_terms_version}.
+                </span>
+              </label>
+              {connectErrors.consent && (
+                <span className="field-error" role="alert">
+                  {connectErrors.consent}
+                </span>
+              )}
+            </div>
             <button className="button" disabled={busy || !enabled}>
               {profile ? "Переподключить" : "Подключить"}
             </button>

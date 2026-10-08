@@ -23,6 +23,7 @@ export default function AdminPanel() {
     [tab, setTab] = useState("jobs"),
     [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false),
+    [mfaError, setMfaError] = useState(""),
     [action, setAction] = useState<{ row: RecordRow; kind: string } | null>(
       null,
     );
@@ -72,10 +73,18 @@ export default function AdminPanel() {
             восстановление — защищённой командой на сервере.
           </p>
           <form
+            noValidate
             onSubmit={async (e) => {
               e.preventDefault();
               const form = e.currentTarget,
-                code = String(new FormData(form).get("code"));
+                code = String(new FormData(form).get("code") || "").trim();
+
+              if (!code || code.length < 6) {
+                setMfaError("Введи код аутентификатора (не менее 6 знаков)");
+                return;
+              }
+
+              setMfaError("");
               form.reset();
               setBusy(true);
               setError(null);
@@ -96,7 +105,16 @@ export default function AdminPanel() {
                 required
                 autoComplete="one-time-code"
                 maxLength={100}
+                aria-invalid={!!mfaError}
+                onChange={() => {
+                  if (mfaError) setMfaError("");
+                }}
               />
+              {mfaError && (
+                <span className="field-error" role="alert">
+                  {mfaError}
+                </span>
+              )}
             </label>
             <button className="button" disabled={busy}>
               Подтвердить
