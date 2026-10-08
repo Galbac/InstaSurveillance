@@ -25,8 +25,6 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
-  Sun,
-  Moon,
   TrendingUp,
   Upload,
   UserPlus,
@@ -213,28 +211,13 @@ function Workspace({
       );
     }
   }, [me.error, router, qc]);
-  const [currentTheme, setCurrentTheme] = useState<"light" | "dark">("light");
-
   useEffect(() => {
     setDisplayTimezone(me.data?.timezone);
-    const saved = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-    const resolvedTheme =
-      saved === "dark" || (!demo && me.data?.theme === "dark") ? "dark" : "light";
-    setCurrentTheme(resolvedTheme);
-    document.documentElement.dataset.theme = resolvedTheme;
-    return () => {
-      document.documentElement.dataset.theme = "light";
-    };
-  }, [me.data?.theme, me.data?.timezone, demo]);
-
-  const toggleTheme = () => {
-    const next = currentTheme === "dark" ? "light" : "dark";
-    setCurrentTheme(next);
-    document.documentElement.dataset.theme = next;
+    document.documentElement.dataset.theme = "light";
     try {
-      localStorage.setItem("theme", next);
+      localStorage.setItem("theme", "light");
     } catch {}
-  };
+  }, [me.data?.timezone]);
   const go = (target: string) => {
     if (demo) {
       if (target === "people") {
@@ -348,18 +331,6 @@ function Workspace({
           </div>
           <div className="topbar-right">
             {demo && <span className="badge demo-badge">ДЕМО</span>}
-            <button
-              className="icon-button"
-              aria-label={
-                currentTheme === "dark"
-                  ? "Включить светлую тему"
-                  : "Включить тёмную тему"
-              }
-              title={currentTheme === "dark" ? "Светлая тема" : "Тёмная тема"}
-              onClick={toggleTheme}
-            >
-              {currentTheme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
-            </button>
             <button
               className="icon-button"
               aria-label="Уведомления"

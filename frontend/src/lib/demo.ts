@@ -53,10 +53,10 @@ export const demoEvents: Event[] = demoPeople.slice(0, 5).map((x, i) => ({
 }));
 const historyCounts = [
   { followers: 1160, following: 810, newCount: 0 },
-  { followers: 1173, following: 813, newCount: 9 },
-  { followers: 1186, following: 816, newCount: 11 },
-  { followers: 1199, following: 825, newCount: 6 },
-  { followers: 1212, following: 822, newCount: 8 },
+  { followers: 1173, following: 813, newCount: 10 },
+  { followers: 1186, following: 816, newCount: 10 },
+  { followers: 1199, following: 825, newCount: 10 },
+  { followers: 1212, following: 822, newCount: 10 },
   { followers: 1225, following: 825, newCount: 10 },
   { followers: 1240, following: 828, newCount: 12 },
 ];

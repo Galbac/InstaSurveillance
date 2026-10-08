@@ -108,6 +108,8 @@ const DEMO_AVATAR_POOL = [
   "/demo-avatars/anna.jpg",
   "/demo-avatars/max.jpg",
   "/demo-avatars/dasha.jpg",
+  "/demo-avatars/polina.jpg",
+  "/demo-avatars/elena.jpg",
 ];
 
 export default function HistoryPanel({
@@ -290,9 +292,22 @@ export default function HistoryPanel({
                   !prevParsed ||
                   prevParsed.monthYearHeading !== parsed.monthYearHeading;
 
-                const newFollowersCount =
-                  Number(snapshot.provenance?.new_followers_count) ||
-                  (idx === 0 ? 12 : idx === 1 ? 10 : idx === 2 ? 8 : 6);
+                const deltaFollowers =
+                  stats?.deltaFollowers !== null && stats?.deltaFollowers !== undefined
+                    ? stats.deltaFollowers
+                    : snapshot.provenance?.new_followers_count !== undefined
+                      ? Number(snapshot.provenance.new_followers_count) + 3
+                      : null;
+
+                const hasNewFollowers = deltaFollowers !== null && deltaFollowers > 0;
+                // 3 photos are shown; the remaining count in the pill is deltaFollowers - 3
+                const remainingFollowers = hasNewFollowers
+                  ? Math.max(0, deltaFollowers - 3)
+                  : 0;
+
+                const avatar1 = DEMO_AVATAR_POOL[(idx * 2) % DEMO_AVATAR_POOL.length];
+                const avatar2 = DEMO_AVATAR_POOL[(idx * 2 + 1) % DEMO_AVATAR_POOL.length];
+                const avatar3 = DEMO_AVATAR_POOL[(idx * 2 + 2) % DEMO_AVATAR_POOL.length];
 
                 return (
                   <div key={snapshot.id} className="history-timeline-group">
@@ -448,28 +463,36 @@ export default function HistoryPanel({
                               Новые подписчики →
                             </span>
                           </div>
-                          <div className="metric-avatars-row">
-                            <div className="avatar-stack">
-                              <img
-                                src={DEMO_AVATAR_POOL[0]}
-                                alt="Пользователь"
-                                className="avatar-overlap-img"
-                              />
-                              <img
-                                src={DEMO_AVATAR_POOL[1]}
-                                alt="Пользователь"
-                                className="avatar-overlap-img"
-                              />
-                              <img
-                                src={DEMO_AVATAR_POOL[2]}
-                                alt="Пользователь"
-                                className="avatar-overlap-img"
-                              />
+                          {hasNewFollowers ? (
+                            <div className="metric-avatars-row">
+                              <div className="avatar-stack">
+                                <img
+                                  src={avatar1}
+                                  alt="Пользователь"
+                                  className="avatar-overlap-img"
+                                />
+                                <img
+                                  src={avatar2}
+                                  alt="Пользователь"
+                                  className="avatar-overlap-img"
+                                />
+                                <img
+                                  src={avatar3}
+                                  alt="Пользователь"
+                                  className="avatar-overlap-img"
+                                />
+                              </div>
+                              {remainingFollowers > 0 && (
+                                <span className="avatar-count-pill">
+                                  +{remainingFollowers}
+                                </span>
+                              )}
                             </div>
-                            <span className="avatar-count-pill">
-                              +{newFollowersCount}
-                            </span>
-                          </div>
+                          ) : (
+                            <div className="metric-avatars-row">
+                              <span className="metric-empty-text">Базовый снимок</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* 5. More actions menu */}

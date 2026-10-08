@@ -144,13 +144,13 @@ export default function SettingsPanel({
       <ErrorNotice error={error} />
       <div className="settings-grid">
         <ActionForm
-          title="Тема и часовой пояс"
+          title="Часовой пояс"
           onSubmit={async (data) => {
             guard();
             await api("/me", {
               method: "PATCH",
               body: JSON.stringify({
-                theme: data.get("theme"),
+                theme: "light",
                 timezone: data.get("timezone"),
                 email_notifications: user?.email_notifications || false,
               }),
@@ -158,13 +158,6 @@ export default function SettingsPanel({
             qc.invalidateQueries({ queryKey: ["me"] });
           }}
         >
-          <label>
-            Тема
-            <FormSelect name="theme" defaultValue={user?.theme || "light"}>
-              <option value="light">Светлая</option>
-              <option value="dark">Тёмная</option>
-            </FormSelect>
-          </label>
           <label>
             Часовой пояс
             <FormSelect
