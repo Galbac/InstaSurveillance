@@ -74,6 +74,31 @@ def test_local_email_code_is_only_accepted_in_local_environment(monkeypatch):
     assert result.value.code == "invalid_token"
 
 
+def test_registration_reports_existing_address_only_locally(monkeypatch):
+    from app.modules import auth
+
+    existing = SimpleNamespace(email="owner@example.com")
+
+    class FakeDB:
+        def scalar(self, _query):
+            return existing
+
+    settings = SimpleNamespace(app_env="local", terms_version="2026-10-07", privacy_version="2026-10-07")
+    monkeypatch.setattr(auth, "get_settings", lambda: settings)
+    monkeypatch.setattr(auth, "email_limits", lambda *_args: None)
+    body = auth.Registration(
+        email="owner@example.com",
+        password="long-enough-password",
+        accepted_terms=True,
+    )
+    with pytest.raises(AppError) as result:
+        auth.register(body, None, FakeDB())
+    assert result.value.code == "email_registered"
+
+    settings.app_env = "development"
+    assert auth.register(body, None, FakeDB())["message"]
+
+
 def test_archive_part_gaps_and_nested_zip_rejected():
     for content, code in [
         (

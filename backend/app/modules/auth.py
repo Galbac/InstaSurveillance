@@ -141,7 +141,12 @@ def register(body: Registration, request: Request, db: DB):
         raise AppError("terms_required", "Примите условия сервиса")
     email = str(body.email).lower()
     email_limits(request, email, "register", 5)
-    if not db.scalar(select(User).where(User.email == email)):
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing and settings.app_env == "local":
+        raise AppError(
+            "email_registered", "Аккаунт с таким email уже существует. Войди или укажи другой адрес.", 409
+        )
+    if not existing:
         validate_timezone(body.timezone)
         user = User(
             timezone=body.timezone, email=email, password_hash=blocking_call(hasher.hash, body.password)

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import Brand from "./brand";
@@ -31,6 +31,13 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const localCodeStep =
+    mode === "register" &&
+    !!verificationEmail &&
+    !!config.data?.local_email_verification;
   const titles = {
     login: "С возвращением",
     register: "Твой круг начинается здесь",
@@ -76,11 +83,20 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
           privacy_version: config.data?.privacy_version,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
-        setMessage(
-          config.data?.local_email_verification
-            ? "Аккаунт создан. В локальном режиме подтверди email кодом 1234."
-            : result.message,
-        );
+        if (config.data?.local_email_verification) {
+          setError("");
+          setVerificationEmail(data.email);
+          setVerificationCode("");
+          form.reset({
+            email: "",
+            password: "",
+            remember: false,
+            terms: false,
+            verification_code: "",
+          });
+        } else {
+          setMessage(result.message);
+        }
       }
       if (mode === "forgot-password") {
         const result = await post<{ message: string }>(
@@ -115,6 +131,30 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Не удалось выполнить действие",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function verifyLocalEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (!/^\d{4}$/.test(verificationCode)) {
+      setError("Введи код из четырёх цифр");
+      return;
+    }
+    setBusy(true);
+    try {
+      await post("/auth/verify-email", {
+        token: verificationCode,
+        email: verificationEmail,
+      });
+      setVerificationEmail("");
+      setEmailVerified(true);
+      setMessage("Email подтвержден. Теперь можно войти в кабинет.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Не удалось подтвердить email",
       );
     } finally {
       setBusy(false);
@@ -156,9 +196,11 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
         </aside>
         <section className="auth-card">
           <span className="overline">INSTASURVEILLANCE</span>
-          <h2>{titles[mode]}</h2>
+          <h2>{localCodeStep ? "Подтверди email" : titles[mode]}</h2>
           <p className="muted">
-            {mode === "register"
+            {localCodeStep
+              ? "Введи код подтверждения, чтобы завершить регистрацию."
+              : mode === "register"
               ? "Создай личный кабинет для анализа подписок."
               : mode === "login"
                 ? "Войди, чтобы увидеть изменения в твоем круге."
@@ -170,18 +212,48 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
               <Link
                 href={
                   mode === "register" &&
-                  config.data?.local_email_verification
+                  config.data?.local_email_verification &&
+                  !emailVerified
                     ? "/verify-email"
                     : "/login"
                 }
                 className="text-link"
               >
                 {mode === "register" &&
-                config.data?.local_email_verification
+                config.data?.local_email_verification &&
+                !emailVerified
                   ? "Подтвердить email кодом"
                   : "Перейти ко входу"} <ArrowRight size={16} />
               </Link>
             </div>
+          ) : localCodeStep ? (
+            <form noValidate onSubmit={verifyLocalEmail}>
+              <label>
+                Код подтверждения
+                <input
+                  autoFocus
+                  value={verificationCode}
+                  onChange={(event) =>
+                    setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 4))
+                  }
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={4}
+                  required
+                  aria-label="Код подтверждения"
+                  placeholder="••••"
+                />
+              </label>
+              {error && (
+                <div className="notice error" role="alert">
+                  {error}
+                </div>
+              )}
+              <button className="button full" disabled={busy}>
+                {busy ? "Проверяем…" : "Подтвердить email"}
+                <ArrowRight size={18} />
+              </button>
+            </form>
           ) : (
             <form noValidate onSubmit={form.handleSubmit(submit)}>
               {(mode !== "verify-email" ||
@@ -215,19 +287,16 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                         aria-invalid={
                           !!form.formState.errors.verification_code
                         }
-                        aria-describedby={
-                          form.formState.errors.verification_code
-                            ? "auth-verification_code-error"
-                            : "local-verification-hint"
-                        }
+                      aria-describedby={
+                        form.formState.errors.verification_code
+                          ? "auth-verification_code-error"
+                          : undefined
+                      }
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={4}
-                        placeholder="1234"
+                        placeholder="••••"
                       />
-                      <small id="local-verification-hint">
-                        Локальный код для всех адресов: 1234
-                      </small>
                     </label>
                   </>
                 )}
