@@ -1,69 +1,85 @@
 "use client";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { api, post, User, Profile, date } from "@/lib/api";
+import { useEffect, useState } from "react";
+import {
+  Globe,
+  Lock,
+  Mail,
+  Bell,
+  Monitor,
+  Smartphone,
+  Database,
+  Trash2,
+  UserX,
+  ShieldAlert,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  Power,
+  Pause,
+  Play,
+  RefreshCw,
+  Unlink,
+  User as UserIcon,
+  Clock,
+  Download,
+} from "lucide-react";
+import { api, post, User, Profile } from "@/lib/api";
 import type { components } from "@/lib/generated-api";
-import { PublicConfig, useUrlValue, useVisible } from "@/lib/workflows";
-import { ErrorNotice, ExportButton, Modal, Loader } from "./common";
-import { FormProvider, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { settingsSchema } from "@/lib/form-schemas";
-import { FormInput, FormSelect } from "@/components/form-fields";
+import { useUrlValue, useVisible } from "@/lib/workflows";
+import { ErrorNotice, ExportButton, Modal } from "./common";
+
 type Session = components["schemas"]["SessionDTO"];
 type NotificationSettings = components["schemas"]["NotificationPreferences"];
-function ActionForm({
-  title,
-  children,
-  onSubmit,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onSubmit: (data: FormData) => Promise<unknown>;
-}) {
-  const formState = useForm({ resolver: zodResolver(settingsSchema) });
-  const [error, setError] = useState<unknown>(null),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+
+function InstagramIcon({ size = 20 }: { size?: number }) {
   return (
-    <FormProvider {...formState}>
-      <form
-        className="panel settings-form"
-        onSubmit={formState.handleSubmit(async (_, e) => {
-          const form = e?.target as HTMLFormElement,
-            data = new FormData(form);
-          setBusy(true);
-          setError(null);
-          setMessage("");
-          try {
-            await onSubmit(data);
-            formState.reset();
-            form.reset();
-            setMessage(
-              "Изменения сохранены. Проверьте почту, если подтверждение требуется.",
-            );
-          } catch (error) {
-            setError(error);
-          } finally {
-            setBusy(false);
-          }
-        })}
-      >
-        <h3>{title}</h3>
-        {children}
-        <ErrorNotice error={error} />
-        {message && (
-          <p className="notice" role="status">
-            {message}
-          </p>
-        )}
-        <button className="button secondary" disabled={busy}>
-          {busy ? "Сохраняем…" : "Сохранить"}
-        </button>
-      </form>
-    </FormProvider>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
   );
 }
+
+const MOCK_DEMO_SESSIONS = [
+  {
+    id: "demo-session-1",
+    device: "Chrome · macOS · Moscow, Russia",
+    title: "Текущая сессия",
+    isCurrent: true,
+    isOnline: true,
+    type: "laptop",
+  },
+  {
+    id: "demo-session-2",
+    device: "Safari · macOS · Moscow, Russia",
+    title: "MacBook Pro",
+    isCurrent: false,
+    dateStr: "12 марта 2025, 14:32",
+    type: "laptop",
+  },
+  {
+    id: "demo-session-3",
+    device: "Instagram App · iOS · Moscow, Russia",
+    title: "iPhone",
+    isCurrent: false,
+    dateStr: "10 марта 2025, 09:15",
+    type: "phone",
+  },
+];
+
 export default function SettingsPanel({
   user,
   profile,
@@ -75,18 +91,41 @@ export default function SettingsPanel({
   demo?: boolean;
   onNotice: (text: string) => void;
 }) {
-  const router = useRouter(),
-    qc = useQueryClient();
-  const [error, setError] = useState<unknown>(null),
-    [deleting, setDeleting] = useState<
-      "account" | "profile" | "history" | null
-    >(null),
-    [busy, setBusy] = useState(false);
+  const router = useRouter();
+  const qc = useQueryClient();
   const visible = useVisible();
-  const [historyReceipt, setHistoryReceipt] = useUrlValue(
-    "history_receipt",
-    "",
+
+  const [error, setError] = useState<unknown>(null);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Form states
+  const [timezone, setTimezone] = useState(
+    user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Moscow",
   );
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+
+  // Email form states
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
+  const [showEmailPass, setShowEmailPass] = useState(false);
+
+  // Profile fields state
+  const [profileLabel, setProfileLabel] = useState(profile?.label || "Демо");
+  const [profileInterval, setProfileInterval] = useState(
+    String(profile?.interval_hours || 24),
+  );
+  const [isPaused, setIsPaused] = useState(profile?.paused || false);
+
+  // Deletion modal state
+  const [deleting, setDeleting] = useState<
+    "account" | "profile" | "history" | null
+  >(null);
+
+  const [historyReceipt, setHistoryReceipt] = useUrlValue("history_receipt", "");
   const historyCleanup = useQuery({
     queryKey: ["history-cleanup", historyReceipt],
     queryFn: ({ signal }) =>
@@ -98,34 +137,192 @@ export default function SettingsPanel({
     refetchInterval: (query) =>
       visible && query.state.data?.status !== "completed" ? 5000 : false,
   });
+
   const sessions = useQuery({
     queryKey: ["sessions"],
     queryFn: ({ signal }) => api<Session[]>("/me/sessions", { signal }),
     enabled: !demo,
   });
+
   const preferences = useQuery({
     queryKey: ["notification-settings"],
     queryFn: ({ signal }) =>
       api<NotificationSettings>("/me/notification-settings", { signal }),
     enabled: !demo,
   });
-  const flags = useQuery({
-    queryKey: ["config"],
-    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+
+  // Local notification toggles state (initialized with demo/backend defaults)
+  const [toggles, setToggles] = useState<Record<string, boolean>>({
+    email_results: true,
+    email_connection: false,
+    email_support: false,
+    in_app_results: true,
+    in_app_connection: true,
   });
-  const deliveries = useQuery({
-    queryKey: ["email-deliveries"],
-    queryFn: ({ signal }) =>
-      api<{
-        items: components["schemas"]["DeliveryDTO"][];
-        next_cursor: string | null;
-      }>("/me/email-deliveries?limit=20", { signal }),
-    enabled: !demo,
-  });
-  const guard = () => {
-    if (demo)
-      throw new Error("В демо настройки не изменяются. Создайте свой аккаунт.");
+
+  useEffect(() => {
+    if (preferences.data) {
+      setToggles({
+        email_results: preferences.data.email_results,
+        email_connection: preferences.data.email_connection,
+        email_support: preferences.data.email_support,
+        in_app_results: preferences.data.in_app_results,
+        in_app_connection: preferences.data.in_app_connection,
+      });
+    }
+  }, [preferences.data]);
+
+  const handleToggle = async (key: string) => {
+    const updated = !toggles[key];
+    setToggles((prev) => ({ ...prev, [key]: updated }));
+
+    if (!demo) {
+      try {
+        const nextSettings = { ...toggles, [key]: updated };
+        await api("/me/notification-settings", {
+          method: "PATCH",
+          body: JSON.stringify(nextSettings),
+        });
+        qc.invalidateQueries({ queryKey: ["notification-settings"] });
+      } catch (err) {
+        setError(err);
+      }
+    }
   };
+
+  const guard = () => {
+    if (demo) {
+      onNotice("В демо-режиме настройки не изменяются. Создайте свой аккаунт.");
+      throw new Error("В демо настройки не изменяются. Создайте свой аккаунт.");
+    }
+  };
+
+  const handleSaveTimezone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg("");
+    try {
+      guard();
+      setBusy(true);
+      await api("/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          theme: "light",
+          timezone,
+          email_notifications: user?.email_notifications || false,
+        }),
+      });
+      qc.invalidateQueries({ queryKey: ["me"] });
+      setSuccessMsg("Часовой пояс сохранён.");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg("");
+    try {
+      guard();
+      setBusy(true);
+      await post("/me/change-password", {
+        current_password: currentPassword,
+        password: newPassword,
+      });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      setCurrentPassword("");
+      setNewPassword("");
+      setSuccessMsg("Пароль успешно изменён.");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg("");
+    try {
+      guard();
+      setBusy(true);
+      await post("/me/email-change", {
+        email: newEmail,
+        current_password: emailCurrentPassword,
+      });
+      setNewEmail("");
+      setEmailCurrentPassword("");
+      setSuccessMsg("Письмо с подтверждением отправлено на новый адрес.");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveProfileConnection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      guard();
+      if (!profile) return;
+      await api(`/profiles/${profile.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ label: profileLabel }),
+      });
+      await api(`/profiles/${profile.id}/connection`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          paused: isPaused,
+          interval_hours: Number(profileInterval),
+        }),
+      });
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      onNotice("Настройки подключения сохранены.");
+    } catch (err) {
+      setError(err);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    try {
+      guard();
+      if (!profile) return;
+      const nextPaused = !isPaused;
+      setIsPaused(nextPaused);
+      await api(`/profiles/${profile.id}/connection`, {
+        method: "PATCH",
+        body: JSON.stringify({ paused: nextPaused }),
+      });
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+    } catch (err) {
+      setError(err);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      guard();
+      if (!profile) return;
+      await api(`/profiles/${profile.id}/connection`, {
+        method: "DELETE",
+      });
+      qc.invalidateQueries();
+      onNotice(
+        "Подключение отключено. Завершите ненужные сеансы также в официальном Instagram.",
+      );
+    } catch (err) {
+      setError(err);
+    }
+  };
+
   async function revoke(id?: string) {
     try {
       guard();
@@ -135,358 +332,643 @@ export default function SettingsPanel({
         qc.clear();
         router.replace("/login");
       } else sessions.refetch();
-    } catch (error) {
-      setError(error);
+    } catch (err) {
+      setError(err);
     }
   }
+
+  const supportedTimezones = Array.from(
+    new Set([
+      "Europe/Moscow",
+      "UTC",
+      user?.timezone || "Europe/Moscow",
+      ...Intl.supportedValuesOf("timeZone"),
+    ]),
+  );
+
   return (
-    <div className="feature-stack">
+    <div className="settings-v2-container">
       <ErrorNotice error={error} />
-      <div className="settings-grid">
-        <ActionForm
-          title="Часовой пояс"
-          onSubmit={async (data) => {
-            guard();
-            await api("/me", {
-              method: "PATCH",
-              body: JSON.stringify({
-                theme: "light",
-                timezone: data.get("timezone"),
-                email_notifications: user?.email_notifications || false,
-              }),
-            });
-            qc.invalidateQueries({ queryKey: ["me"] });
-          }}
-        >
-          <label>
-            Часовой пояс
-            <FormSelect
-              name="timezone"
-              defaultValue={
-                user?.timezone ||
-                Intl.DateTimeFormat().resolvedOptions().timeZone
-              }
-            >
-              {Array.from(
-                new Set([
-                  "UTC",
-                  user?.timezone || "UTC",
-                  ...Intl.supportedValuesOf("timeZone"),
-                ]),
-              ).map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </FormSelect>
-          </label>
-        </ActionForm>
-        <ActionForm
-          title="Пароль сервиса"
-          onSubmit={async (data) => {
-            guard();
-            await post("/me/change-password", {
-              current_password: data.get("current_password"),
-              password: data.get("password"),
-            });
-            qc.invalidateQueries({ queryKey: ["sessions"] });
-          }}
-        >
-          <label>
-            Текущий пароль
-            <FormInput
-              name="current_password"
-              type="password"
-              autoComplete="current-password"
-              required
-              maxLength={256}
-            />
-          </label>
-          <label>
-            Новый пароль
-            <FormInput
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={256}
-            />
-          </label>
-          <p className="muted">
-            После смены пароля остальные сессии будут отозваны.
-          </p>
-        </ActionForm>
-        <ActionForm
-          title="Смена email"
-          onSubmit={async (data) => {
-            guard();
-            await post("/me/email-change", {
-              email: data.get("email"),
-              current_password: data.get("current_password"),
-            });
-          }}
-        >
-          <p className="muted">
-            Сейчас: {user?.email || "demo@example.com"}. Новый адрес требуется
-            подтвердить. После подтверждения понадобится снова войти.
-          </p>
-          <label>
-            Новый email
-            <FormInput
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-            />
-          </label>
-          <label>
-            Текущий пароль
-            <FormInput
-              name="current_password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </label>
-        </ActionForm>
-        <ActionForm
-          title="Уведомления"
-          onSubmit={async (data) => {
-            guard();
-            const settings = Object.fromEntries(
-              [
-                "email_results",
-                "email_connection",
-                "email_support",
-                "in_app_results",
-                "in_app_connection",
-              ].map((key) => [key, !!data.get(key)]),
-            );
-            await api("/me/notification-settings", {
-              method: "PATCH",
-              body: JSON.stringify(settings),
-            });
-            qc.invalidateQueries({ queryKey: ["me"] });
-            qc.invalidateQueries({ queryKey: ["notification-settings"] });
-          }}
-        >
-          <div key={JSON.stringify(preferences.data)}>
-            {[
-              ["email_results", "Email о готовом результате"],
-              ["email_connection", "Email об остановке подключения"],
-              ["email_support", "Email об ответе поддержки"],
-              ["in_app_results", "Результаты внутри кабинета"],
-              ["in_app_connection", "Ошибки подключения внутри кабинета"],
-            ].map(([name, label]) => (
-              <label className="checkbox-row" key={name}>
-                <FormInput
-                  name={name}
-                  type="checkbox"
-                  defaultChecked={
-                    preferences.data?.[name as keyof NotificationSettings] ??
-                    name.startsWith("in_app")
-                  }
-                  disabled={
-                    name.startsWith("email") &&
-                    flags.data?.enable_email_notifications === false
-                  }
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </ActionForm>
-      </div>
-      <section className="panel">
-        <header className="panel-heading">
-          <h2>Активные сессии сервиса</h2>
-          <button
-            className="button secondary small"
-            onClick={() => revoke()}
-            disabled={demo}
-          >
-            Завершить остальные
-          </button>
-        </header>
-        {sessions.isPending && !demo ? (
-          <Loader />
-        ) : (
-          sessions.data?.map((session) => (
-            <div className="session-row" key={session.id}>
-              <div>
-                <b>
-                  {session.device || "Браузер"}{" "}
-                  {session.current && (
-                    <span className="badge success">Текущая</span>
-                  )}
-                </b>
-                <p className="muted">
-                  Вход {date(session.created_at)} · последний доступ{" "}
-                  {date(session.last_seen)}
-                </p>
+      {successMsg && (
+        <div className="notice" role="status">
+          {successMsg}
+        </div>
+      )}
+
+      {/* 1. TOP 2-COLUMN GRID (Часовой пояс + Пароль сервиса) */}
+      <section className="settings-v2-top-grid">
+        {/* Card 1: Часовой пояс */}
+        <div className="settings-v2-card">
+          <header className="settings-v2-card-header">
+            <div className="settings-v2-header-left">
+              <div className="settings-v2-icon-box" aria-hidden="true">
+                <Globe size={20} />
               </div>
-              <button
-                className="button secondary small"
-                onClick={() => revoke(session.id)}
-              >
-                Завершить
-              </button>
+              <h2 className="settings-v2-card-title">Часовой пояс</h2>
             </div>
-          ))
-        )}
-        <ErrorNotice error={sessions.error} />
+          </header>
+
+          <form onSubmit={handleSaveTimezone} className="settings-v2-form-body">
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Часовой пояс</label>
+              <div className="settings-v2-input-wrap">
+                <Globe size={16} className="text-gray-400 shrink-0" />
+                <span className="text-sm font-semibold text-gray-800 flex-1 truncate">
+                  {timezone}
+                </span>
+                <ChevronDown size={16} className="text-gray-400 shrink-0" />
+                <select
+                  className="settings-v2-select-native"
+                  aria-label="Выбор часового пояса"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                >
+                  {supportedTimezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <p className="settings-v2-hint">
+              Время в отчетах и уведомлениях будет отображаться в этом часовом поясе.
+            </p>
+
+            <button
+              type="submit"
+              className="settings-v2-btn-purple"
+              disabled={busy}
+            >
+              Сохранить
+            </button>
+          </form>
+        </div>
+
+        {/* Card 2: Пароль сервиса */}
+        <div className="settings-v2-card">
+          <header className="settings-v2-card-header">
+            <div className="settings-v2-header-left">
+              <div className="settings-v2-icon-box" aria-hidden="true">
+                <Lock size={20} />
+              </div>
+              <h2 className="settings-v2-card-title">Пароль сервиса</h2>
+            </div>
+          </header>
+
+          <form onSubmit={handleSavePassword} className="settings-v2-form-body">
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Текущий пароль</label>
+              <div className="settings-v2-input-wrap">
+                <Lock size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type={showCurrentPass ? "text" : "password"}
+                  className="settings-v2-input"
+                  placeholder="Введите текущий пароль"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  maxLength={256}
+                />
+                <button
+                  type="button"
+                  className="settings-v2-eye-btn"
+                  title={showCurrentPass ? "Скрыть пароль" : "Показать пароль"}
+                  onClick={() => setShowCurrentPass(!showCurrentPass)}
+                >
+                  {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Новый пароль</label>
+              <div className="settings-v2-input-wrap">
+                <Lock size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type={showNewPass ? "text" : "password"}
+                  className="settings-v2-input"
+                  placeholder="Введите новый пароль"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={12}
+                  maxLength={256}
+                />
+                <button
+                  type="button"
+                  className="settings-v2-eye-btn"
+                  title={showNewPass ? "Скрыть пароль" : "Показать пароль"}
+                  onClick={() => setShowNewPass(!showNewPass)}
+                >
+                  {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <p className="settings-v2-hint">
+              После смены пароля остальные сессии будут отозваны.
+            </p>
+
+            <button
+              type="submit"
+              className="settings-v2-btn-purple"
+              disabled={busy}
+            >
+              Сохранить
+            </button>
+          </form>
+        </div>
       </section>
-      {!demo && (
-        <section className="panel">
-          <h2>Доставка email</h2>
-          <p className="muted">
-            Статус отражает принятие письма почтовым сервером, а не его
-            прочтение.
-          </p>
-          <ErrorNotice error={deliveries.error} />
-          {deliveries.isPending ? (
-            <Loader />
-          ) : (
-            deliveries.data?.items.map((item) => (
-              <div className="session-row" key={item.id}>
-                <div>
-                  <b>
-                    {(
-                      {
-                        delivered: "Принято почтовым сервером",
-                        pending: "Ожидает отправки",
-                        failed: "Доставка не подтверждена",
-                        unknown: "Результат неизвестен",
-                      } as Record<string, string>
-                    )[item.status] || item.status}
-                  </b>
-                  <p className="muted">
-                    {date(item.created_at)} · попыток: {item.attempts}
-                    {item.next_attempt_at &&
-                      ` · следующая попытка: ${date(item.next_attempt_at)}`}
-                    {item.error_code && ` · код: ${item.error_code}`}
-                  </p>
+
+      {/* 2. CARD 3: Смена email */}
+      <section className="settings-v2-card">
+        <header className="settings-v2-card-header">
+          <div className="settings-v2-header-left">
+            <div className="settings-v2-icon-box" aria-hidden="true">
+              <Mail size={20} />
+            </div>
+            <div>
+              <h2 className="settings-v2-card-title">Смена email</h2>
+              <p className="settings-v2-card-subtitle">
+                Сейчас: {user?.email || "demo@example.com"}. Новый адрес требуется
+                подтвердить. После подтверждения понадобится снова войти.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <form onSubmit={handleSaveEmail} className="settings-v2-form-body">
+          <div className="settings-v2-fields-row">
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Новый email</label>
+              <div className="settings-v2-input-wrap">
+                <Mail size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type="email"
+                  className="settings-v2-input"
+                  placeholder="example@domain.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Текущий пароль</label>
+              <div className="settings-v2-input-wrap">
+                <Lock size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type={showEmailPass ? "text" : "password"}
+                  className="settings-v2-input"
+                  placeholder="Введите пароль"
+                  value={emailCurrentPassword}
+                  onChange={(e) => setEmailCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="settings-v2-eye-btn"
+                  title={showEmailPass ? "Скрыть пароль" : "Показать пароль"}
+                  onClick={() => setShowEmailPass(!showEmailPass)}
+                >
+                  {showEmailPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="settings-v2-btn-purple"
+            disabled={busy}
+          >
+            Сохранить
+          </button>
+        </form>
+      </section>
+
+      {/* 3. CARD 4: Уведомления */}
+      <section className="settings-v2-card">
+        <header className="settings-v2-card-header">
+          <div className="settings-v2-header-left">
+            <div className="settings-v2-icon-box" aria-hidden="true">
+              <Bell size={20} />
+            </div>
+            <div>
+              <h2 className="settings-v2-card-title">Уведомления</h2>
+              <p className="settings-v2-card-subtitle">
+                Выберите, какие события присылать на email.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div className="settings-v2-toggles-list">
+          {[
+            {
+              key: "email_results",
+              title: "Email о готовом результате",
+              desc: "Уведомлять, когда отчёт по профилю готов.",
+            },
+            {
+              key: "email_connection",
+              title: "Email об остановке подключения",
+              desc: "Уведомлять, если подключение было остановлено.",
+            },
+            {
+              key: "email_support",
+              title: "Email об ответе поддержки",
+              desc: "Уведомлять о новых сообщениях от поддержки.",
+            },
+            {
+              key: "in_app_results",
+              title: "Результаты внутри кабинета",
+              desc: "Показывать готовые результаты в кабинете сервиса.",
+            },
+            {
+              key: "in_app_connection",
+              title: "Ошибка подключения внутри кабинета",
+              desc: "Показывать уведомления об ошибках подключения в кабинете.",
+            },
+          ].map((item) => {
+            const isOn = !!toggles[item.key];
+            return (
+              <div
+                key={item.key}
+                className="settings-v2-toggle-row"
+                onClick={() => handleToggle(item.key)}
+                role="switch"
+                aria-checked={isOn}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggle(item.key);
+                  }
+                }}
+              >
+                <div className={`settings-v2-switch ${isOn ? "on" : ""}`}>
+                  <div className="settings-v2-switch-knob" />
+                </div>
+                <div className="settings-v2-toggle-text">
+                  <div className="settings-v2-toggle-title">{item.title}</div>
+                  <div className="settings-v2-toggle-desc">{item.desc}</div>
                 </div>
               </div>
-            ))
-          )}
-          {!deliveries.isPending && !deliveries.data?.items.length && (
-            <p>Писем пока нет.</p>
-          )}
-        </section>
-      )}
-      {profile && (
-        <section className="panel">
-          <header className="panel-heading">
-            <h2>Instagram @{profile.username}</h2>
-            <span className="badge">{profile.status}</span>
-          </header>
-          <ActionForm
-            title="Название и расписание"
-            onSubmit={async (data) => {
-              guard();
-              await api(`/profiles/${profile.id}`, {
-                method: "PATCH",
-                body: JSON.stringify({ label: data.get("label") }),
-              });
-              await api(`/profiles/${profile.id}/connection`, {
-                method: "PATCH",
-                body: JSON.stringify({
-                  paused: profile.paused,
-                  interval_hours: Number(data.get("interval")),
-                }),
-              });
-              qc.invalidateQueries({ queryKey: ["profiles"] });
-            }}
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4. CARD 5: Активные сессии сервиса */}
+      <section className="settings-v2-card">
+        <header className="settings-v2-card-header">
+          <div className="settings-v2-header-left">
+            <div className="settings-v2-icon-box" aria-hidden="true">
+              <Monitor size={20} />
+            </div>
+            <div>
+              <h2 className="settings-v2-card-title">Активные сессии сервиса</h2>
+              <p className="settings-v2-card-subtitle">
+                Здесь отображаются все активные сессии в твоём аккаунте.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="settings-v2-btn-revoke-others"
+            onClick={() => revoke()}
           >
-            <label>
-              Название профиля
-              <FormInput
-                name="label"
-                defaultValue={profile.label || ""}
-                maxLength={80}
-              />
-            </label>
-            <label>
-              Интервал обновления, часов
-              <FormInput
-                name="interval"
-                type="number"
-                min={flags.data?.sync_interval_hours || 24}
-                max={8760}
-                defaultValue={profile.interval_hours || 24}
-                required
-              />
-            </label>
-          </ActionForm>
-          <div className="button-row">
+            <Power size={14} className="text-gray-500" />
+            <span>Завершить остальные</span>
+          </button>
+        </header>
+
+        <div className="settings-v2-sessions-list">
+          {demo || !sessions.data?.length
+            ? MOCK_DEMO_SESSIONS.map((s) => (
+                <div key={s.id} className="settings-v2-session-item">
+                  <div className="settings-v2-session-left">
+                    <span
+                      className={`settings-v2-session-dot ${
+                        s.isOnline ? "green" : "gray"
+                      }`}
+                    />
+                    <div className="settings-v2-session-device-icon">
+                      {s.type === "phone" ? (
+                        <Smartphone size={18} />
+                      ) : (
+                        <Monitor size={18} />
+                      )}
+                    </div>
+                    <div className="settings-v2-session-details">
+                      <div className="settings-v2-session-title-row">
+                        <span className="settings-v2-session-title">
+                          {s.title}
+                        </span>
+                        {s.isCurrent && (
+                          <span className="settings-v2-current-badge">
+                            Это устройство
+                          </span>
+                        )}
+                      </div>
+                      <span className="settings-v2-session-meta">
+                        {s.device}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="settings-v2-session-right">
+                    {s.isOnline ? (
+                      <span className="settings-v2-session-online">
+                        Сейчас онлайн
+                      </span>
+                    ) : (
+                      <>
+                        <span className="settings-v2-session-time">
+                          {s.dateStr}
+                        </span>
+                        <button
+                          type="button"
+                          className="settings-v2-btn-revoke"
+                          onClick={() =>
+                            onNotice(
+                              "В демо-режиме сессия не может быть завершена.",
+                            )
+                          }
+                        >
+                          Завершить
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            : sessions.data.map((s) => (
+                <div key={s.id} className="settings-v2-session-item">
+                  <div className="settings-v2-session-left">
+                    <span
+                      className={`settings-v2-session-dot ${
+                        s.current ? "green" : "gray"
+                      }`}
+                    />
+                    <div className="settings-v2-session-device-icon">
+                      <Monitor size={18} />
+                    </div>
+                    <div className="settings-v2-session-details">
+                      <div className="settings-v2-session-title-row">
+                        <span className="settings-v2-session-title">
+                          {s.device || "Браузер"}
+                        </span>
+                        {s.current && (
+                          <span className="settings-v2-current-badge">
+                            Это устройство
+                          </span>
+                        )}
+                      </div>
+                      <span className="settings-v2-session-meta">
+                        Вход {new Date(s.created_at).toLocaleDateString("ru-RU")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="settings-v2-session-right">
+                    {s.current ? (
+                      <span className="settings-v2-session-online">
+                        Сейчас онлайн
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="settings-v2-btn-revoke"
+                        onClick={() => revoke(s.id)}
+                      >
+                        Завершить
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+        </div>
+      </section>
+
+      {/* 5. CARD 6: Instagram Profile Settings */}
+      <section className="settings-v2-card">
+        <header className="settings-v2-card-header">
+          <div className="settings-v2-header-left">
+            <div className="settings-v2-icon-box instagram" aria-hidden="true">
+              <InstagramIcon size={20} />
+            </div>
+            <div>
+              <h2 className="settings-v2-card-title">
+                Instagram @{profile?.username || "your.circle"}
+              </h2>
+              <p className="settings-v2-card-subtitle">
+                Управляй подключением и настройками проверки.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            {isPaused ? "На паузе" : "Активно"}
+          </span>
+        </header>
+
+        <form onSubmit={handleSaveProfileConnection} className="settings-v2-form-body">
+          <div className="settings-v2-fields-row">
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">Название профиля</label>
+              <div className="settings-v2-input-wrap">
+                <UserIcon size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type="text"
+                  className="settings-v2-input font-semibold"
+                  value={profileLabel}
+                  onChange={(e) => setProfileLabel(e.target.value)}
+                  maxLength={80}
+                />
+              </div>
+            </div>
+
+            <div className="settings-v2-field">
+              <label className="settings-v2-label">
+                Интервал обновления, часов
+              </label>
+              <div className="settings-v2-input-wrap">
+                <Clock size={16} className="text-gray-400 shrink-0" />
+                <span className="text-sm font-semibold text-gray-800 flex-1">
+                  {profileInterval}
+                </span>
+                <ChevronDown size={16} className="text-gray-400 shrink-0" />
+                <select
+                  className="settings-v2-select-native"
+                  aria-label="Интервал обновления"
+                  value={profileInterval}
+                  onChange={(e) => setProfileInterval(e.target.value)}
+                >
+                  <option value="12">12</option>
+                  <option value="24">24</option>
+                  <option value="48">48</option>
+                  <option value="72">72</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-v2-actions-row">
             <button
-              className="button secondary"
-              onClick={async () => {
-                try {
-                  guard();
-                  await api(`/profiles/${profile.id}/connection`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ paused: !profile.paused }),
-                  });
-                  qc.invalidateQueries({ queryKey: ["profiles"] });
-                } catch (error) {
-                  setError(error);
-                }
-              }}
+              type="button"
+              className="settings-v2-btn-purple"
+              onClick={handleTogglePause}
             >
-              {profile.paused ? "Возобновить расписание" : "Поставить на паузу"}
+              {isPaused ? (
+                <>
+                  <Play size={15} />
+                  <span>Возобновить сбор</span>
+                </>
+              ) : (
+                <>
+                  <Pause size={15} />
+                  <span>Поставить на паузу</span>
+                </>
+              )}
             </button>
             <button
-              className="button secondary"
+              type="button"
+              className="settings-v2-btn-secondary"
               onClick={() => router.push("/app/instagram/connect")}
             >
-              Переподключить
+              <RefreshCw size={15} />
+              <span>Переподключить</span>
             </button>
             <button
-              className="button secondary"
-              onClick={async () => {
-                try {
-                  guard();
-                  await api(`/profiles/${profile.id}/connection`, {
-                    method: "DELETE",
-                  });
-                  qc.invalidateQueries();
-                  onNotice(
-                    "Подключение отключено. Завершите ненужные сеансы также в официальном Instagram.",
-                  );
-                } catch (error) {
-                  setError(error);
-                }
-              }}
+              type="button"
+              className="settings-v2-btn-outline"
+              onClick={handleDisconnect}
             >
-              Отключить
+              <Unlink size={15} />
+              <span>Отключить</span>
             </button>
           </div>
-          <p className="muted">
-            Пауза не снимает ограничения или проверку безопасности Instagram.
+
+          <p className="settings-v2-hint">
+            Пауза не снимает ограничений или проверку безопасности Instagram.
             История остаётся доступной.
           </p>
-        </section>
-      )}
-      <section className="panel">
-        <h2>Данные и приватность</h2>
-        <p className="muted">
-          История хранится до удаления. Экспорт содержит ваши списки, снимки,
-          события и пометки; учётные данные Instagram в него не входят.
-        </p>
-        {demo ? (
-          <button
-            className="button secondary"
-            onClick={() => onNotice("Экспорт доступен после регистрации.")}
-          >
-            Экспорт JSON
-          </button>
-        ) : (
-          <ExportButton
-            label="Сформировать всю историю JSON"
-            request={{ scope: "account", format: "json" }}
-          />
-        )}
+        </form>
+      </section>
+
+      {/* 6. CARD 7: Данные и приватность */}
+      <section className="settings-v2-card">
+        <header className="settings-v2-card-header">
+          <div className="settings-v2-header-left">
+            <div className="settings-v2-icon-box" aria-hidden="true">
+              <Database size={20} />
+            </div>
+            <div>
+              <h2 className="settings-v2-card-title">Данные и приватность</h2>
+              <p className="settings-v2-card-subtitle">
+                История хранится до удаления. Экспорт содержит ваши списки, снимки,
+                события и пометки; учётные данные Instagram в него не входят.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div className="settings-v2-privacy-grid">
+          {/* Tile 1: Экспорт JSON */}
+          <div className="settings-v2-privacy-tile">
+            <div className="settings-v2-privacy-top">
+              <div className="settings-v2-privacy-icon text-gray-700">
+                <Download size={22} />
+              </div>
+              <h3 className="settings-v2-privacy-title">Экспорт JSON</h3>
+              <p className="settings-v2-privacy-desc">
+                Скачать все данные в удобном формате
+              </p>
+            </div>
+            {demo ? (
+              <button
+                type="button"
+                className="settings-v2-tile-btn gray"
+                onClick={() => onNotice("Экспорт доступен после регистрации.")}
+              >
+                Экспорт JSON
+              </button>
+            ) : (
+              <ExportButton
+                label="Экспорт JSON"
+                request={{ scope: "account", format: "json" }}
+              />
+            )}
+          </div>
+
+          {/* Tile 2: Очистить историю */}
+          <div className="settings-v2-privacy-tile">
+            <div className="settings-v2-privacy-top">
+              <div className="settings-v2-privacy-icon text-rose-500">
+                <Trash2 size={22} />
+              </div>
+              <h3 className="settings-v2-privacy-title red">Очистить историю</h3>
+              <p className="settings-v2-privacy-desc">
+                Удалить все сохранённые данные о проверках.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="settings-v2-tile-btn soft-red"
+              onClick={() => setDeleting("history")}
+            >
+              Очистить историю
+            </button>
+          </div>
+
+          {/* Tile 3: Удалить профиль и историю */}
+          <div className="settings-v2-privacy-tile">
+            <div className="settings-v2-privacy-top">
+              <div className="settings-v2-privacy-icon text-rose-500">
+                <UserX size={22} />
+              </div>
+              <h3 className="settings-v2-privacy-title red">
+                Удалить профиль и историю
+              </h3>
+              <p className="settings-v2-privacy-desc">
+                Безвозвратно удалить профиль и все связанные данные.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="settings-v2-tile-btn soft-red"
+              onClick={() => setDeleting("profile")}
+            >
+              Удалить профиль
+            </button>
+          </div>
+
+          {/* Tile 4: Удалить аккаунт сервиса */}
+          <div className="settings-v2-privacy-tile">
+            <div className="settings-v2-privacy-top">
+              <div className="settings-v2-privacy-icon text-rose-600">
+                <ShieldAlert size={22} />
+              </div>
+              <h3 className="settings-v2-privacy-title red">
+                Удалить аккаунт сервиса
+              </h3>
+              <p className="settings-v2-privacy-desc">
+                Полное удаление аккаунта и всех данных.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="settings-v2-tile-btn solid-red"
+              onClick={() => setDeleting("account")}
+            >
+              Удалить аккаунт
+            </button>
+          </div>
+        </div>
+
         {historyReceipt && (
           <div className="notice" role="status">
             <b>
@@ -495,42 +977,19 @@ export default function SettingsPanel({
                 : "История скрыта, файлы очищаются"}
             </b>
             {historyCleanup.data && (
-              <p>Срок очистки: {date(historyCleanup.data.cleanup_deadline)}</p>
+              <p>
+                Срок очистки:{" "}
+                {new Date(
+                  historyCleanup.data.cleanup_deadline,
+                ).toLocaleDateString("ru-RU")}
+              </p>
             )}
             <ErrorNotice error={historyCleanup.error} />
           </div>
         )}
-        <div className="button-row danger-actions">
-          {profile && (
-            <button
-              className="button danger secondary"
-              onClick={() => setDeleting("history")}
-            >
-              Очистить историю, сохранить подключение
-            </button>
-          )}
-          {profile && (
-            <button
-              className="button danger secondary"
-              onClick={() => setDeleting("profile")}
-            >
-              Удалить профиль и историю
-            </button>
-          )}
-          <button
-            className="button danger"
-            onClick={() => setDeleting("account")}
-          >
-            Удалить аккаунт сервиса
-          </button>
-        </div>
-        <p className="muted">
-          Доступ прекращается сразу. Очистка рабочих хранилищ — в течение 24
-          часов, ротационные резервные копии — до{" "}
-          {flags.data?.backup_retention_days || 30} дней. Журнал удаления
-          применяется при восстановлении.
-        </p>
       </section>
+
+      {/* Deletion confirmation modal */}
       {deleting && (
         <Modal
           title={
@@ -578,8 +1037,8 @@ export default function SettingsPanel({
                     `/deleted#id=${encodeURIComponent(result.id)}&token=${encodeURIComponent(result.receipt_token)}`,
                   );
                 }
-              } catch (error) {
-                setError(error);
+              } catch (err) {
+                setError(err);
               } finally {
                 setBusy(false);
               }
@@ -595,24 +1054,34 @@ export default function SettingsPanel({
               . Отменить действие после подтверждения нельзя.
             </p>
             {deleting !== "profile" && (
-              <>
-                <label>
-                  Пароль сервиса
-                  <FormInput
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                  />
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0" }}>
+                <label className="settings-v2-field">
+                  <span className="settings-v2-label">Пароль сервиса</span>
+                  <div className="settings-v2-input-wrap">
+                    <input
+                      name="password"
+                      type="password"
+                      className="settings-v2-input"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
                 </label>
-                <label>
-                  Напишите УДАЛИТЬ
-                  <FormInput name="confirmation" required pattern="УДАЛИТЬ" />
+                <label className="settings-v2-field">
+                  <span className="settings-v2-label">Напишите УДАЛИТЬ</span>
+                  <div className="settings-v2-input-wrap">
+                    <input
+                      name="confirmation"
+                      className="settings-v2-input"
+                      required
+                      pattern="УДАЛИТЬ"
+                    />
+                  </div>
                 </label>
-              </>
+              </div>
             )}
             <ErrorNotice error={error} />
-            <button className="button danger" disabled={busy}>
+            <button className="button danger full" disabled={busy} style={{ marginTop: 16 }}>
               Подтвердить удаление
             </button>
           </form>
