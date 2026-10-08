@@ -3640,6 +3640,9 @@
             },
             "description": "Successful Response"
           },
+          "409": {
+            "description": "Email is already registered"
+          },
           "422": {
             "content": {
               "application/json": {

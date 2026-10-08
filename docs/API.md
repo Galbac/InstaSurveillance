@@ -20,7 +20,7 @@
 | POST | `/api/v1/auth/forgot-password` | Forgot |
 | POST | `/api/v1/auth/login` | Login |
 | POST | `/api/v1/auth/logout` | Logout |
-| POST | `/api/v1/auth/register` | Register |
+| POST | `/api/v1/auth/register` | Register (202; 409 if email is already registered) |
 | POST | `/api/v1/auth/resend-verification` | Resend |
 | POST | `/api/v1/auth/reset-password` | Reset |
 | POST | `/api/v1/auth/verify-email` | Verify Email |

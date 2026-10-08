@@ -2737,6 +2737,13 @@ export interface operations {
                     "application/json": components["schemas"]["MessageDTO"];
                 };
             };
+            /** @description Email is already registered */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
