@@ -92,7 +92,7 @@ const headings: Record<string, [string, string]> = {
   ],
   analytics: [
     "Картина в динамике",
-    "Реальные наблюдения, а не догадки между датами.",
+    "Реальные наблюдения, а не догадки между датами. Смотри, как менялся твой круг во времени.",
   ],
   settings: [
     "Все под твоим контролем",
@@ -289,13 +289,6 @@ function Workspace({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-tip">
-            <span className="tip-icon">
-              <ShieldCheck size={20} />
-            </span>
-            <b>Твой круг — личное</b>
-            <p>История доступна только тебе. Управляй данными в настройках.</p>
-          </div>
           {extra.map(({ view: v, label, icon: Icon }) => (
             <button
               key={v}

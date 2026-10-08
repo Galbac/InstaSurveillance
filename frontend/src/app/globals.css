@@ -5716,3 +5716,522 @@ button.icon-button {
     font-size: 12px;
   }
 }
+
+/* ==========================================================================
+   ANALYTICS VIEW (V2 REDESIGN)
+   ========================================================================== */
+
+.analytics-v2-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* 1. Stat Grid (4 KPI Cards) */
+.analytics-v2-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.analytics-v2-stat-card {
+  background: #ffffff;
+  border: 1px solid rgba(228, 233, 243, 0.9);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.analytics-v2-stat-card:hover {
+  box-shadow: 0 8px 24px rgba(90, 80, 140, 0.06);
+  transform: translateY(-1px);
+}
+
+.analytics-v2-stat-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.analytics-v2-stat-icon-box.purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ede9fe;
+}
+
+.analytics-v2-stat-icon-box.blue {
+  background: #eff6ff;
+  color: #3b82f6;
+  border: 1px solid #dbeafe;
+}
+
+.analytics-v2-stat-icon-box.pink {
+  background: #faf5ff;
+  color: #a855f7;
+  border: 1px solid #f3e8ff;
+}
+
+.analytics-v2-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analytics-v2-stat-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}
+
+.analytics-v2-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #171a27;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 2px 0 3px;
+}
+
+.analytics-v2-stat-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.analytics-v2-delta-green {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.analytics-v2-delta-red {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* 2. Main Dynamic Chart Card */
+.analytics-v2-chart-card {
+  background: #ffffff;
+  border: 1px solid rgba(228, 233, 243, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.analytics-v2-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.analytics-v2-chart-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #171a27;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.analytics-v2-chart-subtitle {
+  font-size: 13px;
+  color: #747989;
+  margin: 3px 0 0;
+}
+
+.analytics-v2-chart-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analytics-v2-metric-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analytics-v2-metric-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.analytics-v2-metric-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.analytics-v2-metric-btn.active {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.analytics-v2-timeframe-group {
+  display: inline-flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.analytics-v2-timeframe-btn {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.analytics-v2-timeframe-btn:hover {
+  color: #1e293b;
+}
+
+.analytics-v2-timeframe-btn.active {
+  background: #ffffff;
+  color: #7c3aed;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.analytics-v2-chart-wrapper {
+  width: 100%;
+  height: 290px;
+  margin-top: 6px;
+}
+
+.analytics-v2-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* 3. Bottom Grid (2 Cards) */
+.analytics-v2-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Bottom Left Card: History Table */
+.analytics-v2-history-card {
+  background: #ffffff;
+  border: 1px solid rgba(228, 233, 243, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
+  box-sizing: border-box;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-v2-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-v2-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #171a27;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.analytics-v2-card-subtitle {
+  font-size: 13px;
+  color: #747989;
+  margin: 2px 0 0;
+}
+
+.analytics-v2-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.analytics-v2-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13.5px;
+}
+
+.analytics-v2-history-table th {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  border-bottom: 1px solid #edf0f5;
+  white-space: nowrap;
+}
+
+.analytics-v2-history-table td {
+  padding: 13px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f8fafc;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.analytics-v2-history-row:hover {
+  background: #fbfbfe;
+}
+
+.analytics-v2-date-cell {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.analytics-v2-pill-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.analytics-v2-pill-delta.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.analytics-v2-pill-delta.red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.analytics-v2-dash {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* Bottom Right Card: Period Comparison */
+.analytics-v2-compare-card {
+  background: #ffffff;
+  border: 1px solid rgba(228, 233, 243, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px -2px rgba(90, 80, 140, 0.03);
+  box-sizing: border-box;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-v2-compare-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+.analytics-v2-compare-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analytics-v2-compare-box-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.analytics-v2-box-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.analytics-v2-box-dates {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.analytics-v2-compare-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.analytics-v2-metric-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.analytics-v2-metric-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #16a34a;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.analytics-v2-compare-insight {
+  background: #f5f3ff;
+  border: 1px solid #ede9fe;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.analytics-v2-insight-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #ede9fe;
+}
+
+.analytics-v2-insight-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analytics-v2-insight-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #7c3aed;
+  margin: 0;
+}
+
+.analytics-v2-insight-desc {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   ANALYTICS RESPONSIVENESS (< 960px and < 640px)
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .analytics-v2-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .analytics-v2-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics-v2-stat-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .analytics-v2-stat-card {
+    padding: 16px 18px;
+    border-radius: 16px;
+  }
+
+  .analytics-v2-chart-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .analytics-v2-history-card,
+  .analytics-v2-compare-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .analytics-v2-compare-boxes {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-v2-chart-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .analytics-v2-timeframe-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .analytics-v2-timeframe-btn {
+    padding: 5px 8px;
+    font-size: 11.5px;
+  }
+}
