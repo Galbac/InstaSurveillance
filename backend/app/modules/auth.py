@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.async_io import blocking_call
 from app.core.commands import audit, data_cipher
@@ -132,7 +133,12 @@ def get_csrf(request: Request, response: Response):
     return {"csrf_token": csrf(raw)}
 
 
-@router.post("/auth/register", status_code=202, response_model=MessageDTO)
+@router.post(
+    "/auth/register",
+    status_code=202,
+    response_model=MessageDTO,
+    responses={409: {"description": "Email is already registered"}},
+)
 def register(body: Registration, request: Request, db: DB):
     settings = get_settings()
     if body.terms_version != settings.terms_version or body.privacy_version != settings.privacy_version:
@@ -142,28 +148,31 @@ def register(body: Registration, request: Request, db: DB):
     email = str(body.email).lower()
     email_limits(request, email, "register", 5)
     existing = db.scalar(select(User).where(User.email == email))
-    if existing and settings.app_env == "local":
+    if existing:
         raise AppError(
             "email_registered", "Аккаунт с таким email уже существует. Войди или укажи другой адрес.", 409
         )
-    if not existing:
-        validate_timezone(body.timezone)
-        user = User(
-            timezone=body.timezone, email=email, password_hash=blocking_call(hasher.hash, body.password)
-        )
-        db.add(user)
+    validate_timezone(body.timezone)
+    user = User(timezone=body.timezone, email=email, password_hash=blocking_call(hasher.hash, body.password))
+    db.add(user)
+    try:
         db.flush()
-        db.add_all(
-            [
-                Consent(user_id=user.id, purpose="terms", version=body.terms_version),
-                Consent(user_id=user.id, purpose="privacy", version=body.privacy_version),
-            ]
-        )
-        audit(db, user.id, "user.register", user.id, request.state.request_id)
-        if settings.app_env != "local":
-            issue_email_token(db, user, "verify")
-        db.commit()
-    return {"message": "Если адрес доступен для регистрации, мы отправили письмо. Проверьте почту."}
+    except IntegrityError as error:
+        db.rollback()
+        raise AppError(
+            "email_registered", "Аккаунт с таким email уже существует. Войди или укажи другой адрес.", 409
+        ) from error
+    db.add_all(
+        [
+            Consent(user_id=user.id, purpose="terms", version=body.terms_version),
+            Consent(user_id=user.id, purpose="privacy", version=body.privacy_version),
+        ]
+    )
+    audit(db, user.id, "user.register", user.id, request.state.request_id)
+    if settings.app_env != "local":
+        issue_email_token(db, user, "verify")
+    db.commit()
+    return {"message": "Аккаунт создан. Проверь почту, чтобы подтвердить адрес."}
 
 
 @router.post("/auth/login", response_model=UserDTO)
