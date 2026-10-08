@@ -18,10 +18,7 @@ export default function Brand() {
           />
         </svg>
       </span>
-      <span className="brand-text-block">
-        <span className="brand-name">instasurveillance</span>
-        <small className="brand-tagline">ТВОЙ КРУГ. ТВОЯ КАРТИНА.</small>
-      </span>
+      <span className="brand-name">InstaSurveillance</span>
     </Link>
   );
 }

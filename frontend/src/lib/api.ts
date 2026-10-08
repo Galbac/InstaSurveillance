@@ -60,7 +60,12 @@ export type User = components["schemas"]["UserDTO"];
 export type Profile = components["schemas"]["ProfileDTO"];
 export type Counts = components["schemas"]["Counts"];
 export type Snapshot = components["schemas"]["SnapshotDTO"];
-export type Event = components["schemas"]["EventDTO"];
+export type Event = components["schemas"]["EventDTO"] & {
+  full_name?: string;
+  avatar_url?: string;
+  created_at?: string;
+  favorite?: boolean;
+};
 export type Summary = components["schemas"]["SummaryDTO"];
 export type Person = components["schemas"]["PersonDTO"] & {
   full_name?: string;
