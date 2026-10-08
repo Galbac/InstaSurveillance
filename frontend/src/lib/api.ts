@@ -62,7 +62,10 @@ export type Counts = components["schemas"]["Counts"];
 export type Snapshot = components["schemas"]["SnapshotDTO"];
 export type Event = components["schemas"]["EventDTO"];
 export type Summary = components["schemas"]["SummaryDTO"];
-export type Person = components["schemas"]["PersonDTO"];
+export type Person = components["schemas"]["PersonDTO"] & {
+  full_name?: string;
+  avatar_url?: string;
+};
 export type Job = components["schemas"]["JobDTO"];
 let displayTimezone: string | undefined;
 export function setDisplayTimezone(value?: string) {

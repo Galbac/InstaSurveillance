@@ -1,17 +1,21 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Activity,
   ArrowDownLeft,
+  ArrowRight,
   ArrowUpRight,
   Bell,
+  ChevronDown,
+  ChevronRight,
   CircleHelp,
   Clock3,
   HeartHandshake,
   History,
-  LayoutDashboard,
+  LayoutGrid,
   LoaderCircle,
   LogOut,
   Menu,
@@ -21,8 +25,11 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Sun,
+  Moon,
   TrendingUp,
   Upload,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -50,9 +57,9 @@ import {
 import { demoProfile, demoSummary } from "@/lib/demo";
 
 const nav = [
-  { view: "overview", label: "Обзор", icon: LayoutDashboard },
+  { view: "overview", label: "Обзор", icon: LayoutGrid },
   { view: "people", label: "Люди", icon: Users },
-  { view: "changes", label: "Изменения", icon: ArrowDownLeft },
+  { view: "changes", label: "Изменения", icon: Activity },
   { view: "history", label: "История", icon: History },
   { view: "analytics", label: "Аналитика", icon: TrendingUp },
 ];
@@ -83,7 +90,7 @@ const headings: Record<string, [string, string]> = {
   ],
   history: [
     "История твоего круга",
-    "Каждый снимок — отдельная точка наблюдения.",
+    "Все изменения твоего окружения в одном месте. Просматривай снимки и сравнивай, как менялись твои связи.",
   ],
   analytics: [
     "Картина в динамике",
@@ -107,6 +114,56 @@ const headings: Record<string, [string, string]> = {
     "Резервный способ обновить картину подписок.",
   ],
 };
+function HeroOrbitGraphic() {
+  return (
+    <div className="hero-orbit-graphic" aria-hidden="true">
+      <div className="hero-orbit-glow" />
+      <svg className="hero-orbit-svg" viewBox="0 0 240 120" fill="none">
+        <ellipse
+          cx="120"
+          cy="60"
+          rx="105"
+          ry="44"
+          transform="rotate(-10 120 60)"
+          stroke="rgba(196, 181, 253, 0.45)"
+          strokeWidth="1.2"
+          strokeDasharray="4 4"
+        />
+        <path
+          d="M36 50l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5z"
+          fill="#a78bfa"
+          opacity="0.9"
+        />
+        <path
+          d="M205 70l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5z"
+          fill="#a78bfa"
+          opacity="0.8"
+        />
+        <path
+          d="M175 22l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z"
+          fill="#8b5cf6"
+          opacity="0.95"
+        />
+      </svg>
+      <div className="hero-orbit-avatars">
+        <div className="hero-orbit-circle hero-orbit-left">
+          <Users size={14} className="text-slate-300" />
+        </div>
+        <div className="hero-orbit-circle hero-orbit-center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="white" opacity="0.95">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
+        </div>
+        <div className="hero-orbit-circle hero-orbit-right">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#94a3b8" opacity="0.85">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Workspace({
   demo = false,
   initialView = "overview",
@@ -117,9 +174,13 @@ function Workspace({
   resourceId?: string;
 }) {
   const router = useRouter(),
+    searchParams = useSearchParams(),
     qc = useQueryClient();
-  const [demoView, setDemoView] = useState(initialView),
-    [more, setMore] = useState(false),
+  const categoryParam = searchParams.get("category");
+  const demoView = categoryParam
+    ? "people"
+    : (searchParams.get("view") ?? initialView);
+  const [more, setMore] = useState(false),
     [notice, setNotice] = useState("");
   const view = demo ? demoView : initialView;
   const me = useQuery({
@@ -152,17 +213,36 @@ function Workspace({
       );
     }
   }, [me.error, router, qc]);
+  const [currentTheme, setCurrentTheme] = useState<"light" | "dark">("light");
+
   useEffect(() => {
     setDisplayTimezone(me.data?.timezone);
-    document.documentElement.dataset.theme =
-      !demo && me.data?.theme === "dark" ? "dark" : "light";
+    const saved = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+    const resolvedTheme =
+      saved === "dark" || (!demo && me.data?.theme === "dark") ? "dark" : "light";
+    setCurrentTheme(resolvedTheme);
+    document.documentElement.dataset.theme = resolvedTheme;
     return () => {
       document.documentElement.dataset.theme = "light";
     };
   }, [me.data?.theme, me.data?.timezone, demo]);
+
+  const toggleTheme = () => {
+    const next = currentTheme === "dark" ? "light" : "dark";
+    setCurrentTheme(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("theme", next);
+    } catch {}
+  };
   const go = (target: string) => {
-    if (demo) setDemoView(target);
-    else
+    if (demo) {
+      if (target === "people") {
+        router.push("/demo?category=mutual", { scroll: false });
+      } else {
+        router.push(`/demo?view=${target}`, { scroll: false });
+      }
+    } else {
       router.push(
         target === "overview"
           ? "/app"
@@ -172,6 +252,7 @@ function Workspace({
               ? "/app/imports/new"
               : "/app/" + target,
       );
+    }
     setMore(false);
   };
   async function logout() {
@@ -211,15 +292,15 @@ function Workspace({
       <aside className="sidebar">
         <Brand />
         <div className="sidebar-caption">МОЕ ПРОСТРАНСТВО</div>
-        <nav>
+        <nav className="sidebar-nav">
           {nav.map(({ view: v, label, icon: Icon }) => (
             <button
               key={v}
               className={view === v ? "nav-item active" : "nav-item"}
               onClick={() => go(v)}
             >
-              <Icon size={19} />
-              {label}
+              <Icon size={19} className="nav-icon" />
+              <span>{label}</span>
               {view === v && <span className="nav-dot" />}
             </button>
           ))}
@@ -227,7 +308,7 @@ function Workspace({
         <div className="sidebar-bottom">
           <div className="sidebar-tip">
             <span className="tip-icon">
-              <ShieldCheck size={18} />
+              <ShieldCheck size={20} />
             </span>
             <b>Твой круг — личное</b>
             <p>История доступна только тебе. Управляй данными в настройках.</p>
@@ -238,8 +319,8 @@ function Workspace({
               className={view === v ? "nav-item active" : "nav-item"}
               onClick={() => go(v)}
             >
-              <Icon size={19} />
-              {label}
+              <Icon size={19} className="nav-icon" />
+              <span>{label}</span>
             </button>
           ))}
           {!demo && me.data?.permissions?.includes("admin.metadata") && (
@@ -251,19 +332,34 @@ function Workspace({
             onClick={demo ? () => router.push("/register") : logout}
             className="nav-item"
           >
-            <LogOut size={19} />
-            {demo ? "Создать аккаунт" : "Выйти"}
+            {demo ? <UserPlus size={19} className="nav-icon" /> : <LogOut size={19} className="nav-icon" />}
+            <span>{demo ? "Создать аккаунт" : "Выйти"}</span>
           </button>
         </div>
       </aside>
       <div className="workspace-main">
         <header className="topbar">
-          <span className="breadcrumb">
-            Мое пространство <span>/</span>{" "}
-            {view === "overview" ? "Обзор" : title}
-          </span>
+          <div className="breadcrumb">
+            <span className="breadcrumb-parent">Мое пространство</span>
+            <ChevronRight size={13} className="breadcrumb-chevron" />
+            <span className="breadcrumb-current">
+              {view === "overview" ? "Обзор" : title}
+            </span>
+          </div>
           <div className="topbar-right">
             {demo && <span className="badge demo-badge">ДЕМО</span>}
+            <button
+              className="icon-button"
+              aria-label={
+                currentTheme === "dark"
+                  ? "Включить светлую тему"
+                  : "Включить тёмную тему"
+              }
+              title={currentTheme === "dark" ? "Светлая тема" : "Тёмная тема"}
+              onClick={toggleTheme}
+            >
+              {currentTheme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            </button>
             <button
               className="icon-button"
               aria-label="Уведомления"
@@ -271,8 +367,11 @@ function Workspace({
             >
               <Bell size={20} />
             </button>
-            <div className="avatar small gradient">
-              {p?.username?.[0]?.toUpperCase() || "Y"}
+            <div className="topbar-user-badge">
+              <div className="topbar-user-avatar">
+                {demo ? "N" : p?.username?.[0]?.toUpperCase() || "Y"}
+              </div>
+              <ChevronDown size={14} className="topbar-user-chevron" />
             </div>
             <button
               className="mobile-more icon-button"
@@ -285,14 +384,25 @@ function Workspace({
         </header>
         <main className="dashboard-content">
           <div className="page-heading">
-            <div>
+            <div className="page-heading-left">
               <span className="overline">ТВОЯ КАРТИНА СВЯЗЕЙ</span>
               <h1>
                 {title}
-                <span className="heading-spark">✳</span>
+                <span className="heading-spark">✱</span>
               </h1>
-              <p>{subtitle}</p>
+              <p>
+                {view === "people" ? (
+                  <>
+                    Взаимность, поиск и личные пометки.
+                    <br />
+                    Здесь ты видишь людей, которые вокруг тебя в Instagram.
+                  </>
+                ) : (
+                  subtitle
+                )}
+              </p>
             </div>
+            {view === "people" && <HeroOrbitGraphic />}
             {view === "overview" && (
               <button className="button" onClick={sync}>
                 <RefreshCw size={17} />
@@ -302,12 +412,14 @@ function Workspace({
           </div>
           {demo && (
             <div className="demo-strip">
-              <Sparkles size={16} />
-              <span>
-                Демо на вымышленных данных. Твой аккаунт здесь не подключен.
-              </span>
-              <Link href="/register">
-                Начать <ArrowUpRight size={16} />
+              <div className="demo-strip-left">
+                <Sparkles size={16} className="demo-strip-sparkle" />
+                <span>
+                  Демо на вымышленных данных. Твой аккаунт здесь не подключен.
+                </span>
+              </div>
+              <Link href="/register" className="demo-strip-link">
+                Начать <ArrowRight size={15} />
               </Link>
             </div>
           )}
@@ -457,7 +569,7 @@ function Workspace({
             className="nav-item"
             onClick={demo ? () => router.push("/register") : logout}
           >
-            <LogOut size={19} />
+            {demo ? <UserPlus size={19} /> : <LogOut size={19} />}
             {demo ? "Создать аккаунт" : "Выйти"}
           </button>
         </div>

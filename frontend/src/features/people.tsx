@@ -3,7 +3,7 @@ import type { components } from "@/lib/generated-api";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Search, Star, ArrowUpRight, StickyNote } from "lucide-react";
+import { Search, Star, ArrowUpRight, FileText, MoreHorizontal, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { api, post, Profile, Person, date, number } from "@/lib/api";
 import { demoPeople } from "@/lib/demo";
 import { ErrorNotice, ExportButton, Loader, Modal } from "./common";
@@ -76,7 +76,7 @@ export default function PeoplePanel({
     getNextPageParam: (last) => last.next_cursor || undefined,
     enabled: !demo && !!profile,
   });
-  const rows = demo
+  const rows: Person[] = demo
     ? demoPeople
         .filter(
           (x, i) =>
@@ -99,7 +99,7 @@ export default function PeoplePanel({
             ? b.username.localeCompare(a.username)
             : a.username.localeCompare(b.username),
         )
-    : q.data?.pages.flatMap((page) => page.items) || [];
+    : (q.data?.pages.flatMap((page) => page.items) as Person[] || []);
   const total = demo ? rows.length : q.data?.pages[0]?.total || 0,
     context = q.data?.pages[0];
   async function star(person: Person) {
@@ -136,64 +136,73 @@ export default function PeoplePanel({
       </section>
     );
   const filters = (
-    <div className="list-toolbar">
-      <label className="search-field">
-        <Search size={18} />
-        <input
-          aria-label="Поиск username"
-          placeholder="Найти username"
-          maxLength={100}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-      </label>
-      <label className="checkbox-row">
-        <input
-          type="checkbox"
-          checked={favorite}
-          onChange={(e) => update({ favorite: e.target.checked ? "true" : "" })}
-        />
-        Избранное
-      </label>
-      <label className="checkbox-row">
-        <input
-          type="checkbox"
-          checked={hasNote}
-          onChange={(e) => update({ has_note: e.target.checked ? "true" : "" })}
-        />
-        С заметкой
-      </label>
-      <label>
-        Сортировка
-        <select value={sort} onChange={(e) => update({ sort: e.target.value })}>
-          <option value="username">Username А–Я</option>
-          <option value="username_desc">Username Я–А</option>
-          <option value="first_observed">Первое наблюдение</option>
-        </select>
-      </label>
-      {!demo && profile && (
-        <ExportButton
-          label="CSV"
-          request={{
-            scope: "list",
-            format: "csv",
-            profile_id: profile.id,
-            snapshot_id: snapshot || undefined,
-            category:
-              category as components["schemas"]["ExportInput"]["category"],
-            search: params.get("search") || "",
-            favorite,
-            has_note: hasNote,
-            sort: sort as components["schemas"]["ExportInput"]["sort"],
-          }}
-        />
-      )}
+    <div className="people-toolbar-row">
+      <div className="people-toolbar-left">
+        <label className="people-search-box">
+          <Search size={16} className="search-icon" />
+          <input
+            aria-label="Поиск username"
+            placeholder="Найти username..."
+            maxLength={100}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+        </label>
+        <label className="filter-chip-checkbox">
+          <input
+            type="checkbox"
+            checked={favorite}
+            onChange={(e) => update({ favorite: e.target.checked ? "true" : "" })}
+          />
+          <span className="custom-check-box" />
+          <span className="chip-star">⭐</span>
+          <span className="chip-text">Избранное</span>
+        </label>
+        <label className="filter-chip-checkbox">
+          <input
+            type="checkbox"
+            checked={hasNote}
+            onChange={(e) => update({ has_note: e.target.checked ? "true" : "" })}
+          />
+          <span className="custom-check-box" />
+          <FileText size={15} className="chip-doc-icon" />
+          <span className="chip-text">С заметкой</span>
+        </label>
+      </div>
+      <div className="people-toolbar-right">
+        <span className="sort-caption">Сортировка</span>
+        <div className="sort-dropdown-pill">
+          <select value={sort} onChange={(e) => update({ sort: e.target.value })}>
+            <option value="username">Username А–Я</option>
+            <option value="username_desc">Username Я–А</option>
+            <option value="first_observed">Первое наблюдение</option>
+          </select>
+          <ChevronDown size={14} className="sort-chevron-icon" />
+        </div>
+        {!demo && profile && (
+          <ExportButton
+            label="CSV"
+            request={{
+              scope: "list",
+              format: "csv",
+              profile_id: profile.id,
+              snapshot_id: snapshot || undefined,
+              category:
+                category as components["schemas"]["ExportInput"]["category"],
+              search: params.get("search") || "",
+              favorite,
+              has_note: hasNote,
+              sort: sort as components["schemas"]["ExportInput"]["sort"],
+            }}
+          />
+        )}
+      </div>
     </div>
   );
   return (
-    <section className="panel">
+    <section className="people-panel-card">
       <div
-        className="category-tabs"
+        className="category-tabs-container"
         role="tablist"
         aria-label="Категории отношений"
       >
@@ -201,19 +210,22 @@ export default function PeoplePanel({
           <button
             role="tab"
             aria-selected={category === key}
-            className={category === key ? "active" : ""}
+            className={`category-tab-btn ${category === key ? "active" : ""}`}
             key={key}
             onClick={() => update({ category: key })}
           >
             {label}
+            {category === key && <span className="category-tab-indicator" />}
           </button>
         ))}
       </div>
       <button
-        className="button secondary mobile-filters"
+        type="button"
+        className="mobile-filters-trigger"
         onClick={() => setFilterSheet(true)}
       >
-        Фильтры и сортировка
+        <SlidersHorizontal size={15} />
+        <span>Фильтры и сортировка</span>
       </button>
       <div className="desktop-filters">{filters}</div>
       {filterSheet && (
@@ -229,12 +241,12 @@ export default function PeoplePanel({
           </div>
         </Modal>
       )}
-      <p className="muted">
+      <div className="people-results-count">
         Найдено {number(total)}
-        {context
+        {context && !demo
           ? ` из ${number(context.category_total)} в категории · снимок ${date(context.observed_at || null)} · ${context.source === "archive" ? "полнота подтверждена пользователем" : "сбор проверен"}`
           : ""}
-      </p>
+      </div>
       {context?.identity_mode === "username" && (
         <p className="muted">
           Сопоставление по username: переименование может выглядеть как
@@ -270,65 +282,103 @@ export default function PeoplePanel({
           </button>
         </div>
       )}
-      {q.isPending && !demo ? (
-        <Loader />
-      ) : rows.length ? (
-        rows.map((person) => (
-          <article className="person-row" key={person.identity_key}>
-            {!demo && (
-              <input
-                type="checkbox"
-                aria-label={`Выбрать ${person.username}`}
-                checked={selected.includes(person.identity_key)}
-                onChange={(e) =>
-                  setSelected(
-                    e.target.checked
-                      ? [...selected, person.identity_key].slice(0, 100)
-                      : selected.filter((x) => x !== person.identity_key),
-                  )
-                }
-              />
-            )}
-            <span className="avatar small">
-              {person.username[0]?.toUpperCase()}
-            </span>
-            <div className="person-main">
-              <a
-                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={person.username}
-              >
-                @{person.username} <ArrowUpRight size={14} />
-              </a>
-              {person.note && <p className="person-note">{person.note}</p>}
-            </div>
-            <button
-              className="icon-button"
-              aria-label={`${person.favorite ? "Убрать из" : "Добавить в"} избранное ${person.username}`}
-              aria-pressed={person.favorite}
-              onClick={() => star(person)}
-            >
-              <Star
-                size={18}
-                fill={person.favorite ? "currentColor" : "none"}
-              />
-            </button>
-            <button
-              className="icon-button"
-              aria-label={`Заметка для ${person.username}`}
-              onClick={() => setNote(person)}
-            >
-              <StickyNote size={18} />
-            </button>
-          </article>
-        ))
-      ) : (
-        <div className="empty-card">
-          <h3>Здесь пока никого</h3>
-          <p>Измените категорию или фильтры.</p>
-        </div>
-      )}
+      <div className="people-list-wrapper">
+        {q.isPending && !demo ? (
+          <Loader />
+        ) : rows.length ? (
+          rows.map((person, index) => (
+            <article className="person-row-card" key={person.identity_key}>
+              {!demo && (
+                <input
+                  type="checkbox"
+                  aria-label={`Выбрать ${person.username}`}
+                  checked={selected.includes(person.identity_key)}
+                  onChange={(e) =>
+                    setSelected(
+                      e.target.checked
+                        ? [...selected, person.identity_key].slice(0, 100)
+                        : selected.filter((x) => x !== person.identity_key),
+                    )
+                  }
+                />
+              )}
+              <span className="person-order-num">{index + 1}</span>
+              <div className="person-avatar-box">
+                {person.avatar_url ? (
+                  <img
+                    src={person.avatar_url}
+                    alt={person.username}
+                    className="person-avatar-img"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const fallback = e.currentTarget.parentElement?.querySelector(".person-avatar-fallback") as HTMLElement | null;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <span
+                  className="person-avatar-fallback"
+                  style={{ display: person.avatar_url ? "none" : "flex" }}
+                >
+                  {person.username[0]?.toUpperCase()}
+                </span>
+              </div>
+              <div className="person-main-col">
+                <a
+                  href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="person-username-link"
+                  title={person.username}
+                >
+                  @{person.username} <ArrowUpRight size={13} className="person-external-icon" />
+                </a>
+                <span className="person-display-name">
+                  {person.full_name || (person.username.split('.')[0] ? person.username.split('.')[0].charAt(0).toUpperCase() + person.username.split('.')[0].slice(1) : person.username)}
+                </span>
+                {person.note && <p className="person-note">{person.note}</p>}
+              </div>
+              <div className="person-actions-col">
+                <button
+                  className={`icon-action-btn ${person.favorite ? "active-favorite" : ""}`}
+                  aria-label={`${person.favorite ? "Убрать из" : "Добавить в"} избранное ${person.username}`}
+                  aria-pressed={person.favorite}
+                  onClick={() => star(person)}
+                >
+                  <Star
+                    size={17}
+                    fill={person.favorite ? "#f59e0b" : "none"}
+                    color={person.favorite ? "#f59e0b" : "#94a3b8"}
+                  />
+                </button>
+                <button
+                  className={`icon-action-btn ${person.note ? "active-note" : ""}`}
+                  aria-label={`Заметка для ${person.username}`}
+                  onClick={() => setNote(person)}
+                >
+                  <FileText size={17} color={person.note ? "#7c3aed" : "#94a3b8"} />
+                </button>
+                <button
+                  className="icon-action-btn"
+                  aria-label={`Дополнительно для ${person.username}`}
+                  onClick={() => {
+                    if (demo) {
+                      setError(new Error("Действия доступны в подключенном аккаунте."));
+                    }
+                  }}
+                >
+                  <MoreHorizontal size={17} color="#94a3b8" />
+                </button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="empty-card">
+            <h3>Здесь пока никого</h3>
+            <p>Измените категорию или фильтры.</p>
+          </div>
+        )}
+      </div>
       {q.hasNextPage && (
         <button
           className="button secondary"
