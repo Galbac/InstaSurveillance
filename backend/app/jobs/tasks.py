@@ -395,7 +395,9 @@ def _process_instagram(guard, runner, clients):
                     "fetching_" + stage, stage_count=count, requests=getattr(client, "policy_requests", 0)
                 )
 
-            data = runner.run(collect(client, external_id, settings.max_snapshot_members, progress))
+            data = runner.run(
+                collect(client, external_id, settings.max_snapshot_members, progress, allow_partial=True)
+            )
             guard.progress("validating_snapshot")
             provenance = {
                 "provider_version": "aiograpi-" + version("aiograpi"),
@@ -410,7 +412,8 @@ def _process_instagram(guard, runner, clients):
                 "followers_completeness": "collection_validated",
                 "following_completeness": "collection_validated",
             }
-            publish(guard, data, now(), "aiograpi", "collection_validated", "stable_id", provenance)
+            provenance.update(data.collection_metadata)
+            publish(guard, data, now(), "aiograpi", provenance["completeness"], "stable_id", provenance)
             with SessionLocal() as db:
                 profile = required(
                     db.scalar(select(Profile).where(Profile.id == profile_id).with_for_update())

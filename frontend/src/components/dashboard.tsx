@@ -661,6 +661,14 @@ function Overview({
     ).length;
   return (
     <>
+      {summary.snapshot?.completeness === "partial" && (
+        <p className="notice" role="status">
+          Данные неполные: получено {c.followers} из {Number(summary.snapshot.provenance.expected_followers ?? c.followers)} подписчиков
+          и {c.following} из {Number(summary.snapshot.provenance.expected_following ?? c.following)} подписок.
+          Анализ рассчитан по доступным аккаунтам.
+          Отписки не определяются; отсутствие взаимной подписки может быть не подтверждено.
+        </p>
+      )}
       <div className="profile-strip">
         <div className="avatar gradient">
           {summary.profile.username[0].toUpperCase()}

@@ -256,6 +256,14 @@ class ControlledClient(Client):
             return_json=return_json,
         )
 
+    async def challenge_code_handler(self, username, choice=None, **kwargs):
+        # CAA profile-code flows can invoke this directly, bypassing challenge_resolve.
+        # Workers have no interactive terminal; manual verification belongs in Instagram.
+        raise ProviderError("challenge_required")
+
+    async def change_password_handler(self, username):
+        raise ProviderError("challenge_required")
+
     async def challenge_resolve(self, *args, **kwargs):
         raise ProviderError("challenge_required")
 
@@ -391,7 +399,12 @@ def classify(error: Exception) -> str:
 
 
 async def collect(
-    client: ControlledClient, external_id: str, max_members: int, progress: Callable[[str, int], None]
+    client: ControlledClient,
+    external_id: str,
+    max_members: int,
+    progress: Callable[[str, int], None],
+    *,
+    allow_partial: bool = False,
 ) -> Relationships:
     if str(client.user_id) != external_id:
         raise ProviderError("identity_mismatch")
@@ -424,13 +437,29 @@ async def collect(
             cursor = next_cursor
         results[relation] = rows
     final = await client.user_info_v1(external_id)
-    if (
-        (initial.follower_count, initial.following_count) != (final.follower_count, final.following_count)
-        or len(results["followers"]) != final.follower_count
-        or len(results["following"]) != final.following_count
+    if (initial.follower_count, initial.following_count) != (final.follower_count, final.following_count):
+        raise ProviderError("inconsistent_snapshot")
+    expected = {"followers": final.follower_count, "following": final.following_count}
+    incomplete = any(len(results[key]) != count for key, count in expected.items())
+    if incomplete and (
+        not allow_partial or any(len(results[key]) > count for key, count in expected.items())
     ):
         raise ProviderError("inconsistent_snapshot")
-    return Relationships(results["followers"], results["following"])
+    return Relationships(
+        results["followers"],
+        results["following"],
+        collection_metadata={
+            "expected_followers": expected["followers"],
+            "expected_following": expected["following"],
+            "followers_completeness": "partial"
+            if len(results["followers"]) != expected["followers"]
+            else "collection_validated",
+            "following_completeness": "partial"
+            if len(results["following"]) != expected["following"]
+            else "collection_validated",
+            "completeness": "partial" if incomplete else "collection_validated",
+        },
+    )
 
 
 async def close_client(client: Any) -> None:

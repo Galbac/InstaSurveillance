@@ -120,6 +120,39 @@ def test_cannot_collect_another_instagram_owner():
         asyncio.run(collect(FakeClient(), "another-id", 100, lambda *_: None))
 
 
+def test_explicit_partial_collection_retains_available_records_and_real_counts():
+    client = FakeClient()
+
+    async def partial(*args, **kwargs):
+        return [SimpleNamespace(pk="1", username="anna")], None
+
+    client.user_followers_v1_chunk = partial
+    result = asyncio.run(collect(client, "owner", 100, lambda *_: None, allow_partial=True))
+    assert result.followers == {"1": "anna"}
+    assert result.following == {"1": "anna"}
+    assert result.collection_metadata == {
+        "expected_followers": 2,
+        "expected_following": 1,
+        "followers_completeness": "partial",
+        "following_completeness": "collection_validated",
+        "completeness": "partial",
+    }
+
+
+def test_partial_collection_still_rejects_changing_profile_counts():
+    client = FakeClient()
+    calls = 0
+
+    async def changing_info(_):
+        nonlocal calls
+        calls += 1
+        return SimpleNamespace(follower_count=2 if calls == 1 else 3, following_count=1)
+
+    client.user_info_v1 = changing_info
+    with pytest.raises(ProviderError, match="inconsistent_snapshot"):
+        asyncio.run(collect(client, "owner", 100, lambda *_: None, allow_partial=True))
+
+
 def test_settings_allowlist_excludes_password_and_code():
     client = SimpleNamespace(
         get_settings=lambda: {

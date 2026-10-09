@@ -708,6 +708,52 @@ def test_cancel_generation_prevents_publication_and_preserves_history(context, s
         assert not list(db.scalars(select(Snapshot)))
 
 
+def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(context):
+    c, f, uid, pid = context
+    from app.core.errors import AppError
+    from app.domain.analytics import Relationships
+    from app.jobs.runtime import claim
+    from app.jobs.snapshots import publish
+    from app.modules.query_service import event_query
+
+    previous = snapshot(f, pid, ["a", "missing"], [], -1)
+    with f() as db:
+        profile = db.get(Profile, pid)
+        profile.status = "active"
+        profile.paused = False
+        profile.external_id = "synthetic-owner"
+        db.get(Snapshot, previous).identity_mode = "stable_id"
+        job = Job(user_id=uid, profile_id=pid, kind="sync", details={"generation": profile.generation})
+        db.add(job)
+        db.commit()
+        jid = job.id
+    guard = claim(jid)
+    assert guard is not None
+    sid = publish(
+        guard,
+        Relationships({"a": "a"}, {}),
+        now(),
+        "aiograpi",
+        "partial",
+        "stable_id",
+        {"expected_followers": 2},
+    )
+    with f() as db:
+        assert db.get(Job, jid).status == "partial"
+        assert db.get(Snapshot, sid).completeness == "partial"
+        assert not list(db.scalars(select(Comparison)))
+        with pytest.raises(AppError, match="snapshot_not_comparable"):
+            event_query(db.get(Snapshot, previous), db.get(Snapshot, sid))
+    summary = c.get(f"/api/v1/profiles/{pid}/summary")
+    assert summary.status_code == 200
+    assert summary.json()["snapshot"]["completeness"] == "partial"
+    assert summary.json()["changes"] is None
+    people = c.get(f"/api/v1/profiles/{pid}/people?category=followers")
+    assert people.status_code == 200
+    assert people.json()["completeness"] == "partial"
+    assert [x["username"] for x in people.json()["items"]] == ["a"]
+
+
 def test_deletion_waits_for_inflight_object_write(context):
     c, f, uid, _ = context
     from app.integrations.storage import write_finished

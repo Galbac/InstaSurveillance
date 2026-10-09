@@ -201,6 +201,12 @@ export default function PeoplePanel({
   );
   return (
     <section className="people-panel-card">
+      {context?.completeness === "partial" && (
+        <p className="notice" role="status">
+          Показаны доступные аккаунты из неполного списка. Отсутствие аккаунта
+          не подтверждает отписку или отсутствие взаимной подписки.
+        </p>
+      )}
       <div
         className="category-tabs-container"
         role="tablist"

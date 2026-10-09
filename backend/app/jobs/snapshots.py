@@ -92,7 +92,10 @@ def publish(
             )
         )
         if duplicate:
-            job.status, job.stage = "completed", "duplicate"
+            job.status, job.stage = (
+                ("partial" if duplicate.completeness == "partial" else "completed"),
+                "duplicate",
+            )
             job.finished_at = now()
             job.details = {**job.details, "snapshot_id": duplicate.id, "warnings": ["duplicate_snapshot"]}
             db.commit()
@@ -153,7 +156,9 @@ def publish(
                     batch = []
         if batch:
             db.execute(insert(Member), batch)
-        job.status, job.stage = "completed", "completed"
+        job.status, job.stage = (
+            ("partial", "completed") if complete == "partial" else ("completed", "completed")
+        )
         job.finished_at = now()
         job.details = {**job.details, "snapshot_id": snapshot.id, "counts": data.summary()}
         if source in {"instagrapi", "aiograpi"}:
@@ -164,7 +169,9 @@ def publish(
             owner.id,
             "results",
             "Данные обновлены",
-            "Новый снимок готов. Посмотрите изменения и взаимность подписок.",
+            "Сохранён неполный список. Доступные аккаунты можно просматривать; выводы об отписках отключены."
+            if complete == "partial"
+            else "Новый снимок готов. Посмотрите изменения и взаимность подписок.",
             "/app",
             "snapshot:" + snapshot.id,
         )
@@ -190,7 +197,13 @@ def enqueue_neighbors(db, snapshot):
         .limit(1)
     )
     for left, right in ((before, snapshot), (snapshot, after)):
-        if left and right and left.identity_mode == right.identity_mode:
+        if (
+            left
+            and right
+            and left.identity_mode == right.identity_mode
+            and left.completeness in {"user_confirmed", "collection_validated"}
+            and right.completeness in {"user_confirmed", "collection_validated"}
+        ):
             existing = db.scalar(
                 select(Comparison).where(
                     Comparison.before_id == left.id,

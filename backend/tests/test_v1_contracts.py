@@ -657,3 +657,109 @@ def test_instagram_socks_proxy_initializes_without_optional_import_error(scheme,
     client = new_client(None, 3, 0, lambda: None, proxy_url=proxy)
     assert all(session.proxy == proxy for session in (client.private, client.public, client.graphql))
     assert proxy not in json.dumps(safe_settings(client))
+
+
+def test_instagram_caa_wire_request_matches_upstream(monkeypatch, instagram_runtime):
+    from uuid import UUID
+
+    import httpx
+    from aiograpi import Client
+    from aiograpi.mixins import auth, bloks, private
+    from aiograpi.transports import CurlH2Transport
+
+    from app.integrations.instagram import new_client
+
+    requests = []
+
+    async def capture(transport, request):
+        requests.append((request.method, str(request.url), dict(request.headers), await request.aread()))
+        return httpx.Response(200, json={"status": "ok"})
+
+    monkeypatch.setattr(CurlH2Transport, "handle_async_request", capture)
+    monkeypatch.setattr(auth, "uuid4", lambda: UUID(int=1))
+    monkeypatch.setattr(bloks, "uuid4", lambda: UUID(int=1))
+    monkeypatch.setattr(private.time, "time", lambda: 1_700_000_000.0)
+    monkeypatch.setattr(private.random, "randint", lambda low, high: low)
+    monkeypatch.setattr(
+        Client, "generate_uuid", lambda self, prefix="", suffix="": prefix + str(UUID(int=1)) + suffix
+    )
+    controlled = new_client(None, 30, 0, lambda: None)
+    upstream = Client(settings=controlled.get_settings())
+    instagram_runtime.clients.append(upstream)
+    for client in (upstream, controlled):
+        client.caa_aac = "synthetic-context"
+        client.caa_waterfall_id = "synthetic-flow"
+        instagram_runtime.run(
+            client.bloks_caa_login_send_request(
+                "#PWD_INSTAGRAM:4:1700000000:synthetic-ciphertext",
+                username="synthetic-user",
+                auto_prepare=False,
+            )
+        )
+    assert len(requests) == 2
+    assert requests[0] == requests[1]
+
+
+def test_instagram_405_with_password_keys_allows_encryption_then_surfaces_429(monkeypatch, instagram_runtime):
+    import base64
+
+    import httpx
+    from aiograpi import Client
+    from Cryptodome.PublicKey import RSA
+
+    from app.integrations.instagram import classify, new_client
+
+    public_key = base64.b64encode(RSA.generate(1024).public_key().export_key()).decode()
+    requests = []
+
+    async def capture(client, request, **kwargs):
+        requests.append((request.method, str(request.url)))
+        if request.url.path == "/api/v1/qe/sync/":
+            return httpx.Response(
+                405,
+                headers={
+                    "ig-set-password-encryption-key-id": "1",
+                    "ig-set-password-encryption-pub-key": public_key,
+                },
+                request=request,
+            )
+        return httpx.Response(429, request=request)
+
+    monkeypatch.setattr(httpx.AsyncClient, "send", capture)
+    controlled = new_client(None, 30, 0, lambda: None)
+    upstream = Client(settings=controlled.get_settings())
+    instagram_runtime.clients.append(upstream)
+    for client in (upstream, controlled):
+        client.caa_aac = "synthetic-context"
+        client.caa_waterfall_id = "synthetic-flow"
+        encrypted = instagram_runtime.run(client.password_encrypt("synthetic-password"))
+        assert encrypted.startswith("#PWD_INSTAGRAM:4:")
+        with pytest.raises(Exception) as error:
+            instagram_runtime.run(
+                client.bloks_caa_login_send_request(
+                    encrypted,
+                    username="synthetic-user",
+                    auto_prepare=False,
+                )
+            )
+        assert classify(error.value) == "cooldown"
+    assert len(requests) == 4
+    assert requests[:2] == requests[2:]
+    assert controlled.policy_requests == 2
+
+
+def test_instagram_challenge_callbacks_never_prompt_worker(monkeypatch, instagram_runtime):
+    from aiograpi.mixins.challenge import ChallengeChoice
+
+    from app.integrations.instagram import ProviderError, new_client
+
+    def forbidden_input(*args):
+        pytest.fail("Worker must never request credentials or a challenge code from stdin")
+
+    monkeypatch.setattr("builtins.input", forbidden_input)
+    client = new_client(None, 30, 0, lambda: None)
+    with pytest.raises(ProviderError, match="challenge_required"):
+        instagram_runtime.run(client.challenge_code_or_raised(ChallengeChoice.EMAIL))
+    with pytest.raises(ProviderError, match="challenge_required"):
+        instagram_runtime.run(client.change_password_handler("synthetic-user"))
+    assert client.policy_requests == 0
