@@ -685,7 +685,7 @@ function Overview({
             {date(summary.snapshot?.observed_at || null)} ·{" "}
             {summary.snapshot?.source === "archive"
               ? "Архив"
-              : "Автоматический сбор"}
+              : "Сбор Instagram"}
           </span>
         </div>
         <span className="badge success">
@@ -694,6 +694,9 @@ function Overview({
             ? "На паузе"
             : statusNames[summary.profile.status] || "Данные сохранены"}
         </span>
+        <button className="button secondary" onClick={() => go("connect")}>
+          Управление подключением
+        </button>
       </div>
       <div className="stats-grid">
         {[
@@ -746,7 +749,9 @@ function Overview({
           <div>
             <span className="overline">ВЗАИМНОСТЬ ПОДПИСОК</span>
             <h3>Я подписан без ответа</h3>
-            <p>Ты читаешь их, они не подписаны на тебя</p>
+            <p>{summary.snapshot?.completeness === "partial"
+              ? "Ты читаешь их; в доступном списке подписчиков они не найдены"
+              : "Ты читаешь их, они не подписаны на тебя"}</p>
           </div>
           <strong>{number(c.not_following_back)}</strong>
           <span className="relationship-arrow">
