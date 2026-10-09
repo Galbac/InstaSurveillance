@@ -40,6 +40,7 @@ import SettingsPanel from "@/features/settings";
 import ConnectionPanel, { SyncPanel } from "@/features/connection";
 import ImportPanel from "@/features/import";
 import { NotificationsPanel, SupportPanel } from "@/features/support";
+import { Modal } from "@/features/common";
 import {
   api,
   ApiError,
@@ -179,7 +180,8 @@ function Workspace({
     ? "people"
     : (searchParams.get("view") ?? initialView);
   const [more, setMore] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [confirmLogout, setConfirmLogout] = useState(false);
   const view = demo ? demoView : initialView;
   const me = useQuery({
     queryKey: ["me"],
@@ -305,7 +307,7 @@ function Workspace({
             </Link>
           )}
           <button
-            onClick={demo ? () => router.push("/register") : logout}
+            onClick={demo ? () => router.push("/register") : () => setConfirmLogout(true)}
             className="nav-item"
           >
             {demo ? <UserPlus size={19} className="nav-icon" /> : <LogOut size={19} className="nav-icon" />}
@@ -349,7 +351,6 @@ function Workspace({
         <main className="dashboard-content">
           <div className="page-heading">
             <div className="page-heading-left">
-              <span className="overline">ТВОЯ КАРТИНА СВЯЗЕЙ</span>
               <h1>
                 {title}
                 <span className="heading-spark">✱</span>
@@ -531,12 +532,48 @@ function Workspace({
           ))}
           <button
             className="nav-item"
-            onClick={demo ? () => router.push("/register") : logout}
+            onClick={
+              demo
+                ? () => router.push("/register")
+                : () => {
+                    setMore(false);
+                    setConfirmLogout(true);
+                  }
+            }
           >
             {demo ? <UserPlus size={19} /> : <LogOut size={19} />}
             {demo ? "Создать аккаунт" : "Выйти"}
           </button>
         </div>
+      )}
+      {confirmLogout && (
+        <Modal
+          title="Выйти из аккаунта?"
+          onClose={() => setConfirmLogout(false)}
+        >
+          <p style={{ margin: "14px 0 24px", color: "var(--muted)", fontSize: 14 }}>
+            Вы уверены, что хотите выйти из аккаунта? Вам потребуется снова войти для доступа к аналитике.
+          </p>
+          <div className="button-row" style={{ justifyContent: "flex-end", gap: 10 }}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setConfirmLogout(false)}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setConfirmLogout(false);
+                logout();
+              }}
+            >
+              Выйти
+            </button>
+          </div>
+        </Modal>
       )}
       <nav className="bottom-nav" aria-label="Основная мобильная навигация">
         {nav
@@ -582,7 +619,6 @@ function Empty({
       <span className="empty-icon">
         <Users size={35} />
       </span>
-      <span className="overline">НАЧНЕМ С ПЕРВОГО СНИМКА</span>
       <h2>
         {profile?.status === "active"
           ? "Твой первый сбор выполняется"

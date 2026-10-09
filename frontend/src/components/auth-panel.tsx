@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Brand from "./brand";
 import { useQuery } from "@tanstack/react-query";
 import { PublicConfig } from "@/lib/workflows";
@@ -23,7 +23,8 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
     defaultValues: {
       email: "",
       password: "",
-      remember: false,
+      confirm_password: "",
+      remember: true,
       terms: false,
       verification_code: "",
     },
@@ -31,6 +32,8 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -332,23 +335,47 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
               {["login", "register", "reset-password"].includes(mode) && (
                 <label>
                   Пароль
-                  <input
-                    {...form.register("password")}
-                    aria-invalid={!!form.formState.errors.password}
-                    aria-describedby={
-                      form.formState.errors.password
-                        ? "auth-password-error"
-                        : undefined
-                    }
-                    type="password"
-                    autoComplete={
-                      mode === "login" ? "current-password" : "new-password"
-                    }
-                    minLength={12}
-                    maxLength={256}
-                    required
-                    placeholder="Не менее 12 символов"
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      {...form.register("password")}
+                      aria-invalid={!!form.formState.errors.password}
+                      aria-describedby={
+                        form.formState.errors.password
+                          ? "auth-password-error"
+                          : undefined
+                      }
+                      type={showPassword ? "text" : "password"}
+                      autoComplete={
+                        mode === "login" ? "current-password" : "new-password"
+                      }
+                      minLength={12}
+                      maxLength={256}
+                      required
+                      placeholder="Не менее 12 символов"
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: "var(--muted)",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   {form.formState.errors.password && (
                     <span
                       id="auth-password-error"
@@ -356,6 +383,59 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                       role="alert"
                     >
                       {String(form.formState.errors.password.message)}
+                    </span>
+                  )}
+                </label>
+              )}
+              {mode === "register" && (
+                <label>
+                  Повтори пароль
+                  <div style={{ position: "relative" }}>
+                    <input
+                      {...form.register("confirm_password")}
+                      aria-invalid={!!form.formState.errors.confirm_password}
+                      aria-describedby={
+                        form.formState.errors.confirm_password
+                          ? "auth-confirm-password-error"
+                          : undefined
+                      }
+                      type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      minLength={12}
+                      maxLength={256}
+                      required
+                      placeholder="Повторите пароль"
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label={showConfirmPassword ? "Скрыть пароль" : "Показать пароль"}
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: "var(--muted)",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {form.formState.errors.confirm_password && (
+                    <span
+                      id="auth-confirm-password-error"
+                      className="field-error"
+                      role="alert"
+                    >
+                      {String(form.formState.errors.confirm_password.message)}
                     </span>
                   )}
                 </label>
@@ -424,25 +504,51 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                   {error}
                 </div>
               )}
-              <button
-                className="button full"
-                disabled={
-                  busy ||
-                  (["register", "verify-email"].includes(mode) &&
-                    !config.data)
-                }
-              >
-                {busy
-                  ? "Подождите…"
-                  : mode === "login"
-                    ? "Войти"
+              {(() => {
+                const watchedValues = form.watch();
+                const isMissingFields =
+                  mode === "login"
+                    ? !watchedValues.email?.trim() || !watchedValues.password?.trim()
                     : mode === "register"
-                      ? "Создать аккаунт"
-                      : mode === "verify-email"
-                        ? "Подтвердить email"
-                        : "Продолжить"}
-                <ArrowRight size={18} />
-              </button>
+                    ? !watchedValues.email?.trim() ||
+                      !watchedValues.password?.trim() ||
+                      !watchedValues.confirm_password?.trim() ||
+                      !watchedValues.terms
+                    : mode === "forgot-password"
+                    ? !watchedValues.email?.trim()
+                    : mode === "reset-password"
+                    ? !watchedValues.password?.trim()
+                    : mode === "verify-email"
+                    ? (config.data?.local_email_verification && (!watchedValues.email?.trim() || !watchedValues.verification_code?.trim()))
+                    : false;
+
+                const isDisabled =
+                  busy ||
+                  Boolean(
+                    (["register", "verify-email"].includes(mode) && !config.data) ||
+                    isMissingFields
+                  );
+
+                return (
+                  <button
+                    className="button full"
+                    disabled={isDisabled}
+                  >
+                    {busy
+                      ? "Подождите…"
+                      : mode === "login"
+                        ? "Войти"
+                        : mode === "register"
+                          ? "Создать аккаунт"
+                          : mode === "verify-email"
+                            ? "Подтвердить email"
+                            : mode === "forgot-password"
+                              ? "Сбросить пароль"
+                              : "Продолжить"}
+                    <ArrowRight size={18} />
+                  </button>
+                );
+              })()}
             </form>
           )}
           <p className="auth-switch">

@@ -76,9 +76,10 @@ test('PWA excludes private API, external origins and mutations; navigation uses 
 
 test('auth schemas enforce email, password bounds and registration consent',()=>{
  const {authSchema}=module('form-schemas.ts',{require:createRequire(import.meta.url)});
- const value={email:'owner@example.org',password:'a-secure-password',remember:false,terms:true};
+ const value={email:'owner@example.org',password:'a-secure-password',confirm_password:'a-secure-password',remember:false,terms:true};
  assert.equal(authSchema('register').safeParse(value).success,true);
  assert.equal(authSchema('register').safeParse({...value,terms:false}).success,false);
+ assert.equal(authSchema('register').safeParse({...value,confirm_password:'mismatched'}).success,false);
  assert.equal(authSchema('login').safeParse({...value,email:'invalid'}).success,false);
  assert.equal(authSchema('reset-password').safeParse({...value,password:'short'}).success,false);
  assert.equal(authSchema('register').safeParse({...value,password:'x'.repeat(257)}).success,false);

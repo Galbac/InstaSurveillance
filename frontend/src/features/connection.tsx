@@ -10,8 +10,28 @@ import {
   useVisible,
   terminalStates,
 } from "@/lib/workflows";
+import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { ErrorNotice, JobProgress, Loader } from "./common";
 type Connection = components["schemas"]["ConnectionDTO"];
+
+function InstagramIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
+}
 export default function ConnectionPanel({
   profile,
   demo = false,
@@ -25,7 +45,8 @@ export default function ConnectionPanel({
     visible = useVisible();
   const [job, setJob] = useState<Job | null>(null),
     [error, setError] = useState<unknown>(null),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [showPassword, setShowPassword] = useState(false);
   const flags = useQuery({
     queryKey: ["public-config"],
     queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
@@ -137,16 +158,76 @@ export default function ConnectionPanel({
     }
   }
   return (
-    <div className="form-panel-grid">
-      <section className="panel">
-        <h2>Подключение собственного аккаунта</h2>
-        <p className="muted">
-          Неофициальный доступ может привести к проверке входа или ограничениям
-          Instagram. Гарантировать отсутствие блокировок невозможно. Можно
-          загрузить официальный архив без входа через сервис.
+    <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 40px", width: "100%" }}>
+      <section
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          background: "#ffffff",
+          borderRadius: 20,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
+          padding: "36px 32px 30px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Instagram Header Brand / Logo */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff",
+              boxShadow: "0 4px 12px rgba(220, 39, 67, 0.25)",
+            }}
+          >
+            <InstagramIcon size={26} />
+          </div>
+          <span
+            style={{
+              fontFamily: "var(--font-heading, inherit)",
+              fontWeight: 700,
+              fontSize: 22,
+              letterSpacing: "-0.5px",
+              color: "#1e293b",
+            }}
+          >
+            Instagram
+          </span>
+        </div>
+
+        <p
+          style={{
+            fontSize: 13,
+            color: "#64748b",
+            textAlign: "center",
+            lineHeight: 1.5,
+            margin: "0 0 24px",
+          }}
+        >
+          {profile
+            ? `Переподключение аккаунта @${profile.username}`
+            : "Подключи аккаунт для отслеживания взаимности и изменений"}
         </p>
+
         {!enabled && (
-          <div className="notice">
+          <div className="notice" style={{ width: "100%", marginBottom: 18 }}>
             Автоматическое подключение{" "}
             {demo
               ? "недоступно в демо"
@@ -154,25 +235,41 @@ export default function ConnectionPanel({
             . <Link href="/app/imports/new">Загрузить архив</Link>
           </div>
         )}
+
         {connection.data && (
-          <p>
-            Состояние: {connection.data.display_status}. Следующий разрешённый
-            сбор: {date(connection.data.next_allowed_at)}.
-          </p>
+          <div
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              fontSize: 12,
+              color: "#475569",
+              marginBottom: 16,
+              textAlign: "center",
+            }}
+          >
+            Состояние: <strong>{connection.data.display_status}</strong>
+            {connection.data.next_allowed_at && (
+              <> • След. сбор: {date(connection.data.next_allowed_at)}</>
+            )}
+          </div>
         )}
+
         {current && <JobProgress job={current} />}
         <ErrorNotice error={error || q.error || connection.error} />
+
         {current?.status === "awaiting_2fa" ? (
-          <form noValidate onSubmit={verify}>
-            <p>
+          <form noValidate onSubmit={verify} style={{ width: "100%" }}>
+            <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 16 }}>
               Введите код из{" "}
               {current.details.method === "totp"
-                ? "приложения аутентификации"
-                : "канала, указанного Instagram"}
-              . Код действует в рамках этой попытки входа, максимум 10 минут.
+                ? "приложения аутентификации (Google Authenticator)"
+                : "SMS или почты"}
             </p>
-            <label>
-              Код
+            <label style={{ width: "100%" }}>
+              Код безопасности
               <input
                 name="code"
                 inputMode="numeric"
@@ -180,6 +277,7 @@ export default function ConnectionPanel({
                 pattern="[0-9]{6,8}"
                 required
                 maxLength={8}
+                placeholder="6-значный код"
                 aria-invalid={!!connectErrors.code}
                 onChange={() => {
                   if (connectErrors.code) {
@@ -193,16 +291,16 @@ export default function ConnectionPanel({
                 </span>
               )}
             </label>
-            <button className="button" disabled={busy}>
-              Подтвердить код
+            <button className="button full" disabled={busy} style={{ marginTop: 14 }}>
+              {busy ? "Проверяем…" : "Подтвердить код"}
             </button>
           </form>
         ) : pending ? (
           <Loader />
         ) : (
-          <form noValidate onSubmit={submit}>
-            <label>
-              Username Instagram
+          <form noValidate onSubmit={submit} style={{ width: "100%" }}>
+            <label style={{ width: "100%" }}>
+              Имя пользователя
               <input
                 name="username"
                 required
@@ -210,6 +308,7 @@ export default function ConnectionPanel({
                 defaultValue={profile?.username}
                 autoComplete="username"
                 readOnly={!!profile}
+                placeholder="username"
                 aria-invalid={!!connectErrors.username}
                 onChange={() => {
                   if (connectErrors.username) {
@@ -226,36 +325,64 @@ export default function ConnectionPanel({
                 </span>
               )}
             </label>
-            <label>
-              Пароль Instagram
-              <input
-                type="password"
-                name="password"
-                autoComplete="off"
-                maxLength={256}
-                required
-                aria-invalid={!!connectErrors.password}
-                onChange={() => {
-                  if (connectErrors.password) {
-                    setConnectErrors((prev) => ({
-                      ...prev,
-                      password: undefined,
-                    }));
-                  }
-                }}
-              />
+
+            <label style={{ width: "100%", marginTop: 12 }}>
+              Пароль
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
+                  maxLength={256}
+                  required
+                  placeholder="Пароль"
+                  style={{ paddingRight: 40 }}
+                  aria-invalid={!!connectErrors.password}
+                  onChange={() => {
+                    if (connectErrors.password) {
+                      setConnectErrors((prev) => ({
+                        ...prev,
+                        password: undefined,
+                      }));
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    color: "var(--muted)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {connectErrors.password && (
                 <span className="field-error" role="alert">
                   {connectErrors.password}
                 </span>
               )}
             </label>
-            <div style={{ margin: "16px 0" }}>
-              <label className="check" style={{ margin: 0 }}>
+
+            <div style={{ margin: "16px 0 20px" }}>
+              <label className="check" style={{ margin: 0, alignItems: "flex-start" }}>
                 <input
                   type="checkbox"
                   name="consent"
                   required
+                  defaultChecked
                   aria-invalid={!!connectErrors.consent}
                   onChange={() => {
                     if (connectErrors.consent) {
@@ -266,9 +393,8 @@ export default function ConnectionPanel({
                     }
                   }}
                 />
-                <span>
-                  Подключаю свой аккаунт и принимаю риски неофициального доступа,
-                  версия {flags.data?.connection_terms_version}.
+                <span style={{ fontSize: 12, lineHeight: 1.4, color: "#64748b" }}>
+                  Принимаю условия прямого подключения Instagram.
                 </span>
               </label>
               {connectErrors.consent && (
@@ -277,15 +403,31 @@ export default function ConnectionPanel({
                 </span>
               )}
             </div>
-            <button className="button" disabled={busy || !enabled}>
-              {profile ? "Переподключить" : "Подключить"}
+
+            <button
+              className="button full"
+              disabled={busy || !enabled}
+              style={{
+                background: "linear-gradient(135deg, #0095f6 0%, #0077e6 100%)",
+                border: "none",
+                fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(0, 149, 246, 0.25)",
+              }}
+            >
+              {busy
+                ? "Подключение…"
+                : profile
+                ? "Переподключить"
+                : "Войти через Instagram"}
             </button>
           </form>
         )}
+
         {pending && current?.kind === "connect" && (
           <button
-            className="button secondary"
+            className="button secondary full"
             disabled={busy}
+            style={{ marginTop: 12 }}
             onClick={async () => {
               setBusy(true);
               try {
@@ -304,32 +446,35 @@ export default function ConnectionPanel({
             Отменить попытку
           </button>
         )}
+
         {current?.status === "completed" && (
-          <button className="button secondary" onClick={onDone}>
+          <button
+            className="button full"
+            style={{ marginTop: 12 }}
+            onClick={onDone}
+          >
             Открыть обзор
           </button>
         )}
+
+        <div
+          style={{
+            marginTop: 24,
+            paddingTop: 16,
+            borderTop: "1px solid #f1f5f9",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            fontSize: 12,
+            color: "#94a3b8",
+          }}
+        >
+          <ShieldCheck size={16} color="#10b981" />
+          <span>Сквозное шифрование и конфиденциальность</span>
+        </div>
       </section>
-      <aside className="panel">
-        <h3>Как обновляется история</h3>
-        <ol>
-          <li>Вход и явное подтверждение 2FA, если требуется.</li>
-          <li>Первый полный снимок показывает текущую взаимность.</li>
-          <li>Следующие полные снимки позволяют сравнить изменения.</li>
-        </ol>
-        <p>
-          Обычное расписание — раз в {flags.data?.sync_interval_hours || 24}{" "}
-          часа. Ручное обновление — не чаще чем раз в{" "}
-          {flags.data?.manual_min_interval_hours || 6} часов, максимум два
-          запуска за сутки.
-        </p>
-        <p>
-          При проверке безопасности, неполном ответе или ограничении сбор
-          останавливается. Завершите проверку в официальном приложении; новое
-          подключение запускается вашим действием.
-        </p>
-        <Link href="/help/import">Как получить архив Instagram</Link>
-      </aside>
     </div>
   );
 }

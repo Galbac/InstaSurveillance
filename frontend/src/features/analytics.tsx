@@ -172,12 +172,28 @@ export default function AnalyticsPanel({
   const latestPoint = chartData[chartData.length - 1];
   const firstPoint = chartData[0];
 
-  const totalFollowers = latestPoint?.followers || 1240;
-  const totalFollowing = latestPoint?.following || 828;
-  const followersGrowth = totalFollowers - (firstPoint?.followers || 1160);
-  const followingGrowth = totalFollowing - (firstPoint?.following || 810);
-  const mutualDisplay = "49,4%";
-  const snapshotCount = rawPoints.length || 7;
+  const totalFollowers = demo
+    ? latestPoint?.followers || 1240
+    : latestPoint?.followers ?? 0;
+  const totalFollowing = demo
+    ? latestPoint?.following || 828
+    : latestPoint?.following ?? 0;
+  const followersGrowth = demo
+    ? totalFollowers - (firstPoint?.followers || 1160)
+    : chartData.length > 1
+    ? totalFollowers - (firstPoint?.followers ?? 0)
+    : 0;
+  const followingGrowth = demo
+    ? totalFollowing - (firstPoint?.following || 810)
+    : chartData.length > 1
+    ? totalFollowing - (firstPoint?.following ?? 0)
+    : 0;
+  const mutualDisplay = demo
+    ? "49,4%"
+    : latestPoint?.mutual_rate != null
+    ? `${latestPoint.mutual_rate.toString().replace(".", ",")}%`
+    : "0%";
+  const snapshotCount = rawPoints.length;
 
   // History table rows (reverse chronological: latest first)
   const historyRows = useMemo(() => {
@@ -196,8 +212,11 @@ export default function AnalyticsPanel({
         followingDelta: end.following - start.following,
       };
     }
-    return { followersDelta: 26, followingDelta: 6 };
-  }, [rawPoints]);
+    if (demo) {
+      return { followersDelta: 26, followingDelta: 6 };
+    }
+    return { followersDelta: 0, followingDelta: 0 };
+  }, [rawPoints, demo]);
 
   const periodB = useMemo(() => {
     if (rawPoints.length >= 7) {
@@ -210,14 +229,19 @@ export default function AnalyticsPanel({
         followingDelta: end.following - start.following,
       };
     }
-    return { followersDelta: 28, followingDelta: 6 };
-  }, [rawPoints]);
+    if (demo) {
+      return { followersDelta: 28, followingDelta: 6 };
+    }
+    return { followersDelta: 0, followingDelta: 0 };
+  }, [rawPoints, demo]);
 
   const growthDiff = periodB.followersDelta - periodA.followersDelta;
   const growthPercent =
     periodA.followersDelta > 0
       ? ((growthDiff / periodA.followersDelta) * 100).toFixed(1).replace(".", ",")
-      : "7,7";
+      : demo
+      ? "7,7"
+      : "0";
 
   return (
     <div className="analytics-v2-container">
@@ -229,8 +253,12 @@ export default function AnalyticsPanel({
             <div className="analytics-v2-stat-icon purple">
               <Users size={20} />
             </div>
-            <span className="analytics-v2-stat-badge green">
-              +{followersGrowth} ↑
+            <span
+              className={`analytics-v2-stat-badge ${
+                followersGrowth >= 0 ? "green" : "red"
+              }`}
+            >
+              {followersGrowth >= 0 ? `+${followersGrowth} ↑` : `${followersGrowth} ↓`}
             </span>
           </div>
           <div>
@@ -246,8 +274,12 @@ export default function AnalyticsPanel({
             <div className="analytics-v2-stat-icon blue">
               <User size={20} />
             </div>
-            <span className="analytics-v2-stat-badge green">
-              +{followingGrowth} ↑
+            <span
+              className={`analytics-v2-stat-badge ${
+                followingGrowth >= 0 ? "green" : "red"
+              }`}
+            >
+              {followingGrowth >= 0 ? `+${followingGrowth} ↑` : `${followingGrowth} ↓`}
             </span>
           </div>
           <div>
@@ -478,7 +510,11 @@ export default function AnalyticsPanel({
 
         <footer className="analytics-v2-chart-footer">
           <span>{chartData.length} наблюдений</span>
-          <span>Последнее обновление: 7 октября, 13:00</span>
+          <span>
+            {latestPoint
+              ? `Последнее обновление: ${formatTableDate(latestPoint.date)}`
+              : "Нет данных"}
+          </span>
         </footer>
       </section>
 
@@ -658,7 +694,11 @@ export default function AnalyticsPanel({
                   <span className="analytics-v2-box-label">Период A</span>
                   <span className="analytics-v2-box-dates">
                     <Calendar size={14} className="text-gray-400" />
-                    1–3 октября 2024
+                    {periodA.start && periodA.end
+                      ? `${formatShortDate(periodA.start.date)} – ${formatShortDate(periodA.end.date)}`
+                      : demo
+                      ? "1–3 октября"
+                      : "Нет данных"}
                   </span>
                 </div>
                 <div className="analytics-v2-compare-metrics">
@@ -667,13 +707,17 @@ export default function AnalyticsPanel({
                       Прирост подписчиков
                     </p>
                     <div className="analytics-v2-metric-val">
-                      +{periodA.followersDelta}
+                      {periodA.followersDelta >= 0
+                        ? `+${periodA.followersDelta}`
+                        : periodA.followersDelta}
                     </div>
                   </div>
                   <div>
                     <p className="analytics-v2-metric-sub">Прирост подписок</p>
                     <div className="analytics-v2-metric-val">
-                      +{periodA.followingDelta}
+                      {periodA.followingDelta >= 0
+                        ? `+${periodA.followingDelta}`
+                        : periodA.followingDelta}
                     </div>
                   </div>
                 </div>
@@ -685,7 +729,11 @@ export default function AnalyticsPanel({
                   <span className="analytics-v2-box-label">Период B</span>
                   <span className="analytics-v2-box-dates">
                     <Calendar size={14} className="text-gray-400" />
-                    5–7 октября 2024
+                    {periodB.start && periodB.end
+                      ? `${formatShortDate(periodB.start.date)} – ${formatShortDate(periodB.end.date)}`
+                      : demo
+                      ? "5–7 октября"
+                      : "Нет данных"}
                   </span>
                 </div>
                 <div className="analytics-v2-compare-metrics">
@@ -694,13 +742,17 @@ export default function AnalyticsPanel({
                       Прирост подписчиков
                     </p>
                     <div className="analytics-v2-metric-val">
-                      +{periodB.followersDelta}
+                      {periodB.followersDelta >= 0
+                        ? `+${periodB.followersDelta}`
+                        : periodB.followersDelta}
                     </div>
                   </div>
                   <div>
                     <p className="analytics-v2-metric-sub">Прирост подписок</p>
                     <div className="analytics-v2-metric-val">
-                      +{periodB.followingDelta}
+                      {periodB.followingDelta >= 0
+                        ? `+${periodB.followingDelta}`
+                        : periodB.followingDelta}
                     </div>
                   </div>
                 </div>
@@ -714,11 +766,14 @@ export default function AnalyticsPanel({
               </div>
               <div className="analytics-v2-insight-text">
                 <h4 className="analytics-v2-insight-title">
-                  Период B: +{growthDiff} подписчика
+                  {growthDiff >= 0
+                    ? `Период B: +${growthDiff} подписчиков`
+                    : `Период B: ${growthDiff} подписчиков`}
                 </h4>
                 <p className="analytics-v2-insight-desc">
-                  Прирост за второй период выше на {growthDiff}. Темп роста
-                  увеличился на {growthPercent}%.
+                  {chartData.length >= 7 || demo
+                    ? `Прирост за второй период отличается на ${growthDiff}. Темп роста: ${growthPercent}%.`
+                    : "Для точного сопоставления периодов требуется накопить от 7 снимков."}
                 </p>
               </div>
             </div>

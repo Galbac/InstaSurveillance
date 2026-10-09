@@ -19,12 +19,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [pwa, setPwa] = useState(false);
   useEffect(() => {
     let alive = true;
-    const controller = new AbortController();
-    fetch("/api/v1/config/public", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((r) => (r.ok ? r.json() : null))
+    client
+      .fetchQuery({
+        queryKey: ["public-config"],
+        queryFn: () =>
+          fetch("/api/v1/config/public", { cache: "default" }).then((r) =>
+            r.ok ? r.json() : null,
+          ),
+        staleTime: 60000,
+      })
       .then((config) => {
         if (!alive) return;
         setPwa(config?.enable_pwa === true);
@@ -40,9 +43,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       .catch(() => {});
     return () => {
       alive = false;
-      controller.abort();
     };
-  }, []);
+  }, [client]);
   return (
     <QueryClientProvider client={client}>
       {children}

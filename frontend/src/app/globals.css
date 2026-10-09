@@ -1027,7 +1027,7 @@ input[type="checkbox"] {
 .topbar {
   height: 76px;
   padding: 0 32px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;

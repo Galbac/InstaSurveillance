@@ -12,6 +12,7 @@ export function authSchema(mode: AuthMode, localEmailVerification = false) {
     .object({
       email: z.string(),
       password: z.string(),
+      confirm_password: z.string().default(""),
       remember: z.boolean(),
       terms: z.boolean(),
       verification_code: z.string().default(""),
@@ -50,8 +51,23 @@ export function authSchema(mode: AuthMode, localEmailVerification = false) {
         context.addIssue({
           code: "custom",
           path: ["password"],
-          message: "Пароль должен содержать от 12 до 256 символов",
+          message: "Пароль должен содержать не менее 12 символов",
         });
+      }
+      if (mode === "register") {
+        if (!data.confirm_password) {
+          context.addIssue({
+            code: "custom",
+            path: ["confirm_password"],
+            message: "Повтори пароль",
+          });
+        } else if (data.password !== data.confirm_password) {
+          context.addIssue({
+            code: "custom",
+            path: ["confirm_password"],
+            message: "Пароли не совпадают",
+          });
+        }
       }
       if (mode === "register" && !data.terms) {
         context.addIssue({
