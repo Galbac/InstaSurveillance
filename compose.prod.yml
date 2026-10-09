@@ -243,7 +243,9 @@ services:
     restart: unless-stopped
     init: true
     read_only: true
-    tmpfs: [/tmp, /app/.next/cache:uid=1001,gid=1001,mode=0700]
+    tmpfs:
+      - /tmp
+      - "/app/.next/cache:uid=1001,gid=1001,mode=0700"
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     depends_on: {backend: {condition: service_healthy}}
