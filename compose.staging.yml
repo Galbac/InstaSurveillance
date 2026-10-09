@@ -4,6 +4,8 @@ name: instasurveillance-staging
 x-staging-environment: &staging-environment
   APP_ENV: staging
 services:
+  db:
+    cpus: ${DB_CPU_LIMIT:-1.0}
   migrate:
     environment: *staging-environment
   backend:

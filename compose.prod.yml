@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
   db:
     mem_limit: ${DB_MEMORY_LIMIT:-2g}
-    cpus: 2.0
+    cpus: ${DB_CPU_LIMIT:-2.0}
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
