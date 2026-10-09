@@ -10,22 +10,6 @@ export class ApiError extends Error {
     super(message);
   }
 }
-let cachedCsrf: { token: string; expires: number } | null = null;
-async function getCsrfToken(): Promise<string> {
-  if (cachedCsrf && Date.now() < cachedCsrf.expires) {
-    return cachedCsrf.token;
-  }
-  const response = await fetch("/api/v1/auth/csrf", {
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error("Не удалось связаться с сервером");
-  const data = await response.json();
-  // CSRF tokens typically remain valid for the session or at least several minutes
-  cachedCsrf = { token: data.csrf_token, expires: Date.now() + 5 * 60 * 1000 };
-  return data.csrf_token;
-}
-
 export async function api<T>(
   path: string,
   options: RequestInit = {},
@@ -33,12 +17,20 @@ export async function api<T>(
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData))
     headers.set("Content-Type", "application/json");
-  if (options.method && !["GET", "HEAD"].includes(options.method)) {
-    const token = await getCsrfToken();
-    headers.set("X-CSRF-Token", token);
+
+  const isMutation = options.method && !["GET", "HEAD"].includes(options.method);
+  if (isMutation) {
+    const response = await fetch("/api/v1/auth/csrf", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Не удалось связаться с сервером");
+    const data = await response.json();
+    headers.set("X-CSRF-Token", data.csrf_token);
     if (!headers.has("Idempotency-Key"))
       headers.set("Idempotency-Key", crypto.randomUUID());
   }
+
   const response = await fetch("/api/v1" + path, {
     ...options,
     headers,
@@ -55,6 +47,29 @@ export async function api<T>(
         "Сервис временно недоступен",
         response.status,
       );
+    }
+    // If CSRF check failed on mutation (e.g. cookie expired or updated), retry once with fresh CSRF token
+    if (data.error?.code === "csrf_failed" && isMutation) {
+      const csrfRes = await fetch("/api/v1/auth/csrf", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (csrfRes.ok) {
+        const csrfData = await csrfRes.json();
+        headers.set("X-CSRF-Token", csrfData.csrf_token);
+        const retryRes = await fetch("/api/v1" + path, {
+          ...options,
+          headers,
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (retryRes.ok) {
+          return retryRes.status === 204 ? (undefined as T) : retryRes.json();
+        }
+        try {
+          data = await retryRes.json();
+        } catch {}
+      }
     }
     throw new ApiError(
       data.error?.code || "unknown",
