@@ -49,7 +49,8 @@ export default function ConnectionPanel({
     [showPassword, setShowPassword] = useState(false);
   const flags = useQuery({
     queryKey: ["public-config"],
-    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+    queryFn: () => api<PublicConfig>("/config/public"),
+    staleTime: 60000,
   });
   const connection = useQuery({
     queryKey: ["connection", profile?.id],
@@ -250,7 +251,21 @@ export default function ConnectionPanel({
               textAlign: "center",
             }}
           >
-            Состояние: <strong>{connection.data.display_status}</strong>
+            Состояние:{" "}
+            <strong>
+              {{
+                active: "Подключён",
+                disconnected: "Не подключён",
+                connecting: "Подключение…",
+                syncing: "Идёт сбор данных",
+                cooldown: "Ожидание после ограничения",
+                challenge_required: "Требуется проверка в Instagram",
+                reconnect_required: "Требуется переподключение",
+                provider_unavailable: "Instagram временно недоступен",
+                paused_by_user: "Приостановлено",
+                disabled: "Отключено",
+              }[connection.data.display_status] || connection.data.display_status}
+            </strong>
             {connection.data.next_allowed_at && (
               <> • След. сбор: {date(connection.data.next_allowed_at)}</>
             )}
@@ -366,7 +381,7 @@ export default function ConnectionPanel({
                     alignItems: "center",
                   }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                 </button>
               </div>
               {connectErrors.password && (
@@ -416,9 +431,7 @@ export default function ConnectionPanel({
             >
               {busy
                 ? "Подключение…"
-                : profile
-                ? "Переподключить"
-                : "Войти через Instagram"}
+                : "Войти"}
             </button>
           </form>
         )}

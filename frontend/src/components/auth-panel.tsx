@@ -14,9 +14,11 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
   const router = useRouter();
   const config = useQuery({
     queryKey: ["public-config"],
-    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+    queryFn: () => api<PublicConfig>("/config/public"),
+    staleTime: 60000,
   });
   const form = useForm({
+    mode: "onChange",
     resolver: zodResolver(
       authSchema(mode, config.data?.local_email_verification ?? false),
     ),
@@ -373,7 +375,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                         alignItems: "center",
                       }}
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                   </div>
                   {form.formState.errors.password && (
@@ -426,7 +428,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                         alignItems: "center",
                       }}
                     >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                   </div>
                   {form.formState.errors.confirm_password && (

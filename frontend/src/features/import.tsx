@@ -38,7 +38,8 @@ export default function ImportPanel({
   }, [busy, files.length]);
   const flags = useQuery({
     queryKey: ["public-config"],
-    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+    queryFn: () => api<PublicConfig>("/config/public"),
+    staleTime: 60000,
   });
   const q = useQuery({
     queryKey: ["import-job", jobId],

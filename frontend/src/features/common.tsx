@@ -175,6 +175,8 @@ export const errorCodes: Record<string, string> = {
   account_in_use: "Этот аккаунт уже подключён. Обратитесь в поддержку.",
   provider_disabled:
     "Автоматическое подключение отключено оператором. История и архив доступны.",
+  provider_unavailable:
+    "Серверы Instagram временно недоступны или отклонили запрос. Попробуйте позже или используйте загрузку архива.",
 };
 export function JobProgress({ job }: { job: Job }) {
   return (
@@ -190,9 +192,6 @@ export function JobProgress({ job }: { job: Job }) {
                 ? "Нужен код"
                 : message(job.stage)}
       </span>
-      <p>
-        Задание: <code>{job.id}</code>
-      </p>
       {job.details.stage_count !== undefined && (
         <p>Получено записей: {job.details.stage_count}</p>
       )}

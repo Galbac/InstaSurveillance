@@ -506,13 +506,7 @@ function Workspace({
               {view === "help" && <SupportPanel demo={demo} />}
             </>
           )}
-          <footer className="workspace-footer">
-            <span>Твои связи. Твоя история.</span>
-            <span>
-              InstaSurveillance <span className="footer-dot">•</span>{" "}
-              Независимый сервис
-            </span>
-          </footer>
+          {/* Footer removed as requested */}
         </main>
       </div>
       {more && (

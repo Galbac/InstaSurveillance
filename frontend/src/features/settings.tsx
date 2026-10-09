@@ -474,7 +474,7 @@ export default function SettingsPanel({
                   title={showCurrentPass ? "Скрыть пароль" : "Показать пароль"}
                   onClick={() => setShowCurrentPass(!showCurrentPass)}
                 >
-                  {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showCurrentPass ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
               </div>
               {passwordErrors.current && (
@@ -513,7 +513,7 @@ export default function SettingsPanel({
                   title={showNewPass ? "Скрыть пароль" : "Показать пароль"}
                   onClick={() => setShowNewPass(!showNewPass)}
                 >
-                  {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showNewPass ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
               </div>
               {passwordErrors.new && (
@@ -618,7 +618,7 @@ export default function SettingsPanel({
                   title={showEmailPass ? "Скрыть пароль" : "Показать пароль"}
                   onClick={() => setShowEmailPass(!showEmailPass)}
                 >
-                  {showEmailPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showEmailPass ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
               </div>
               {emailErrors.password && (

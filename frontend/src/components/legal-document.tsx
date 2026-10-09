@@ -5,7 +5,11 @@ import Brand from "@/components/brand";
 import { api } from "@/lib/api";
 type Configuration = { operator_name: string; operator_address: string; operator_jurisdiction: string; support_email: string; privacy_version: string; terms_version: string; backup_retention_days: number };
 export default function LegalDocument({ privacy }: { privacy: boolean }) {
- const { data, isError } = useQuery({ queryKey: ["public-config"], queryFn: ({ signal }) => api<Configuration>("/config/public", { signal }) });
+ const { data, isError } = useQuery({
+   queryKey: ["public-config"],
+   queryFn: () => api<Configuration>("/config/public"),
+   staleTime: 60000,
+ });
  return <main className="public-document"><Brand /><h1>{privacy ? "Политика обработки данных" : "Условия использования"}</h1>
  <p>Версия: {data ? privacy ? data.privacy_version : data.terms_version : "загружается…"}</p>
  <h2>Оператор и обращения</h2>
