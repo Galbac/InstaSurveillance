@@ -215,7 +215,22 @@ def process_instagram(guard):
             try:
                 client.login(credentials["username"], credentials["password"], verification_code=verification)
             except Exception as error:
+                from importlib.metadata import version
+
                 import structlog
+
+                diagnostic = {
+                    "provider_responses": client.policy_responses.copy(),
+                    "provider_version": version("instagrapi"),
+                    "requests": details.get("requests", 0) + client.policy_requests,
+                }
+                failure = error
+                if not isinstance(failure, AppError):
+                    status = getattr(client.last_response, "status_code", None)
+                    failure = ProviderError(
+                        classify(error), http_status=status if status and status >= 400 else None
+                    )
+                failure.details.update(diagnostic)
 
                 structlog.get_logger().error(
                     "instagram_login_failed",
@@ -223,11 +238,12 @@ def process_instagram(guard):
                     error_type=type(error).__name__,
                     error_code=classify(error),
                     provider_http_status=getattr(error, "details", {}).get("provider_http_status"),
+                    provider_responses=client.policy_responses,
                 )
                 if classify(error) not in ("cancelled", "expired"):
                     persist_login_device(guard, client)
                 if classify(error) != "awaiting_2fa":
-                    raise
+                    raise failure from None
                 ttl = vault.ttl("login:" + guard.job_id)
                 if ttl <= 0:
                     raise ProviderError("expired") from None
@@ -247,6 +263,7 @@ def process_instagram(guard):
                     job.status, job.stage = "awaiting_2fa", "verification_required"
                     job.details = {
                         **job.details,
+                        **diagnostic,
                         "method": "supported_code",
                         "requests": details.get("requests", 0) + client.policy_requests,
                         "expires_at": (now() + timedelta(seconds=ttl)).isoformat(),
@@ -434,6 +451,15 @@ def fail(guard, error):
         provider_http_status = getattr(error, "details", {}).get("provider_http_status")
         if provider_http_status:
             job.details = {**job.details, "provider_http_status": provider_http_status}
+        diagnostic = getattr(error, "details", {})
+        job.details = {
+            **job.details,
+            **{
+                key: diagnostic[key]
+                for key in ("provider_responses", "provider_version", "requests")
+                if key in diagnostic
+            },
+        }
         if job.kind in ("connect", "sync"):
             profile = required(db.get(Profile, job.profile_id))
             if profile and profile.generation == job.details.get("generation"):

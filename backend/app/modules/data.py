@@ -135,6 +135,7 @@ def job_dict(x: Job) -> dict:
                 "destination_mask",
                 "expires_at",
                 "provider_http_status",
+                "provider_responses",
             )
         },
         "updated_at": x.updated_at,

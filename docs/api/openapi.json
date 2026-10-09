@@ -645,9 +645,16 @@
             "title": "Last Sync"
           },
           "next_allowed_at": {
-            "format": "date-time",
-            "title": "Next Allowed At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Allowed At"
           },
           "next_sync": {
             "anyOf": [
@@ -1369,6 +1376,14 @@
               }
             ],
             "title": "Provider Http Status"
+          },
+          "provider_responses": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProviderResponseDTO"
+            },
+            "title": "Provider Responses",
+            "type": "array"
           },
           "provider_version": {
             "anyOf": [
@@ -2229,6 +2244,51 @@
           "label"
         ],
         "title": "ProfileMetadata",
+        "type": "object"
+      },
+      "ProviderResponseDTO": {
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Category"
+          },
+          "http_status": {
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "response_kind": {
+            "enum": [
+              "empty",
+              "json",
+              "non_json"
+            ],
+            "title": "Response Kind",
+            "type": "string"
+          },
+          "retry_after_present": {
+            "title": "Retry After Present",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "endpoint",
+          "http_status",
+          "response_kind",
+          "error_category",
+          "retry_after_present"
+        ],
+        "title": "ProviderResponseDTO",
         "type": "object"
       },
       "PublicConfigDTO": {

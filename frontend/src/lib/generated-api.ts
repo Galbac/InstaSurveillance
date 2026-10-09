@@ -1402,11 +1402,8 @@ export interface components {
             label: string;
             /** Last Sync */
             last_sync: string | null;
-            /**
-             * Next Allowed At
-             * Format: date-time
-             */
-            next_allowed_at: string;
+            /** Next Allowed At */
+            next_allowed_at: string | null;
             /** Next Sync */
             next_sync: string | null;
             /** Paused */
@@ -1667,6 +1664,11 @@ export interface components {
             pages?: number | null;
             /** Provider Http Status */
             provider_http_status?: number | null;
+            /**
+             * Provider Responses
+             * @default []
+             */
+            provider_responses: components["schemas"]["ProviderResponseDTO"][];
             /** Provider Version */
             provider_version?: string | null;
             /** Requests */
@@ -1945,6 +1947,22 @@ export interface components {
         ProfileMetadata: {
             /** Label */
             label: string;
+        };
+        /** ProviderResponseDTO */
+        ProviderResponseDTO: {
+            /** Endpoint */
+            endpoint: string;
+            /** Error Category */
+            error_category: string | null;
+            /** Http Status */
+            http_status: number;
+            /**
+             * Response Kind
+             * @enum {string}
+             */
+            response_kind: "empty" | "json" | "non_json";
+            /** Retry After Present */
+            retry_after_present: boolean;
         };
         /** PublicConfigDTO */
         PublicConfigDTO: {

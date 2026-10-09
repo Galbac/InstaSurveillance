@@ -267,7 +267,7 @@ export default function ConnectionPanel({
               }[connection.data.display_status] || connection.data.display_status}
             </strong>
             {connection.data.next_allowed_at && (
-              <> • След. сбор: {date(connection.data.next_allowed_at)}</>
+              <> • Повторное подключение доступно после {date(connection.data.next_allowed_at)}</>
             )}
           </div>
         )}

@@ -514,6 +514,42 @@ def test_admin_mfa_role_gate_and_replay(context):
     )
 
 
+def test_connection_does_not_invent_a_deadline_after_rejected_login(context):
+    client, factory, _uid, pid = context
+    with factory() as db:
+        profile = db.get(Profile, pid)
+        profile.status = "reconnect_required"
+        profile.cooldown_until = None
+        db.commit()
+    response = client.get(f"/api/v1/profiles/{pid}/connection")
+    assert response.status_code == 200
+    assert response.json()["next_allowed_at"] is None
+    assert response.json()["can_sync"] is False
+
+
+def test_connection_preserves_real_cooldown_and_clears_expired_deadline(context):
+    client, factory, _uid, pid = context
+    deadline = now() + timedelta(minutes=5)
+    with factory() as db:
+        profile = db.get(Profile, pid)
+        profile.status = "cooldown"
+        profile.cooldown_until = deadline
+        db.commit()
+    response = client.get(f"/api/v1/profiles/{pid}/connection")
+    assert response.status_code == 200
+    assert response.json()["next_allowed_at"] == deadline.isoformat().replace("+00:00", "Z")
+    assert response.json()["can_sync"] is False
+    with factory() as db:
+        profile = db.get(Profile, pid)
+        profile.status = "active"
+        profile.cooldown_until = now() - timedelta(minutes=1)
+        db.commit()
+    response = client.get(f"/api/v1/profiles/{pid}/connection")
+    assert response.status_code == 200
+    assert response.json()["next_allowed_at"] is None
+    assert response.json()["can_sync"] is True
+
+
 def test_local_instagram_cooldown_blocks_credentials_before_vault_write(context, monkeypatch):
     from app.modules import data
 

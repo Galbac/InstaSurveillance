@@ -156,7 +156,7 @@ export const errorCodes: Record<string, string> = {
   challenge_required:
     "Instagram просит подтвердить вход. Откройте официальное приложение, завершите проверку и переподключите аккаунт.",
   cooldown:
-    "Instagram ограничил запросы. Дождитесь указанного времени; архив остаётся доступен.",
+    "Instagram временно отклонил запросы сервиса.",
   reconnect_required:
     "Сессия больше не действует. Переподключите аккаунт явно.",
   request_budget_exhausted:
@@ -202,8 +202,17 @@ export function JobProgress({ job }: { job: Job }) {
       )}
       {job.error_code && (
         <p className="notice error">
-          {errorCodes[job.error_code] ||
+          {job.error_code === "cooldown" && job.kind === "connect"
+            ? "Instagram отклонил создание новой сессии через сервис. Вход через официальный Instagram может при этом работать."
+            : errorCodes[job.error_code] ||
             "Не удалось завершить операцию. История сохранена; обратитесь в поддержку."}
+        </p>
+      )}
+      {job.error_code === "cooldown" && (
+        <p className="muted">
+          {job.next_allowed_at
+            ? `Повтор доступен после ${date(job.next_allowed_at)}.`
+            : "Instagram не сообщил срок повторной попытки."}
         </p>
       )}
       {job.status === "partial" && (

@@ -214,6 +214,93 @@ def test_instagram_429_stops_at_one_request(monkeypatch):
     assert client.last_json == {}
 
 
+def test_instagram_login_diagnostic_identifies_rejected_step_without_secrets(monkeypatch):
+    import requests
+
+    from app.integrations.instagram import ProviderError, new_client
+
+    calls = []
+
+    def fake(session, method, url, **kwargs):
+        calls.append(url)
+        response = requests.Response()
+        response.status_code = 200 if len(calls) == 1 else 429
+        response._content = b'{"message":"Please wait a few minutes", "sessionid":"private-token"}'
+        response.headers["Authorization"] = "private-header"
+        return response
+
+    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    client = new_client(None, 30, 0, lambda: None)
+    client.private.request(
+        "POST",
+        "https://b.i.instagram.com/api/v1/bloks/apps/com.bloks.www.bloks.caa.login.process_client_data_and_redirect/",
+    )
+    with pytest.raises(ProviderError) as error:
+        client.private.request(
+            "POST",
+            "https://b.i.instagram.com/api/v1/bloks/async_action/com.bloks.www.bloks.caa.login.async.send_login_request/?token=private-query",
+        )
+    diagnostics = error.value.details["provider_responses"]
+    assert [(item["endpoint"], item["http_status"]) for item in diagnostics] == [
+        ("caa/prepare", 200),
+        ("caa/login", 429),
+    ]
+    assert diagnostics[-1]["error_category"] == "please_wait_a_few_minutes"
+    assert error.value.details["requests"] == 2
+    assert "private-" not in json.dumps(error.value.details)
+    assert len(calls) == 2
+
+
+def test_instagram_login_does_not_fetch_unrelated_feeds(monkeypatch):
+    from app.integrations.instagram import new_client
+
+    client = new_client(None, 30, 0, lambda: None)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("Login must not fetch timeline or reels before identity verification")
+
+    monkeypatch.setattr(client, "get_reels_tray_feed", unexpected)
+    monkeypatch.setattr(client, "get_timeline_feed", unexpected)
+    assert client.login_flow() is True
+    assert client.policy_requests == 0
+
+
+def test_instagram_adapter_keeps_upstream_caa_credential_payload(monkeypatch):
+    from copy import deepcopy
+    from uuid import UUID
+
+    import requests
+    from instagrapi import Client
+    from instagrapi.mixins import bloks
+
+    from app.integrations.instagram import new_client
+
+    calls = []
+
+    def fake(session, method, url, **kwargs):
+        calls.append((method, url, deepcopy(kwargs.get("data"))))
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b'{"status":"ok"}'
+        response.url = url
+        response.request = requests.Request(method, url).prepare()
+        return response
+
+    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(bloks, "uuid4", lambda: UUID(int=1))
+    monkeypatch.setattr(bloks.time, "time", lambda: 1_700_000_000.0)
+    guarded = new_client(None, 30, 0, lambda: None)
+    upstream = Client(settings=guarded.get_settings())
+    for client in (upstream, guarded):
+        client.caa_aac = "synthetic-context"
+        client.caa_waterfall_id = "synthetic-flow"
+        client.bloks_caa_login_send_request(
+            "#PWD_TEST:synthetic-password", username="synthetic-user", auto_prepare=False
+        )
+    assert len(calls) == 2
+    assert calls[0] == calls[1]
+
+
 def test_versioned_encryption_rotates_without_losing_old_records():
     from cryptography.fernet import Fernet, InvalidToken
 

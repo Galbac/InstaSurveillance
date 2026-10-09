@@ -52,18 +52,21 @@ def connection_status(profile_id: str, user: Verified, db: DB):
             .order_by(PlatformRun.created_at)
         )
     )
-    next_allowed = max(
-        [
-            now(),
-            profile.cooldown_until or now(),
+    current_time = now()
+    deadlines = [
+        deadline
+        for deadline in (
+            profile.cooldown_until,
             runs[-1].created_at + timedelta(hours=settings.instagram_manual_min_interval_hours)
             if runs
-            else now(),
+            else None,
             runs[0].created_at + timedelta(hours=24)
             if len(runs) >= settings.instagram_max_runs_per_24h
-            else now(),
-        ]
-    )
+            else None,
+        )
+        if deadline is not None and deadline > current_time
+    ]
+    next_allowed = max(deadlines) if deadlines else None
     status = (
         "disabled"
         if not settings.instagram_private_enabled
@@ -79,7 +82,7 @@ def connection_status(profile_id: str, user: Verified, db: DB):
         "can_sync": settings.instagram_private_enabled
         and not profile.paused
         and profile.status == "active"
-        and next_allowed <= now(),
+        and (next_allowed is None or next_allowed <= current_time),
         "provider_enabled": settings.instagram_private_enabled,
     }
 

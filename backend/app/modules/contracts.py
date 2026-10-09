@@ -85,8 +85,17 @@ class EventDTO(BaseModel):
     type: Literal["added", "removed"]
 
 
+class ProviderResponseDTO(BaseModel):
+    endpoint: str
+    http_status: int
+    response_kind: Literal["empty", "json", "non_json"]
+    error_category: str | None
+    retry_after_present: bool
+
+
 class JobDetails(BaseModel):
     provider_http_status: int | None = None
+    provider_responses: list[ProviderResponseDTO] = []
     counts: Counts | None = None
     stage_count: int | None = None
     snapshot_id: str | None = None
@@ -216,7 +225,7 @@ class ConnectionDTO(ProfileDTO):
     display_status: str
     job: JobDTO | None
     can_sync: bool
-    next_allowed_at: datetime
+    next_allowed_at: datetime | None
     provider_enabled: bool
 
 

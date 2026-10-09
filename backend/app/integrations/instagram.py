@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Callable
+from urllib.parse import urlparse
 
 from app.core.errors import AppError
 from app.domain.analytics import Relationships
@@ -23,6 +24,66 @@ SETTINGS_KEYS = {
     "push_disabled",
     "usdid",
 }
+
+LOGIN_ENDPOINTS = {
+    "com.bloks.www.bloks.caa.login.process_client_data_and_redirect": "caa/prepare",
+    "com.bloks.www.caa.login.oauth.token.fetch.async": "caa/oauth",
+    "com.bloks.www.bloks.caa.login.async.send_login_request": "caa/login",
+}
+
+
+def response_diagnostic(response, url: str) -> dict:
+    """Keep a closed set of response metadata, never payloads or credentials."""
+    path = urlparse(url).path
+    endpoint = "other"
+    for app, label in LOGIN_ENDPOINTS.items():
+        if path.endswith("/" + app + "/"):
+            endpoint = label
+            break
+    else:
+        for suffix, label in (
+            ("/graphql_www", "device/registration"),
+            ("/attestation/create_android_keystore/", "device/attestation"),
+            ("/accounts/login/", "accounts/login"),
+            ("/accounts/two_factor_login/", "accounts/2fa"),
+            ("/accounts/current_user/", "accounts/identity"),
+            ("/launcher/sync/", "device/launcher"),
+            ("/qe/sync/", "device/password_key"),
+            ("/feed/reels_tray/", "feed/reels"),
+            ("/feed/timeline/", "feed/timeline"),
+        ):
+            if path.endswith(suffix):
+                endpoint = label
+                break
+    category = None
+    kind = "empty" if not response.content else "non_json"
+    if response.content:
+        try:
+            data = response.json()
+            kind = "json"
+            if isinstance(data, dict):
+                message = data.get("message")
+                if isinstance(message, str) and "please wait a few minutes" in message.lower():
+                    category = "please_wait_a_few_minutes"
+                elif data.get("error_type") in (
+                    "bad_password",
+                    "needs_upgrade",
+                    "rate_limit_error",
+                    "sentry_block",
+                    "two_factor_required",
+                    "challenge_required",
+                    "feedback_required",
+                ):
+                    category = data["error_type"]
+        except ValueError:
+            pass
+    return {
+        "endpoint": endpoint,
+        "http_status": response.status_code,
+        "response_kind": kind,
+        "error_category": category,
+        "retry_after_present": "Retry-After" in response.headers,
+    }
 
 
 class ProviderError(AppError):
@@ -49,6 +110,12 @@ def new_client(
     class ControlledClient(Client):
         policy_requests: int = 0
         policy_pages: int = 0
+        policy_responses: list[dict]
+
+        def login_flow(self) -> bool:
+            # This service validates identity with account_info() after login.
+            # Fetching unrelated feeds can fail after authentication succeeded.
+            return True
 
         def private_request(
             self,
@@ -84,6 +151,7 @@ def new_client(
     client.private_request_logger.disabled = True
     client.logger.disabled = True
     client.delay_range = None
+    client.policy_responses = []
     count = 0
     last = 0.0
     for session in (client.private, client.public):
@@ -127,6 +195,8 @@ def new_client(
             kwargs["timeout"] = (10, 30)
             kwargs["allow_redirects"] = False
             result = _original(method, url, **kwargs)
+            if mode == "connect":
+                client.policy_responses.append(response_diagnostic(result, url))
             if result.status_code == 429:
                 # Preserve the actual rejected response for safe diagnostics;
                 # otherwise the library still points at the preceding response.
@@ -148,7 +218,10 @@ def new_client(
                         )
                     except ValueError, KeyError, TypeError:
                         retry_after = 0
-                raise ProviderError("cooldown", retry_after=max(0, retry_after), http_status=429)
+                error = ProviderError("cooldown", retry_after=max(0, retry_after), http_status=429)
+                if mode == "connect":
+                    error.details.update(provider_responses=client.policy_responses.copy(), requests=count)
+                raise error
             return result
 
         session.request = guarded  # pyright: ignore[reportAttributeAccessIssue] -- pinned library passes method, URL and keyword arguments; policy tests cover this seam.
