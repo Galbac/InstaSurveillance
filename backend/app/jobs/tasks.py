@@ -57,6 +57,41 @@ def clear_file(key: str) -> None:
         db.commit()
 
 
+def persist_login_device(guard, client) -> None:
+    """Keep device identity across failed logins without persisting credentials."""
+    device = {
+        key: value
+        for key, value in safe_settings(client).items()
+        if key not in ("cookies", "authorization_data", "last_login")
+    }
+    settings = get_settings()
+    with SessionLocal() as db:
+        current = required(db.get(Job, guard.job_id))
+        owner = db.scalar(select(User).where(User.id == current.user_id).with_for_update())
+        profile = db.scalar(select(Profile).where(Profile.id == current.profile_id).with_for_update())
+        if (
+            not owner
+            or owner.status != "active"
+            or not profile
+            or profile.generation != current.details.get("generation")
+            or current.status in TERMINAL
+        ):
+            raise ProviderError("cancelled")
+        secret = db.get(SessionSecret, profile.id)
+        if secret is None:
+            secret = SessionSecret(profile_id=profile.id)
+            db.add(secret)
+        else:
+            # Updating device metadata must retain any previously saved session.
+            previous = json.loads(
+                session_cipher(secret.key_version).decrypt(secret.encrypted_settings.encode())
+            )
+            device = {**previous, **device}
+        secret.encrypted_settings = session_cipher().encrypt(json.dumps(device).encode()).decode()
+        secret.key_version = settings.instagram_session_key_version
+        db.commit()
+
+
 def process_import(guard):
     settings = get_settings()
     with SessionLocal() as db:
@@ -158,6 +193,13 @@ def process_instagram(guard):
             credentials = json.loads(pending_cipher().decrypt(encrypted))
             pending = vault.get("pending:" + guard.job_id)
             stored = json.loads(pending_cipher().decrypt(pending)) if pending else None
+            if stored is None:
+                with SessionLocal() as db:
+                    secret = db.get(SessionSecret, profile_id)
+                    if secret:
+                        stored = json.loads(
+                            session_cipher(secret.key_version).decrypt(secret.encrypted_settings.encode())
+                        )
             remaining = settings.instagram_request_budget - details.get("requests", 0)
             if remaining <= 0:
                 raise ProviderError("budget_exceeded")
@@ -169,6 +211,7 @@ def process_instagram(guard):
             )
             code = vault.getdel("code:" + guard.job_id)
             verification = pending_cipher().decrypt(code).decode() if code else ""
+            persist_login_device(guard, client)
             try:
                 client.login(credentials["username"], credentials["password"], verification_code=verification)
             except Exception as error:
@@ -181,6 +224,8 @@ def process_instagram(guard):
                     error_code=classify(error),
                     provider_http_status=getattr(error, "details", {}).get("provider_http_status"),
                 )
+                if classify(error) not in ("cancelled", "expired"):
+                    persist_login_device(guard, client)
                 if classify(error) != "awaiting_2fa":
                     raise
                 ttl = vault.ttl("login:" + guard.job_id)
@@ -396,11 +441,15 @@ def fail(guard, error):
                     profile.status = code
                     if code == "cooldown":
                         retry_after = getattr(error, "details", {}).get("retry_after", 0)
-                        cooldown_until = now() + timedelta(
-                            seconds=max(settings.instagram_platform_cooldown_hours * 3600, retry_after)
-                        )
-                        profile.cooldown_until = cooldown_until
-                        job.details = {**job.details, "next_allowed_at": cooldown_until.isoformat()}
+                        delay = max(settings.instagram_platform_cooldown_hours * 3600, retry_after)
+                        if delay > 0:
+                            cooldown_until = now() + timedelta(seconds=delay)
+                            profile.cooldown_until = cooldown_until
+                            job.details = {**job.details, "next_allowed_at": cooldown_until.isoformat()}
+                        else:
+                            profile.cooldown_until = None
+                            profile.status = "reconnect_required"
+                            job.details = {**job.details, "next_allowed_at": None}
                 elif job.kind == "connect":
                     profile.status = "reconnect_required"
                 elif profile.status == "syncing":
@@ -471,6 +520,15 @@ def process(job_id: str):
                 render(details["export_id"], guard)
                 finish(guard)
     except Exception as error:
+        import structlog
+
+        structlog.get_logger().error(
+            "job_execution_failed",
+            job_id=job_id,
+            error_type=type(error).__name__,
+            error_code=classify(error),
+            provider_http_status=getattr(error, "details", {}).get("provider_http_status"),
+        )
         try:
             fail(guard, error)
         except Exception as persistence_error:

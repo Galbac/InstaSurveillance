@@ -21,6 +21,7 @@ SETTINGS_KEYS = {
     "timezone_offset",
     "timezone_name",
     "push_disabled",
+    "usdid",
 }
 
 
@@ -63,6 +64,7 @@ def new_client(
             # Pinned-version seam: bypass library auto-challenge and implicit retries.
             if self.authorization:
                 headers = {**(headers or {}), "Authorization": self.authorization}
+            self.private_requests_count += 1
             self._send_private_request(
                 endpoint,
                 data=data,
@@ -126,6 +128,10 @@ def new_client(
             kwargs["allow_redirects"] = False
             result = _original(method, url, **kwargs)
             if result.status_code == 429:
+                # Preserve the actual rejected response for safe diagnostics;
+                # otherwise the library still points at the preceding response.
+                client.last_response = result
+                client.last_json = {}
                 try:
                     retry_after = int(result.headers.get("Retry-After", "0"))
                 except ValueError:
@@ -157,7 +163,13 @@ def classify(error: Exception) -> str:
         return "awaiting_2fa"
     if name in ("ChallengeRequired", "ChallengeError", "ChallengeUnknownStep", "RecaptchaChallengeForm"):
         return "challenge_required"
-    if name in ("ClientThrottledError", "PleaseWaitFewMinutes", "FeedbackRequired", "SentryBlock"):
+    if name in (
+        "ClientThrottledError",
+        "RateLimitError",
+        "PleaseWaitFewMinutes",
+        "FeedbackRequired",
+        "SentryBlock",
+    ):
         return "cooldown"
     if name in ("LoginRequired", "ClientLoginRequired"):
         return "reconnect_required"

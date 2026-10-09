@@ -131,6 +131,52 @@ def mutate(client, method, path, **kwargs):
     )
 
 
+def test_failed_login_device_persists_without_credentials_and_rejects_stale_generation(context, monkeypatch):
+    from types import SimpleNamespace
+
+    from cryptography.fernet import Fernet
+
+    from app.integrations.instagram import ProviderError
+    from app.jobs import tasks
+    from app.models import SessionSecret
+
+    _, factory, uid, pid = context
+    synthetic_cipher = Fernet(Fernet.generate_key())
+    monkeypatch.setattr(tasks, "session_cipher", lambda version=None: synthetic_cipher)
+    with factory() as db:
+        job = Job(user_id=uid, profile_id=pid, kind="connect", status="connecting", details={"generation": 0})
+        db.add(job)
+        db.commit()
+        identity = job.id
+    guard = SimpleNamespace(job_id=identity)
+    client = SimpleNamespace(
+        get_settings=lambda: {
+            "uuids": {"uuid": "stable-device"},
+            "usdid": {"private_key": "synthetic-attestation-key"},
+            "password": "never-persist",
+            "verification_code": "never-persist",
+            "authorization_data": {"sessionid": "unverified-session"},
+            "cookies": {"sessionid": "unverified-session"},
+        }
+    )
+    tasks.persist_login_device(guard, client)
+    with factory() as db:
+        secret = db.get(SessionSecret, pid)
+        assert secret
+        stored = json.loads(
+            tasks.session_cipher(secret.key_version).decrypt(secret.encrypted_settings.encode())
+        )
+        assert stored == {
+            "uuids": {"uuid": "stable-device"},
+            "usdid": {"private_key": "synthetic-attestation-key"},
+        }
+        profile = db.get(Profile, pid)
+        profile.generation += 1
+        db.commit()
+    with pytest.raises(ProviderError, match="cancelled"):
+        tasks.persist_login_device(guard, client)
+
+
 def snapshot(factory, pid, followers, following, day=0):
     from app.domain.analytics import Relationships
 

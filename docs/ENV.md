@@ -27,7 +27,7 @@ Secrets не передаются frontend. API не получает owner/work
 | `INSTAGRAM_MAX_RUNS_PER_24H` | `int` | `2` |
 | `INSTAGRAM_REQUEST_BUDGET` | `int` | `100` |
 | `INSTAGRAM_REQUEST_SPACING_SECONDS` | `float` | `2` |
-| `INSTAGRAM_PLATFORM_COOLDOWN_HOURS` | `int` | `24` |
+| `INSTAGRAM_PLATFORM_COOLDOWN_HOURS` | `int >= 0` | `0` (защитная пауза отключена; Retry-After Instagram учитывается) |
 | `INSTAGRAM_CREDENTIAL_TTL_SECONDS` | `int` | `600` |
 | `MAX_PROFILES_PER_USER` | `int` | `1` |
 | `MAX_UPLOAD_BYTES` | `int` | `104857600` |

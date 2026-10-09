@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     instagram_max_runs_per_24h: int = 2
     instagram_request_budget: int = 100
     instagram_request_spacing_seconds: float = 2
-    instagram_platform_cooldown_hours: int = 24
+    instagram_platform_cooldown_hours: int = Field(default=0, ge=0)
     instagram_credential_ttl_seconds: int = Field(default=600, ge=1, le=600)
     max_profiles_per_user: int = 1
     max_upload_bytes: int = 104857600
@@ -136,7 +136,6 @@ class Settings(BaseSettings):
             self.instagram_max_runs_per_24h,
             self.instagram_request_budget,
             self.instagram_request_spacing_seconds,
-            self.instagram_platform_cooldown_hours,
             self.max_profiles_per_user,
             self.max_upload_bytes,
             self.max_unpacked_bytes,
