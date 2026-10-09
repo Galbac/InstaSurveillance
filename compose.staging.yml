@@ -1,0 +1,39 @@
+# Apply over compose.prod.yml for a single-server integration environment.
+# Production validation stays unchanged. Mail is captured locally, storage is local.
+name: instasurveillance-staging
+x-staging-environment: &staging-environment
+  APP_ENV: staging
+services:
+  migrate:
+    environment: *staging-environment
+  backend:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  worker:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  auth-worker:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  maintenance:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  scheduler:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  operator:
+    environment: *staging-environment
+    volumes: [staging_uploads:/uploads, staging_ledger:/ledger]
+  backup:
+    profiles: [production-only]
+  volume-metrics:
+    profiles: [monitoring]
+  mail:
+    image: axllent/mailpit:v1.29.4
+    restart: unless-stopped
+    ports: ['127.0.0.1:8025:8025']
+    mem_limit: 64m
+    cpus: 0.25
+volumes:
+  staging_uploads:
+  staging_ledger:
