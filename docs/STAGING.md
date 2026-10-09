@@ -38,7 +38,8 @@ docker compose --env-file /etc/instasurveillance/staging.env \
 docker compose --env-file /etc/instasurveillance/staging.env \
   -f compose.prod.yml -f compose.staging.yml run --rm migrate
 docker compose --env-file /etc/instasurveillance/staging.env \
-  -f compose.prod.yml -f compose.staging.yml run --rm --no-deps --user 0 backend \
+  -f compose.prod.yml -f compose.staging.yml run --rm --no-deps --user 0 \
+  --cap-add CHOWN --cap-add FOWNER backend \
   sh -c 'mkdir -p /uploads /ledger && chown 10001:10001 /uploads /ledger && chmod 700 /uploads /ledger'
 docker compose --env-file /etc/instasurveillance/staging.env \
   -f compose.prod.yml -f compose.staging.yml up -d --wait --wait-timeout 180
