@@ -77,7 +77,9 @@ def publish(
             or job.details.get("run_token") != guard.run_token
         ):
             raise AppError("cancelled", "Публикация отменена", 409)
-        if source == "instagrapi" and (profile.paused or profile.generation != job.details["generation"]):
+        if source in {"instagrapi", "aiograpi"} and (
+            profile.paused or profile.generation != job.details["generation"]
+        ):
             raise AppError("cancelled", "Подключение изменилось", 409)
         existing = db.scalar(select(Snapshot).where(Snapshot.job_id == job.id))
         duplicate = existing or db.scalar(
@@ -99,7 +101,7 @@ def publish(
             raise AppError(
                 "storage_quota", "Квота истории исчерпана. Удалите снимки или обратитесь в поддержку", 409
             )
-        if source == "instagrapi":
+        if source in {"instagrapi", "aiograpi"}:
             previous = db.scalar(
                 select(Snapshot)
                 .where(Snapshot.profile_id == profile.id)
@@ -154,7 +156,7 @@ def publish(
         job.status, job.stage = "completed", "completed"
         job.finished_at = now()
         job.details = {**job.details, "snapshot_id": snapshot.id, "counts": data.summary()}
-        if source == "instagrapi":
+        if source in {"instagrapi", "aiograpi"}:
             profile.last_sync = now()
             profile.status = "active"
         notify(

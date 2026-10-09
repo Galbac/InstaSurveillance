@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import zipfile
@@ -163,82 +164,113 @@ def test_backup_authenticated_roundtrip_and_truncation():
         decrypt_stream(io.BytesIO(changed), io.BytesIO(), key)
 
 
-def test_instagram_transport_read_allowlist_budget_and_no_hidden_retry(monkeypatch):
-    import requests
+@pytest.fixture
+def instagram_runtime(monkeypatch):
+    from app.integrations import instagram
+
+    original = instagram.new_client
+    with instagram.client_runtime() as (runner, clients):
+
+        def tracked(*args, **kwargs):
+            client = original(*args, **kwargs)
+            clients.append(client)
+            return client
+
+        runner.clients = clients
+        monkeypatch.setattr(instagram, "new_client", tracked)
+        yield runner
+
+
+def test_instagram_transport_read_allowlist_budget_and_no_hidden_retry(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
 
     from app.integrations.instagram import ProviderError, new_client
 
     calls = []
 
-    def fake(session, method, url, **kwargs):
+    async def fake(session, method, url, **kwargs):
         calls.append((method, url, kwargs))
-        response = requests.Response()
+        response = httpx.Response(200, request=httpx.Request(method, url))
         response.status_code = 200
         response._content = b"{}"
         return response
 
-    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", fake)
     client = new_client(None, 2, 0, lambda: None, mode="sync")
-    client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/")
+    instagram_runtime.run(client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/"))
     with pytest.raises(ProviderError) as error:
-        client.private.request("POST", "https://i.instagram.com/api/v1/friendships/create/123/")
+        instagram_runtime.run(
+            client.private.request("POST", "https://i.instagram.com/api/v1/friendships/create/123/")
+        )
     assert error.value.code == "operation_not_allowed"
-    client.private.request("GET", "https://i.instagram.com/api/v1/friendships/123/followers/")
+    instagram_runtime.run(
+        client.private.request("GET", "https://i.instagram.com/api/v1/friendships/123/followers/")
+    )
     with pytest.raises(ProviderError) as error:
-        client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/")
+        instagram_runtime.run(client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/"))
     assert error.value.code == "request_budget_exhausted"
-    assert len(calls) == 2 and all(not c[2]["allow_redirects"] for c in calls)
+    assert len(calls) == 2 and all(not c[2]["follow_redirects"] for c in calls)
 
 
-def test_instagram_429_stops_at_one_request(monkeypatch):
-    import requests
+def test_instagram_429_stops_at_one_request(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
 
     from app.integrations.instagram import ProviderError, new_client
 
     calls = []
 
-    def fake(session, method, url, **kwargs):
+    async def fake(session, method, url, **kwargs):
         calls.append(url)
-        response = requests.Response()
+        response = httpx.Response(200, request=httpx.Request(method, url))
         response.status_code = 429
         response.headers["Retry-After"] = "90000"
         return response
 
-    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", fake)
     client = new_client(None, 100, 0, lambda: None, mode="sync")
     with pytest.raises(ProviderError) as error:
-        client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/")
+        instagram_runtime.run(client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/"))
     assert error.value.code == "cooldown" and error.value.details["retry_after"] == 90000 and len(calls) == 1
     assert error.value.details["provider_http_status"] == 429
     assert client.last_response is not None and client.last_response.status_code == 429
     assert client.last_json == {}
 
 
-def test_instagram_login_diagnostic_identifies_rejected_step_without_secrets(monkeypatch):
-    import requests
+def test_instagram_login_diagnostic_identifies_rejected_step_without_secrets(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
 
     from app.integrations.instagram import ProviderError, new_client
 
     calls = []
 
-    def fake(session, method, url, **kwargs):
+    async def fake(session, method, url, **kwargs):
         calls.append(url)
-        response = requests.Response()
+        response = httpx.Response(200, request=httpx.Request(method, url))
         response.status_code = 200 if len(calls) == 1 else 429
         response._content = b'{"message":"Please wait a few minutes", "sessionid":"private-token"}'
         response.headers["Authorization"] = "private-header"
         return response
 
-    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", fake)
     client = new_client(None, 30, 0, lambda: None)
-    client.private.request(
-        "POST",
-        "https://b.i.instagram.com/api/v1/bloks/apps/com.bloks.www.bloks.caa.login.process_client_data_and_redirect/",
-    )
-    with pytest.raises(ProviderError) as error:
+    instagram_runtime.run(
         client.private.request(
             "POST",
-            "https://b.i.instagram.com/api/v1/bloks/async_action/com.bloks.www.bloks.caa.login.async.send_login_request/?token=private-query",
+            "https://b.i.instagram.com/api/v1/bloks/apps/com.bloks.www.bloks.caa.login.process_client_data_and_redirect/",
+        )
+    )
+    with pytest.raises(ProviderError) as error:
+        instagram_runtime.run(
+            client.private.request(
+                "POST",
+                "https://b.i.instagram.com/api/v1/bloks/async_action/com.bloks.www.bloks.caa.login.async.send_login_request/?token=private-query",
+            )
         )
     diagnostics = error.value.details["provider_responses"]
     assert [(item["endpoint"], item["http_status"]) for item in diagnostics] == [
@@ -251,7 +283,7 @@ def test_instagram_login_diagnostic_identifies_rejected_step_without_secrets(mon
     assert len(calls) == 2
 
 
-def test_instagram_login_does_not_fetch_unrelated_feeds(monkeypatch):
+def test_instagram_login_does_not_fetch_unrelated_feeds(monkeypatch, instagram_runtime):
     from app.integrations.instagram import new_client
 
     client = new_client(None, 30, 0, lambda: None)
@@ -261,67 +293,72 @@ def test_instagram_login_does_not_fetch_unrelated_feeds(monkeypatch):
 
     monkeypatch.setattr(client, "get_reels_tray_feed", unexpected)
     monkeypatch.setattr(client, "get_timeline_feed", unexpected)
-    assert client.login_flow() is True
+    assert instagram_runtime.run(client.login_flow()) is True
     assert client.policy_requests == 0
 
 
-def test_instagram_adapter_keeps_upstream_caa_credential_payload(monkeypatch):
+def test_instagram_adapter_keeps_upstream_caa_credential_payload(monkeypatch, instagram_runtime):
     from copy import deepcopy
     from uuid import UUID
 
-    import requests
-    from instagrapi import Client
-    from instagrapi.mixins import bloks
+    import httpx
+    from aiograpi import Client, httpx_ext
+    from aiograpi.mixins import bloks
 
     from app.integrations.instagram import new_client
 
     calls = []
 
-    def fake(session, method, url, **kwargs):
+    async def fake(session, method, url, **kwargs):
         calls.append((method, url, deepcopy(kwargs.get("data"))))
-        response = requests.Response()
+        response = httpx.Response(200, request=httpx.Request(method, url))
         response.status_code = 200
         response._content = b'{"status":"ok"}'
-        response.url = url
-        response.request = requests.Request(method, url).prepare()
+        response.request = httpx.Request(method, url)
         return response
 
-    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", fake)
     monkeypatch.setattr(bloks, "uuid4", lambda: UUID(int=1))
     monkeypatch.setattr(bloks.time, "time", lambda: 1_700_000_000.0)
     guarded = new_client(None, 30, 0, lambda: None)
     upstream = Client(settings=guarded.get_settings())
+    instagram_runtime.clients.append(upstream)
     for client in (upstream, guarded):
         client.caa_aac = "synthetic-context"
         client.caa_waterfall_id = "synthetic-flow"
-        client.bloks_caa_login_send_request(
-            "#PWD_TEST:synthetic-password", username="synthetic-user", auto_prepare=False
+        instagram_runtime.run(
+            client.bloks_caa_login_send_request(
+                "#PWD_TEST:synthetic-password", username="synthetic-user", auto_prepare=False
+            )
         )
     assert len(calls) == 2
     assert calls[0] == calls[1]
 
 
-def test_instagram_proxy_routes_private_and_password_key_requests(monkeypatch):
-    import requests
+def test_instagram_proxy_routes_private_and_password_key_requests(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
 
     from app.integrations.instagram import new_client, safe_settings
 
     calls = []
 
-    def fake(session, method, url, **kwargs):
-        calls.append(kwargs.get("proxies", session.proxies))
-        response = requests.Response()
+    async def fake(session, method, url, **kwargs):
+        calls.append(session.proxy)
+        response = httpx.Response(200, request=httpx.Request(method, url))
         response.status_code = 200
         response._content = b"{}"
         return response
 
-    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.Session, "request", fake)
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", fake)
     proxy = "http://synthetic-user:synthetic-password@proxy.example:8080"
     client = new_client(None, 30, 0, lambda: None, proxy_url=proxy)
-    client.private.request("POST", "https://b.i.instagram.com/api/v1/accounts/login/")
-    client.public.request("GET", "https://i.instagram.com/api/v1/qe/sync/")
+    instagram_runtime.run(client.private.request("POST", "https://b.i.instagram.com/api/v1/accounts/login/"))
+    instagram_runtime.run(client.public.request("GET", "https://i.instagram.com/api/v1/qe/sync/"))
     assert len(calls) == 2
-    assert all(route["https"] == proxy for route in calls)
+    assert all(route == proxy for route in calls)
     assert proxy not in json.dumps(safe_settings(client))
 
 
@@ -349,7 +386,7 @@ def test_own_id_mismatch_is_checked_before_any_instagram_request():
             raise AssertionError("Must not request foreign profile")
 
     with pytest.raises(ProviderError) as error:
-        collect(Client(), "2", 100, lambda *args: None)
+        asyncio.run(collect(Client(), "2", 100, lambda *args: None))
     assert error.value.code == "identity_mismatch"
 
 
@@ -491,3 +528,132 @@ def test_saved_session_requires_mobile_identity_and_does_not_import_route():
         )
     with pytest.raises(ValueError):
         ConnectInput(username="owner", accepted_connection_risks=True)
+
+
+@pytest.mark.parametrize("transport", ["private", "public", "graphql"])
+def test_instagram_redirect_cannot_escape_guard(transport, instagram_runtime):
+    import httpx
+
+    from app.integrations.instagram import ProviderError, new_client
+
+    client = new_client(None, 3, 0, lambda: None)
+    session = getattr(client, transport)
+    requests = []
+
+    async def redirect(request):
+        requests.append(str(request.url))
+        return httpx.Response(302, headers={"Location": "https://unexpected.example/"})
+
+    session._client._transport = httpx.MockTransport(redirect)
+    session._client._mounts = {}
+    with pytest.raises(ProviderError) as error:
+        instagram_runtime.run(session.request("GET", "https://i.instagram.com/api/v1/qe/sync/"))
+    assert error.value.code == "provider_unavailable"
+    assert len(requests) == 1
+
+
+def test_instagram_failed_cursor_is_not_retried(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
+
+    from app.integrations.instagram import ProviderError, new_client
+
+    calls = []
+
+    async def failure(session, method, url, **kwargs):
+        calls.append(kwargs["params"].copy())
+        return httpx.Response(500, request=httpx.Request(method, url))
+
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", failure)
+    client = new_client(None, 10, 0, lambda: None, mode="sync")
+    with pytest.raises(ProviderError):
+        instagram_runtime.run(
+            client.private_request("friendships/123/followers/", params={"max_id": "page2"})
+        )
+    assert calls == [{"max_id": "page2"}]
+    assert client.policy_requests == 1
+
+
+def test_instagram_public_request_runs_once_even_with_retry_override(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
+
+    from app.integrations.instagram import new_client
+
+    calls = []
+
+    async def success(session, method, url, **kwargs):
+        calls.append(url)
+        return httpx.Response(200, json={"status": "ok"}, request=httpx.Request(method, url))
+
+    monkeypatch.setattr(httpx_ext.Session, "request", success)
+    client = new_client(None, 10, 0, lambda: None)
+    result = instagram_runtime.run(
+        client.public_request("https://www.instagram.com/", return_json=True, retries_count=0)
+    )
+    assert result == {"status": "ok"}
+    assert len(calls) == 1
+
+
+def test_instagram_spacing_can_be_cancelled_without_blocking_loop(monkeypatch, instagram_runtime):
+    import httpx
+    from aiograpi import httpx_ext
+
+    from app.integrations.instagram import new_client
+
+    async def success(session, method, url, **kwargs):
+        return httpx.Response(200, request=httpx.Request(method, url))
+
+    monkeypatch.setattr(httpx_ext.CurlPrivateSession, "request", success)
+    client = new_client(None, 10, 60, lambda: None)
+
+    async def scenario():
+        url = "https://i.instagram.com/api/v1/users/123/info/"
+        await client.private.request("GET", url)
+        request = asyncio.create_task(client.private.request("GET", url))
+        await asyncio.sleep(0.02)
+        assert not request.done()
+        request.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await request
+        assert client.policy_requests == 1
+
+    instagram_runtime.run(asyncio.wait_for(scenario(), timeout=2))
+
+
+def test_instagram_runtime_closes_all_sessions_on_failure():
+    from app.integrations.instagram import client_runtime, new_client
+
+    with pytest.raises(RuntimeError, match="synthetic"):
+        with client_runtime() as (_, clients):
+            client = new_client(None, 10, 0, lambda: None)
+            clients.append(client)
+            raise RuntimeError("synthetic")
+    assert all(session._client.is_closed for session in (client.private, client.public, client.graphql))
+
+
+def test_instagram_saved_device_survives_library_migration(instagram_runtime):
+    from app.integrations.instagram import new_client, parse_saved_session, safe_settings
+
+    client = new_client(None, 10, 0, lambda: None)
+    saved = safe_settings(client)
+    saved["authorization_data"] = {"sessionid": "synthetic-session", "ds_user_id": "123"}
+    saved["cookies"] = {"sessionid": "synthetic-session", "ds_user_id": "123"}
+    parsed = parse_saved_session(json.dumps(saved))
+    restored = new_client(parsed, 10, 0, lambda: None)
+    assert str(restored.user_id) == "123"
+    assert safe_settings(restored)["uuids"] == saved["uuids"]
+    legacy = {**saved, "uuids": {**saved["uuids"], "device_id": saved["uuids"]["android_device_id"]}}
+    del legacy["uuids"]["android_device_id"]
+    converted = new_client(parse_saved_session(json.dumps(legacy)), 10, 0, lambda: None)
+    assert converted.android_device_id == client.android_device_id
+
+
+@pytest.mark.parametrize("scheme", ["socks5", "socks5h"])
+def test_instagram_socks_proxy_initializes_without_optional_import_error(scheme, instagram_runtime):
+    from app.integrations.instagram import new_client, safe_settings
+
+    proxy = scheme + "://synthetic-user:synthetic-password@proxy.example:1080"
+    client = new_client(None, 3, 0, lambda: None, proxy_url=proxy)
+    assert all(session.proxy == proxy for session in (client.private, client.public, client.graphql))
+    assert proxy not in json.dumps(safe_settings(client))

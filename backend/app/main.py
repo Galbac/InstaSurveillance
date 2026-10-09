@@ -24,7 +24,7 @@ from app.modules.contracts import StatusDTO
 settings = get_settings()
 
 configure()
-logging.getLogger("instagrapi").disabled = True
+logging.getLogger("aiograpi").disabled = True
 
 
 @asynccontextmanager

@@ -1,7 +1,13 @@
+import asyncio
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from typing import Any
 from urllib.parse import urlparse
+
+import httpx
+from aiograpi import Client
 
 from app.core.errors import AppError
 from app.domain.analytics import Relationships
@@ -32,7 +38,7 @@ LOGIN_ENDPOINTS = {
 }
 
 
-def response_diagnostic(response, url: str) -> dict:
+def response_diagnostic(response: httpx.Response, url: str) -> dict:
     """Keep a closed set of response metadata, never payloads or credentials."""
     path = urlparse(url).path
     endpoint = "other"
@@ -95,7 +101,7 @@ class ProviderError(AppError):
             self.details["provider_http_status"] = http_status
 
 
-def safe_settings(client) -> dict:
+def safe_settings(client: Client) -> dict:
     return {k: v for k, v in client.get_settings().items() if k in SETTINGS_KEYS}
 
 
@@ -109,7 +115,7 @@ def parse_saved_session(raw: str) -> dict:
         raise ValueError("Файл сессии слишком большой")
     raw_str = raw.strip()
     if not raw_str:
-        raise ValueError("Нужен JSON-файл настроек instagrapi или sessionid")
+        raise ValueError("Нужен JSON-файл мобильной сессии или sessionid")
 
     # 1. Try full instagrapi JSON or custom JSON
     if raw_str.startswith("{"):
@@ -125,9 +131,8 @@ def parse_saved_session(raw: str) -> dict:
                     and auth["sessionid"]
                     and str(auth.get("ds_user_id", "")).isdigit()
                     and isinstance(uuids, dict)
-                    and all(
-                        isinstance(uuids.get(k), str) and uuids[k] for k in ("uuid", "phone_id", "device_id")
-                    )
+                    and all(isinstance(uuids.get(k), str) and uuids[k] for k in ("uuid", "phone_id"))
+                    and isinstance(uuids.get("android_device_id") or uuids.get("device_id"), str)
                     and isinstance(device, dict)
                     and device.get("app_version")
                 ):
@@ -151,7 +156,7 @@ def parse_saved_session(raw: str) -> dict:
         sessionid = raw_str
 
     if not sessionid or len(sessionid) < 20:
-        raise ValueError("Нужна сохранённая мобильная сессия instagrapi или корректный sessionid")
+        raise ValueError("Нужна сохранённая мобильная сессия или корректный sessionid")
 
     if not ds_user_id:
         unquoted = unquote(sessionid)
@@ -166,12 +171,22 @@ def parse_saved_session(raw: str) -> dict:
 
 
 def _build_session_settings(sessionid: str, ds_user_id: str) -> dict:
-    from instagrapi import Client
-
     if not str(ds_user_id).isdigit():
         raise ValueError("Некорректный ID пользователя в сессии")
-    cl = Client()
-    settings = cl.get_settings()
+    from secrets import token_hex
+    from uuid import uuid4
+
+    from aiograpi import config
+
+    # Build a mobile settings document without opening HTTP clients during API validation.
+    settings: dict = {
+        "uuids": {
+            "uuid": str(uuid4()),
+            "phone_id": str(uuid4()),
+            "android_device_id": "android-" + token_hex(8),
+        },
+        "device_settings": {**config.DEVICE_SETTINGS, **config.APP_SETTINGS[config.DEFAULT_APP_VERSION]},
+    }
     settings["authorization_data"] = {
         "sessionid": sessionid,
         "ds_user_id": str(ds_user_id),
@@ -184,6 +199,67 @@ def _build_session_settings(sessionid: str, ds_user_id: str) -> dict:
     return {k: v for k, v in settings.items() if k in SETTINGS_KEYS}
 
 
+class ControlledClient(Client):
+    policy_requests: int = 0
+    policy_pages: int = 0
+    policy_responses: list[dict]
+
+    async def login_flow(self) -> bool:
+        # This service validates identity with account_info() after login.
+        # Fetching unrelated feeds can fail after authentication succeeded.
+        return True
+
+    async def private_request(
+        self,
+        endpoint,
+        data=None,
+        params=None,
+        login=False,
+        with_signature=True,
+        headers=None,
+        extra_sig=None,
+        domain=None,
+    ):
+        # Pinned-version seam: bypass library auto-challenge and implicit retries.
+        if self.authorization:
+            headers = {**(headers or {}), "Authorization": self.authorization}
+        self.private_requests_count += 1
+        await self._send_private_request(
+            endpoint,
+            data=data,
+            params=params,
+            login=login,
+            with_signature=with_signature,
+            headers=headers,
+            extra_sig=extra_sig,
+            domain=domain,
+        )
+        return self.last_json
+
+    async def public_request(
+        self,
+        url,
+        data=None,
+        params=None,
+        headers=None,
+        update_headers=None,
+        return_json=False,
+        retries_count=None,
+        retries_timeout=None,
+    ):
+        return await self._send_public_request(
+            url,
+            data=data,
+            params=params,
+            headers=headers,
+            update_headers=update_headers,
+            return_json=return_json,
+        )
+
+    async def challenge_resolve(self, *args, **kwargs):
+        raise ProviderError("challenge_required")
+
+
 def new_client(
     settings: dict | None,
     budget: int,
@@ -191,54 +267,18 @@ def new_client(
     check: Callable[[], None],
     mode: str = "connect",
     proxy_url: str | None = None,
-):
-    from instagrapi import Client
+) -> ControlledClient:
 
-    for name in ("instagrapi", "private_request", "public_request"):
+    for name in ("aiograpi", "private_request", "public_request"):
         logging.getLogger(name).disabled = True
 
-    class ControlledClient(Client):
-        policy_requests: int = 0
-        policy_pages: int = 0
-        policy_responses: list[dict]
-
-        def login_flow(self) -> bool:
-            # This service validates identity with account_info() after login.
-            # Fetching unrelated feeds can fail after authentication succeeded.
-            return True
-
-        def private_request(
-            self,
-            endpoint,
-            data=None,
-            params=None,
-            login=False,
-            with_signature=True,
-            headers=None,
-            extra_sig=None,
-            domain=None,
-        ):
-            # Pinned-version seam: bypass library auto-challenge and implicit retries.
-            if self.authorization:
-                headers = {**(headers or {}), "Authorization": self.authorization}
-            self.private_requests_count += 1
-            self._send_private_request(
-                endpoint,
-                data=data,
-                params=params,
-                login=login,
-                with_signature=with_signature,
-                headers=headers,
-                extra_sig=extra_sig,
-                domain=domain,
-            )
-            return self.last_json
-
-        def challenge_resolve(self, *args, **kwargs):
-            raise ProviderError("challenge_required")
-
-    client = ControlledClient(settings=settings or {}, public_request_retries_count=0, session_retry_total=0)
-    client.private_request_logger.disabled = True
+    # aiograpi counts public attempts rather than retries; force exactly one attempt.
+    # Only session/device fields may influence client initialization.
+    stored = {k: v for k, v in (settings or {}).items() if k in SETTINGS_KEYS}
+    if stored.get("uuids", {}).get("device_id") and not stored["uuids"].get("android_device_id"):
+        stored["uuids"] = {**stored["uuids"], "android_device_id": stored["uuids"]["device_id"]}
+    client = ControlledClient(settings=stored, public_request_retries_count=1, session_retry_total=0)
+    client.request_logger.disabled = True
     client.logger.disabled = True
     if proxy_url:
         client.set_proxy(proxy_url)
@@ -246,12 +286,12 @@ def new_client(
     client.policy_responses = []
     count = 0
     last = 0.0
-    for session in (client.private, client.public):
+    for session in (client.private, client.public, client.graphql):
         original = session.request
 
-        def guarded(method, url, _original=original, **kwargs):
+        async def guarded(method, url, _original=original, _session=session, **kwargs):
             nonlocal count, last
-            check()
+            await asyncio.to_thread(check)
             if mode == "sync":
                 import re
                 from urllib.parse import urlparse
@@ -279,14 +319,16 @@ def new_client(
                 raise ProviderError("request_budget_exhausted")
             delay = max(0, spacing - (time.monotonic() - last))
             if delay:
-                time.sleep(delay)
-            check()
+                await asyncio.sleep(delay)
+            await asyncio.to_thread(check)
             count += 1
             client.policy_requests = count
             last = time.monotonic()
-            kwargs["timeout"] = (10, 30)
-            kwargs["allow_redirects"] = False
-            result = _original(method, url, **kwargs)
+            kwargs["timeout"] = httpx.Timeout(30, connect=10)
+            kwargs["follow_redirects"] = False
+            # Public Session drops false kwargs, so its default must also deny redirects.
+            _session._client.follow_redirects = False
+            result = await _original(method, url, **kwargs)
             if mode == "connect":
                 client.policy_responses.append(response_diagnostic(result, url))
             if result.status_code == 429:
@@ -314,6 +356,11 @@ def new_client(
                 if mode == "connect":
                     error.details.update(provider_responses=client.policy_responses.copy(), requests=count)
                 raise error
+            if result.status_code >= 500 or 300 <= result.status_code < 400:
+                # Stop before upstream can discard a failed pagination cursor and resend.
+                client.last_response = result
+                client.last_json = {}
+                raise ProviderError("provider_unavailable", http_status=result.status_code)
             return result
 
         session.request = guarded  # pyright: ignore[reportAttributeAccessIssue] -- pinned library passes method, URL and keyword arguments; policy tests cover this seam.
@@ -336,20 +383,20 @@ def classify(error: Exception) -> str:
         "SentryBlock",
     ):
         return "cooldown"
-    if name in ("LoginRequired", "ClientLoginRequired"):
+    if name in ("LoginRequired", "ClientLoginRequired", "PreLoginRequired"):
         return "reconnect_required"
     if name in ("BadPassword", "BadCredentials"):
         return "invalid_credentials"
     return "provider_unavailable"
 
 
-def collect(
-    client, external_id: str, max_members: int, progress: Callable[[str, int], None]
+async def collect(
+    client: ControlledClient, external_id: str, max_members: int, progress: Callable[[str, int], None]
 ) -> Relationships:
     if str(client.user_id) != external_id:
         raise ProviderError("identity_mismatch")
     client.policy_pages = 0
-    initial = client.user_info_v1(external_id)
+    initial = await client.user_info_v1(external_id)
     results = {}
     for relation, method in (
         ("followers", client.user_followers_v1_chunk),
@@ -359,7 +406,7 @@ def collect(
         cursor = ""
         cursors = set()
         while True:
-            page, next_cursor = method(external_id, max_amount=200, max_id=cursor)
+            page, next_cursor = await method(external_id, max_amount=200, max_id=cursor)
             client.policy_pages += 1
             for person in page:
                 key = str(person.pk)
@@ -368,7 +415,7 @@ def collect(
                 rows[key] = person.username
             if sum(len(x) for x in results.values()) + len(rows) > max_members:
                 raise ProviderError("members_limit")
-            progress(relation, len(rows))
+            await asyncio.to_thread(progress, relation, len(rows))
             if not next_cursor:
                 break
             if not page or next_cursor in cursors:
@@ -376,7 +423,7 @@ def collect(
             cursors.add(next_cursor)
             cursor = next_cursor
         results[relation] = rows
-    final = client.user_info_v1(external_id)
+    final = await client.user_info_v1(external_id)
     if (
         (initial.follower_count, initial.following_count) != (final.follower_count, final.following_count)
         or len(results["followers"]) != final.follower_count
@@ -384,3 +431,38 @@ def collect(
     ):
         raise ProviderError("inconsistent_snapshot")
     return Relationships(results["followers"], results["following"])
+
+
+async def close_client(client: Any) -> None:
+    """Close all three transports, including retired and unopened HTTPX clients."""
+
+    async def close_session(session: Any) -> None:
+        try:
+            await session._close_retired_clients()
+        finally:
+            await session._client.aclose()
+
+    results = await asyncio.gather(
+        *(close_session(session) for session in (client.private, client.public, client.graphql)),
+        return_exceptions=True,
+    )
+    for result in results:
+        if isinstance(result, Exception):
+            import structlog
+
+            await structlog.get_logger().awarning(
+                "instagram_transport_close_failed",
+                error_type=type(result).__name__,
+            )
+
+
+@contextmanager
+def client_runtime() -> Iterator[tuple[asyncio.Runner, list[Any]]]:
+    """One loop per Celery task; transports never outlive their owning loop."""
+    clients: list[Any] = []
+    with asyncio.Runner() as runner:
+        try:
+            yield runner, clients
+        finally:
+            for client in clients:
+                runner.run(close_client(client))

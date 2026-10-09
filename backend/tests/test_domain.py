@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import zipfile
@@ -86,36 +87,37 @@ def test_zip_bomb_size_rejected_before_read():
 class FakeClient:
     user_id = "owner"
 
-    def user_info_v1(self, _):
+    async def user_info_v1(self, _):
         return SimpleNamespace(follower_count=2, following_count=1)
 
-    def user_followers_v1_chunk(self, _, max_amount, max_id):
+    async def user_followers_v1_chunk(self, _, max_amount, max_id):
         if not max_id:
             return [SimpleNamespace(pk="1", username="anna")], "page2"
         return [SimpleNamespace(pk="2", username="boris")], None
 
-    def user_following_v1_chunk(self, _, max_amount, max_id):
+    async def user_following_v1_chunk(self, _, max_amount, max_id):
         return [SimpleNamespace(pk="1", username="anna")], None
 
 
 def test_collect_full_pages_uses_stable_ids():
-    result = collect(FakeClient(), "owner", 100, lambda *_: None)
+    result = asyncio.run(collect(FakeClient(), "owner", 100, lambda *_: None))
     assert result.followers == {"1": "anna", "2": "boris"}
 
 
 def test_partial_pagination_not_published():
     client = FakeClient()
-    client.user_followers_v1_chunk = lambda *args, **kwargs: (
-        [SimpleNamespace(pk="1", username="anna")],
-        None,
-    )
+
+    async def partial(*args, **kwargs):
+        return [SimpleNamespace(pk="1", username="anna")], None
+
+    client.user_followers_v1_chunk = partial
     with pytest.raises(ProviderError, match="inconsistent_snapshot"):
-        collect(client, "owner", 100, lambda *_: None)
+        asyncio.run(collect(client, "owner", 100, lambda *_: None))
 
 
 def test_cannot_collect_another_instagram_owner():
     with pytest.raises(ProviderError, match="identity_mismatch"):
-        collect(FakeClient(), "another-id", 100, lambda *_: None)
+        asyncio.run(collect(FakeClient(), "another-id", 100, lambda *_: None))
 
 
 def test_settings_allowlist_excludes_password_and_code():

@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime, timedelta
+from importlib.metadata import version
 from secrets import randbelow
 
 from redis import Redis
@@ -15,7 +16,14 @@ from app.core.limits import runtime_settings as get_settings
 from app.core.security import cipher, now
 from app.integrations import storage
 from app.integrations.archive import parse_archive
-from app.integrations.instagram import ProviderError, classify, collect, new_client, safe_settings
+from app.integrations.instagram import (
+    ProviderError,
+    classify,
+    client_runtime,
+    collect,
+    new_client,
+    safe_settings,
+)
 from app.integrations.mail import send_email
 from app.jobs.celery_app import celery
 from app.jobs.notifications import notify
@@ -172,6 +180,11 @@ def process_import(guard):
 
 
 def process_instagram(guard):
+    with client_runtime() as (runner, clients):
+        _process_instagram(guard, runner, clients)
+
+
+def _process_instagram(guard, runner, clients):
     settings = get_settings()
     proxy_url = settings.instagram_proxy_url.get_secret_value() if settings.instagram_proxy_url else None
     vault = Redis.from_url(settings.auth_vault_url)
@@ -214,22 +227,23 @@ def process_instagram(guard):
                 guard,
                 proxy_url=proxy_url,
             )
+            clients.append(client)
             code = vault.getdel("code:" + guard.job_id)
             verification = pending_cipher().decrypt(code).decode() if code else ""
             persist_login_device(guard, client)
             try:
                 if not imported_session:
-                    client.login(
-                        credentials["username"], credentials["password"], verification_code=verification
+                    runner.run(
+                        client.login(
+                            credentials["username"], credentials["password"], verification_code=verification
+                        )
                     )
             except Exception as error:
-                from importlib.metadata import version
-
                 import structlog
 
                 diagnostic = {
                     "provider_responses": client.policy_responses.copy(),
-                    "provider_version": version("instagrapi"),
+                    "provider_version": version("aiograpi"),
                     "requests": details.get("requests", 0) + client.policy_requests,
                 }
                 failure = error
@@ -284,15 +298,13 @@ def process_instagram(guard):
             from app.integrations.archive import normalize_username
 
             try:
-                identity = client.account_info()
+                identity = runner.run(client.account_info())
             except Exception as error:
-                from importlib.metadata import version
-
                 import structlog
 
                 diagnostic = {
                     "provider_responses": client.policy_responses.copy(),
-                    "provider_version": version("instagrapi"),
+                    "provider_version": version("aiograpi"),
                     "requests": details.get("requests", 0) + client.policy_requests,
                 }
                 failure = error
@@ -376,15 +388,17 @@ def process_instagram(guard):
                 proxy_url=proxy_url,
             )
 
+            clients.append(client)
+
             def progress(stage, count):
                 guard.progress(
                     "fetching_" + stage, stage_count=count, requests=getattr(client, "policy_requests", 0)
                 )
 
-            data = collect(client, external_id, settings.max_snapshot_members, progress)
+            data = runner.run(collect(client, external_id, settings.max_snapshot_members, progress))
             guard.progress("validating_snapshot")
             provenance = {
-                "provider_version": "instagrapi-3.0.20",
+                "provider_version": "aiograpi-" + version("aiograpi"),
                 "algorithm_version": "1",
                 "collection_start": started.isoformat(),
                 "collection_end": now().isoformat(),
@@ -396,7 +410,7 @@ def process_instagram(guard):
                 "followers_completeness": "collection_validated",
                 "following_completeness": "collection_validated",
             }
-            publish(guard, data, now(), "instagrapi", "collection_validated", "stable_id", provenance)
+            publish(guard, data, now(), "aiograpi", "collection_validated", "stable_id", provenance)
             with SessionLocal() as db:
                 profile = required(
                     db.scalar(select(Profile).where(Profile.id == profile_id).with_for_update())
@@ -736,14 +750,18 @@ def platform_logout(identity: str) -> None:
     try:
         settings = json.loads(session_cipher(version).decrypt(encrypted.encode()))
         config = get_settings()
-        client = new_client(
-            settings,
-            1,
-            0,
-            lambda: None,
-            mode="revoke",
-            proxy_url=config.instagram_proxy_url.get_secret_value() if config.instagram_proxy_url else None,
-        )
-        client.logout()
+        with client_runtime() as (runner, clients):
+            client = new_client(
+                settings,
+                1,
+                0,
+                lambda: None,
+                mode="revoke",
+                proxy_url=config.instagram_proxy_url.get_secret_value()
+                if config.instagram_proxy_url
+                else None,
+            )
+            clients.append(client)
+            runner.run(client.logout())
     except Exception:
         pass  # Local revocation is durable even if Instagram rejects logout.

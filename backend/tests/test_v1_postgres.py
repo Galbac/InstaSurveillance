@@ -682,7 +682,8 @@ def test_old_snapshot_insertion_and_middle_deletion_rebuild_adjacency(context):
     assert summary["snapshot"]["id"] == latest and summary["previous_snapshot"]["id"] == first
 
 
-def test_cancel_generation_prevents_publication_and_preserves_history(context):
+@pytest.mark.parametrize("source", ["instagrapi", "aiograpi"])
+def test_cancel_generation_prevents_publication_and_preserves_history(context, source):
     c, f, uid, pid = context
     from app.core.errors import AppError
     from app.domain.analytics import Relationships
@@ -702,9 +703,7 @@ def test_cancel_generation_prevents_publication_and_preserves_history(context):
     assert guard is not None
     mutate(c, "DELETE", f"/profiles/{pid}/connection")
     with pytest.raises(AppError):
-        publish(
-            guard, Relationships({"1": "a"}, {}), now(), "instagrapi", "collection_validated", "stable_id", {}
-        )
+        publish(guard, Relationships({"1": "a"}, {}), now(), source, "collection_validated", "stable_id", {})
     with f() as db:
         assert not list(db.scalars(select(Snapshot)))
 
@@ -985,10 +984,14 @@ def test_logout_is_one_shot_and_does_not_restore_session(context, monkeypatch):
     calls = []
 
     class Client:
-        def logout(self):
+        async def logout(self):
             calls.append("logout")
             raise RuntimeError("synthetic blocked logout")
 
+    async def close_fake(client):
+        pass
+
+    monkeypatch.setattr("app.integrations.instagram.close_client", close_fake)
     monkeypatch.setattr(tasks, "new_client", lambda *args, **kwargs: Client())
     tasks.platform_logout.run(identity)
     tasks.platform_logout.run(identity)
@@ -1174,7 +1177,7 @@ def test_imported_mobile_session_checks_identity_without_password_login(
         def login(self, *args, **kwargs):
             pytest.fail("Imported sessions must never start password login")
 
-        def account_info(self):
+        async def account_info(self):
             return SimpleNamespace(username=identity_username, pk=123)
 
         def get_settings(self):
@@ -1184,6 +1187,10 @@ def test_imported_mobile_session_checks_identity_without_password_login(
         assert settings == saved
         return Client()
 
+    async def close_fake(client):
+        pass
+
+    monkeypatch.setattr("app.integrations.instagram.close_client", close_fake)
     monkeypatch.setattr(tasks, "new_client", new_client)
 
     class Guard:
