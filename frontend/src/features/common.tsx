@@ -181,17 +181,19 @@ export const errorCodes: Record<string, string> = {
 export function JobProgress({ job }: { job: Job }) {
   return (
     <section className="job-progress" aria-live="polite">
-      <span className={`badge ${job.status === "completed" ? "success" : ""}`}>
-        {job.status === "completed"
-          ? "Готово"
-          : job.status === "queued"
-            ? "В очереди"
-            : job.status === "awaiting_confirmation"
-              ? "Проверьте данные"
-              : job.status === "awaiting_2fa"
-                ? "Нужен код"
-                : message(job.stage)}
-      </span>
+      {!job.error_code && (
+        <span className={`badge ${job.status === "completed" ? "success" : ""}`}>
+          {job.status === "completed"
+            ? "Готово"
+            : job.status === "queued"
+              ? "В очереди на обработку"
+              : job.status === "awaiting_confirmation"
+                ? "Проверьте данные"
+                : job.status === "awaiting_2fa"
+                  ? "Нужен код"
+                  : message(job.stage)}
+        </span>
+      )}
       {job.details.stage_count !== undefined && (
         <p>Получено записей: {job.details.stage_count}</p>
       )}

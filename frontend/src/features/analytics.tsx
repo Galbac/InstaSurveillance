@@ -128,7 +128,10 @@ export default function AnalyticsPanel({
   const [metricView, setMetricView] = useState<"followers" | "following" | "both">("followers");
 
   const params = new URLSearchParams();
-  if (period !== "all") params.set("days", period);
+  if (period !== "all") {
+    const numDays = parseInt(period, 10);
+    if (!isNaN(numDays)) params.set("days", String(numDays));
+  }
 
   const q = useQuery({
     queryKey: ["analytics", profile?.id, params.toString()],

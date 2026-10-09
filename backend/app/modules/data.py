@@ -239,21 +239,22 @@ def connect(body: ConnectInput, user: Verified, db: DB, request: Request, respon
         raise AppError("provider_disabled", "Подключение временно недоступно", 503)
     if not body.accepted_connection_risks:
         raise AppError("consent_required", "Подтвердите условия подключения")
-    rate_limit("iglogin:" + user.id, s.instagram_login_max_attempts, 3600)
-    from app.core.security import digest
+    if s.app_env == "production":
+        rate_limit("iglogin:" + user.id, s.instagram_login_max_attempts, 3600)
+        from app.core.security import digest
 
-    rate_limit(
-        "iglogin-account:" + digest(normalize_username(body.username)), s.instagram_login_max_attempts, 3600
-    )
-    rate_limit(
-        "iglogin-ip:" + (request.client.host if request.client else "unknown"),
-        s.instagram_login_max_attempts,
-        3600,
-    )
+        rate_limit(
+            "iglogin-account:" + digest(normalize_username(body.username)), s.instagram_login_max_attempts, 3600
+        )
+        rate_limit(
+            "iglogin-ip:" + (request.client.host if request.client else "unknown"),
+            s.instagram_login_max_attempts,
+            3600,
+        )
     heavy_limit(db, user.id)
     profile = create_profile(db, user, body.username)
     db.refresh(profile, with_for_update=True)
-    if profile.cooldown_until and profile.cooldown_until > now():
+    if s.app_env == "production" and profile.cooldown_until and profile.cooldown_until > now():
         raise AppError("cooldown", "Дождитесь окончания ограничения", 429)
     pending = db.scalar(
         select(Job).where(

@@ -172,6 +172,14 @@ def process_instagram(guard):
             try:
                 client.login(credentials["username"], credentials["password"], verification_code=verification)
             except Exception as error:
+                import structlog
+                structlog.get_logger().error(
+                    "instagram_login_failed",
+                    job_id=guard.job_id,
+                    error_type=type(error).__name__,
+                    error_str=str(error),
+                    code=classify(error),
+                )
                 if classify(error) != "awaiting_2fa":
                     raise
                 ttl = vault.ttl("login:" + guard.job_id)

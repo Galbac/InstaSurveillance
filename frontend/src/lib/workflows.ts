@@ -43,8 +43,7 @@ export function polling(
 }
 export function errorText(error: unknown) {
   return error instanceof ApiError
-    ? error.message +
-        (error.requestId ? ` · Номер запроса: ${error.requestId}` : "")
+    ? error.message
     : error instanceof Error
       ? error.message
       : "Не удалось выполнить действие";

@@ -272,7 +272,9 @@ export default function ConnectionPanel({
           </div>
         )}
 
-        {current && <JobProgress job={current} />}
+        {current && (pending || current.error_code) && (
+          <JobProgress job={current} />
+        )}
         <ErrorNotice error={error || q.error || connection.error} />
 
         {current?.status === "awaiting_2fa" ? (

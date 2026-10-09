@@ -204,7 +204,7 @@ def analytics(
     db: DB,
     start: datetime | None = None,
     end: datetime | None = None,
-    days: Literal[7, 30, 90] | None = None,
+    days: int | None = None,
 ):
     profile_owned(db, user, profile_id)
     if days and not start:

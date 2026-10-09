@@ -221,6 +221,10 @@ function Workspace({
     } catch {}
   }, [me.data?.timezone]);
   const go = (target: string) => {
+    if (view === target) {
+      setMore(false);
+      return;
+    }
     if (demo) {
       if (target === "people") {
         router.push("/demo?category=mutual", { scroll: false });
