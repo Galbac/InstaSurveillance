@@ -442,8 +442,12 @@ def request_sync(db, p: Profile) -> Job:
     next_allowed = max(
         [
             p.cooldown_until or now(),
-            runs[-1].created_at + timedelta(hours=s.instagram_manual_min_interval_hours) if runs else now(),
-            runs[0].created_at + timedelta(hours=24) if len(runs) >= s.instagram_max_runs_per_24h else now(),
+            runs[-1].created_at + timedelta(hours=s.instagram_manual_min_interval_hours)
+            if runs and not s.unlimited_instagram_runs
+            else now(),
+            runs[0].created_at + timedelta(hours=24)
+            if len(runs) >= s.instagram_max_runs_per_24h and not s.unlimited_instagram_runs
+            else now(),
         ]
     )
     if next_allowed > now():

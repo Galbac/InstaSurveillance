@@ -64,6 +64,7 @@ def context(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", target.render_as_string(hide_password=False))
     monkeypatch.setenv("LEDGER_DIRECTORY", str(tmp_path / "ledger"))
     monkeypatch.setenv("STORAGE_BACKEND", "filesystem")
+    monkeypatch.setenv("INSTAGRAM_UNLIMITED_TEST_RUNS", "false")
     monkeypatch.setenv("STORAGE_DIRECTORY", str(tmp_path / "files"))
     (tmp_path / "files").mkdir()
     get_settings.cache_clear()
@@ -706,6 +707,35 @@ def test_cancel_generation_prevents_publication_and_preserves_history(context, s
         publish(guard, Relationships({"1": "a"}, {}), now(), source, "collection_validated", "stable_id", {})
     with f() as db:
         assert not list(db.scalars(select(Snapshot)))
+
+
+def test_unlimited_local_runs_skip_service_limits_but_keep_provider_cooldown(context, monkeypatch):
+    c, f, uid, pid = context
+    from app.models import SessionSecret
+
+    monkeypatch.setenv("INSTAGRAM_UNLIMITED_TEST_RUNS", "true")
+    monkeypatch.setenv("APP_ENV", "development")
+    get_settings.cache_clear()
+    with f() as db:
+        profile = db.get(Profile, pid)
+        profile.external_id = "synthetic-owner"
+        profile.status = "active"
+        profile.paused = False
+        db.add(SessionSecret(profile_id=pid, encrypted_settings="synthetic-no-network", key_version="1"))
+        db.commit()
+    for _ in range(5):
+        assert c.get(f"/api/v1/profiles/{pid}/connection").json()["can_sync"] is True
+        response = mutate(c, "POST", f"/profiles/{pid}/syncs", json={})
+        assert response.status_code == 202, response.text
+        with f() as db:
+            db.get(Job, response.json()["id"]).status = "completed"
+            db.get(Profile, pid).status = "active"
+            db.commit()
+    with f() as db:
+        db.get(Profile, pid).cooldown_until = now() + timedelta(hours=1)
+        db.commit()
+    assert c.get(f"/api/v1/profiles/{pid}/connection").json()["can_sync"] is False
+    assert mutate(c, "POST", f"/profiles/{pid}/syncs", json={}).status_code == 429
 
 
 def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(context):

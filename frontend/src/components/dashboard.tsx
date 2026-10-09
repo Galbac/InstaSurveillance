@@ -619,18 +619,23 @@ function Empty({
       </span>
       <h2>
         {profile?.status === "active"
-          ? "Твой первый сбор выполняется"
+          ? "Instagram подключён"
           : "Здесь появится твой круг"}
       </h2>
       <p>
-        Подключи Instagram, чтобы увидеть взаимность подписок. После следующего
-        полного снимка станут доступны изменения.
+        {profile?.status === "active"
+          ? profile.next_sync
+            ? `Первый сбор запланирован на ${date(profile.next_sync)}. Повторный вход не требуется; после сбора здесь появятся доступные списки.`
+            : "Повторный вход не требуется. Списки появятся после первого сбора."
+          : "Подключи Instagram, чтобы увидеть взаимность подписок. После следующего полного снимка станут доступны изменения."}
       </p>
       <div className="hero-buttons">
-        <button className="button" onClick={() => go("connect")}>
-          <Plus size={18} />
-          Подключить Instagram
-        </button>
+        {profile?.status !== "active" && (
+          <button className="button" onClick={() => go("connect")}>
+            <Plus size={18} />
+            Подключить Instagram
+          </button>
+        )}
         <button className="button secondary" onClick={() => go("import")}>
           <Upload size={18} />
           Загрузить архив

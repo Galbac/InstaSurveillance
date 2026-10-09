@@ -58,10 +58,10 @@ def connection_status(profile_id: str, user: Verified, db: DB):
         for deadline in (
             profile.cooldown_until,
             runs[-1].created_at + timedelta(hours=settings.instagram_manual_min_interval_hours)
-            if runs
+            if runs and not settings.unlimited_instagram_runs
             else None,
             runs[0].created_at + timedelta(hours=24)
-            if len(runs) >= settings.instagram_max_runs_per_24h
+            if len(runs) >= settings.instagram_max_runs_per_24h and not settings.unlimited_instagram_runs
             else None,
         )
         if deadline is not None and deadline > current_time

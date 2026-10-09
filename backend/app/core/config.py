@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     instagram_sync_interval_hours: int = 24
     instagram_manual_min_interval_hours: int = 6
     instagram_max_runs_per_24h: int = 2
+    instagram_unlimited_test_runs: bool = False
     instagram_request_budget: int = 100
     instagram_request_spacing_seconds: float = 2
     instagram_platform_cooldown_hours: int = Field(default=0, ge=0)
@@ -107,6 +108,10 @@ class Settings(BaseSettings):
     s3_server_side_encryption: Literal["", "AES256", "aws:kms"] = "AES256"
     s3_kms_key_id: str = ""
     storage_write_timeout_seconds: int = Field(default=300, ge=30, le=900)
+
+    @property
+    def unlimited_instagram_runs(self) -> bool:
+        return self.instagram_unlimited_test_runs and self.app_env in {"local", "development"}
 
     @field_validator("instagram_session_encryption_key", "instagram_proxy_url", mode="before")
     @classmethod

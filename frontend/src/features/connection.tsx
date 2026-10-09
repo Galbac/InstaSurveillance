@@ -286,7 +286,7 @@ export default function ConnectionPanel({
               }[connection.data.display_status] || connection.data.display_status}
             </strong>
             {connection.data.next_allowed_at && (
-              <> • Повторное подключение доступно после {date(connection.data.next_allowed_at)}</>
+              <> • Следующее обновление доступно после {date(connection.data.next_allowed_at)}</>
             )}
           </div>
         )}
@@ -333,6 +333,13 @@ export default function ConnectionPanel({
           </form>
         ) : pending ? (
           <Loader />
+        ) : connection.data?.display_status === "active" || connection.data?.display_status === "paused_by_user" ? (
+          <p role="status">
+            Аккаунт подключён. Повторный вход не требуется.
+            {connection.data.next_sync && !connection.data.last_sync && (
+              <> Первый сбор запланирован на {date(connection.data.next_sync)}.</>
+            )}
+          </p>
         ) : (
           <form noValidate onSubmit={submit} style={{ width: "100%" }}>
             <label style={{ width: "100%" }}>
