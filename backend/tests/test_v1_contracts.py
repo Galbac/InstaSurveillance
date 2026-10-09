@@ -301,6 +301,30 @@ def test_instagram_adapter_keeps_upstream_caa_credential_payload(monkeypatch):
     assert calls[0] == calls[1]
 
 
+def test_instagram_proxy_routes_private_and_password_key_requests(monkeypatch):
+    import requests
+
+    from app.integrations.instagram import new_client, safe_settings
+
+    calls = []
+
+    def fake(session, method, url, **kwargs):
+        calls.append(kwargs.get("proxies", session.proxies))
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b"{}"
+        return response
+
+    monkeypatch.setattr(requests.sessions.Session, "request", fake)
+    proxy = "http://synthetic-user:synthetic-password@proxy.example:8080"
+    client = new_client(None, 30, 0, lambda: None, proxy_url=proxy)
+    client.private.request("POST", "https://b.i.instagram.com/api/v1/accounts/login/")
+    client.public.request("GET", "https://i.instagram.com/api/v1/qe/sync/")
+    assert len(calls) == 2
+    assert all(route["https"] == proxy for route in calls)
+    assert proxy not in json.dumps(safe_settings(client))
+
+
 def test_versioned_encryption_rotates_without_losing_old_records():
     from cryptography.fernet import Fernet, InvalidToken
 

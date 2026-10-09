@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     csrf_secret: SecretStr
     instagram_pending_encryption_key: SecretStr
     instagram_session_encryption_key: SecretStr | None = None
+    instagram_proxy_url: SecretStr | None = None
     instagram_private_enabled: bool = True
     instagram_sync_interval_hours: int = 24
     instagram_manual_min_interval_hours: int = 6
@@ -107,10 +108,19 @@ class Settings(BaseSettings):
     s3_kms_key_id: str = ""
     storage_write_timeout_seconds: int = Field(default=300, ge=30, le=900)
 
-    @field_validator("instagram_session_encryption_key", mode="before")
+    @field_validator("instagram_session_encryption_key", "instagram_proxy_url", mode="before")
     @classmethod
     def empty_worker_key(cls, value):
         return None if value == "" else value
+
+    @field_validator("instagram_proxy_url")
+    @classmethod
+    def valid_instagram_proxy(cls, value):
+        if value is not None:
+            parsed = urlsplit(value.get_secret_value())
+            if parsed.scheme not in {"http", "https", "socks5", "socks5h"} or not parsed.hostname:
+                raise ValueError("Instagram proxy requires an HTTP(S) or SOCKS5 URL")
+        return value
 
     @model_validator(mode="after")
     def validate_runtime(self):

@@ -100,7 +100,12 @@ def safe_settings(client) -> dict:
 
 
 def new_client(
-    settings: dict | None, budget: int, spacing: float, check: Callable[[], None], mode: str = "connect"
+    settings: dict | None,
+    budget: int,
+    spacing: float,
+    check: Callable[[], None],
+    mode: str = "connect",
+    proxy_url: str | None = None,
 ):
     from instagrapi import Client
 
@@ -150,6 +155,8 @@ def new_client(
     client = ControlledClient(settings=settings or {}, public_request_retries_count=0, session_retry_total=0)
     client.private_request_logger.disabled = True
     client.logger.disabled = True
+    if proxy_url:
+        client.set_proxy(proxy_url)
     client.delay_range = None
     client.policy_responses = []
     count = 0

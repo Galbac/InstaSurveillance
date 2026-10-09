@@ -173,6 +173,7 @@ def process_import(guard):
 
 def process_instagram(guard):
     settings = get_settings()
+    proxy_url = settings.instagram_proxy_url.get_secret_value() if settings.instagram_proxy_url else None
     vault = Redis.from_url(settings.auth_vault_url)
     with SessionLocal() as db:
         job = required(db.get(Job, guard.job_id))
@@ -208,6 +209,7 @@ def process_instagram(guard):
                 min(remaining, 30),
                 settings.instagram_request_spacing_seconds,
                 guard,
+                proxy_url=proxy_url,
             )
             code = vault.getdel("code:" + guard.job_id)
             verification = pending_cipher().decrypt(code).decode() if code else ""
@@ -339,6 +341,7 @@ def process_instagram(guard):
                 settings.instagram_request_spacing_seconds,
                 guard,
                 mode="sync",
+                proxy_url=proxy_url,
             )
 
             def progress(stage, count):
@@ -700,7 +703,15 @@ def platform_logout(identity: str) -> None:
         return
     try:
         settings = json.loads(session_cipher(version).decrypt(encrypted.encode()))
-        client = new_client(settings, 1, 0, lambda: None, mode="revoke")
+        config = get_settings()
+        client = new_client(
+            settings,
+            1,
+            0,
+            lambda: None,
+            mode="revoke",
+            proxy_url=config.instagram_proxy_url.get_secret_value() if config.instagram_proxy_url else None,
+        )
         client.logout()
     except Exception:
         pass  # Local revocation is durable even if Instagram rejects logout.
