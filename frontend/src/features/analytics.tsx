@@ -249,7 +249,7 @@ export default function AnalyticsPanel({
   return (
     <div className="analytics-v2-container">
       {/* 1. Four KPI Metric Cards */}
-      <section className="analytics-v2-stat-grid">
+      {!compact && <section className="analytics-v2-stat-grid">
         {/* Card 1: Подписчики */}
         <div className="analytics-v2-stat-card">
           <div className="analytics-v2-stat-card-top">
@@ -261,13 +261,13 @@ export default function AnalyticsPanel({
                 followersGrowth >= 0 ? "green" : "red"
               }`}
             >
-              {followersGrowth >= 0 ? `+${followersGrowth} ↑` : `${followersGrowth} ↓`}
+              {chartData.length < 2 ? "Первый снимок" : followersGrowth === 0 ? "Без изменения" : followersGrowth > 0 ? `+${followersGrowth} ↑` : `${followersGrowth} ↓`}
             </span>
           </div>
           <div>
             <h3 className="analytics-v2-stat-label">Подписчики</h3>
             <div className="analytics-v2-stat-value">{number(totalFollowers)}</div>
-            <p className="analytics-v2-stat-subtext">За выбранный период</p>
+            <p className="analytics-v2-stat-subtext">Последний снимок</p>
           </div>
         </div>
 
@@ -282,13 +282,13 @@ export default function AnalyticsPanel({
                 followingGrowth >= 0 ? "green" : "red"
               }`}
             >
-              {followingGrowth >= 0 ? `+${followingGrowth} ↑` : `${followingGrowth} ↓`}
+              {chartData.length < 2 ? "Первый снимок" : followingGrowth === 0 ? "Без изменения" : followingGrowth > 0 ? `+${followingGrowth} ↑` : `${followingGrowth} ↓`}
             </span>
           </div>
           <div>
             <h3 className="analytics-v2-stat-label">Подписки</h3>
             <div className="analytics-v2-stat-value">{number(totalFollowing)}</div>
-            <p className="analytics-v2-stat-subtext">За выбранный период</p>
+            <p className="analytics-v2-stat-subtext">Последний снимок</p>
           </div>
         </div>
 
@@ -298,9 +298,6 @@ export default function AnalyticsPanel({
             <div className="analytics-v2-stat-icon pink">
               <HeartHandshake size={20} />
             </div>
-            <span className="analytics-v2-stat-badge purple">
-              {mutualDisplay}
-            </span>
           </div>
           <div>
             <h3 className="analytics-v2-stat-label">Взаимность</h3>
@@ -315,9 +312,6 @@ export default function AnalyticsPanel({
             <div className="analytics-v2-stat-icon purple">
               <Calendar size={20} />
             </div>
-            <span className="analytics-v2-stat-badge neutral">
-              {snapshotCount} снимков
-            </span>
           </div>
           <div>
             <h3 className="analytics-v2-stat-label">Снимки</h3>
@@ -325,7 +319,7 @@ export default function AnalyticsPanel({
             <p className="analytics-v2-stat-subtext">За выбранный период</p>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* 2. Main Dynamic Chart Card */}
       <section className="analytics-v2-chart-card">

@@ -2077,6 +2077,17 @@
       },
       "PersonDTO": {
         "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "favorite": {
             "title": "Favorite",
             "type": "boolean"

@@ -173,6 +173,7 @@ def people_page(
         {
             "identity_key": row[0].identity_key,
             "username": row[0].username,
+            "avatar_url": row[0].avatar_url,
             "favorite": bool(row[1] and row[1].favorite),
             "note": row[1].note if row[1] else "",
             "first_observed_at": row[2] if sort == "first_observed" else None,

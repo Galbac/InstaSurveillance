@@ -32,6 +32,7 @@ class SnapshotDTO(BaseModel):
 class PersonDTO(BaseModel):
     identity_key: str
     username: str
+    avatar_url: str | None = None
     favorite: bool
     note: str
     first_observed_at: datetime | None = None

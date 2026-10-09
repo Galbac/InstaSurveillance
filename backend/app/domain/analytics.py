@@ -16,6 +16,7 @@ class Relationships:
     following: dict[str, str]
     timestamps: dict[str, datetime] = field(default_factory=dict)
     collection_metadata: dict = field(default_factory=dict)
+    avatars: dict[str, str] = field(default_factory=dict)
 
     def category(self, name: str) -> dict[str, str]:
         f, g = set(self.followers), set(self.following)

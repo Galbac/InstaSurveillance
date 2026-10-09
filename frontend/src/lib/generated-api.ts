@@ -1883,6 +1883,8 @@ export interface components {
         };
         /** PersonDTO */
         PersonDTO: {
+            /** Avatar Url */
+            avatar_url?: string | null;
             /** Favorite */
             favorite: boolean;
             /** First Observed At */

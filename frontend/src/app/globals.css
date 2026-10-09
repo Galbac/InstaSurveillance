@@ -1110,6 +1110,7 @@ input[type="checkbox"] {
 }
 .profile-strip {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 22px;
@@ -5777,7 +5778,7 @@ textarea[aria-invalid="true"]:focus {
 /* 1. Stat Grid (4 KPI Cards - exact design pattern as changes-v2) */
 .analytics-v2-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
   gap: 16px;
   width: 100%;
   max-width: 100%;
@@ -5806,6 +5807,8 @@ textarea[aria-invalid="true"]:focus {
 
 .analytics-v2-stat-card-top {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
   width: 100%;

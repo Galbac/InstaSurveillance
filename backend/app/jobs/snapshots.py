@@ -20,6 +20,7 @@ def normalized_size(data: Relationships, provenance: dict) -> int:
                 "followers": data.followers,
                 "following": data.following,
                 "metadata": provenance,
+                "avatars": data.avatars,
                 "source_timestamps": {key: value.isoformat() for key, value in data.timestamps.items()},
                 "counts": data.summary(),
             },
@@ -149,6 +150,7 @@ def publish(
                         "identity_key": key,
                         "username": username,
                         "source_timestamp": data.timestamps.get(relation + ":" + key),
+                        "avatar_url": data.avatars.get(key),
                     }
                 )
                 if len(batch) >= 1000:

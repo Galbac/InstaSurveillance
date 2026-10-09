@@ -250,7 +250,7 @@ export default function PeoplePanel({
       <div className="people-results-count">
         Найдено {number(total)}
         {context && !demo
-          ? ` из ${number(context.category_total)} в категории · снимок ${date(context.observed_at || null)} · ${context.source === "archive" ? "полнота подтверждена пользователем" : "сбор проверен"}`
+          ? ` из ${number(context.category_total)} в категории · снимок ${date(context.observed_at || null)} · ${context.completeness === "partial" ? "неполный список" : context.source === "archive" ? "полнота подтверждена пользователем" : "сбор проверен"}`
           : ""}
       </div>
       {context?.identity_mode === "username" && (
@@ -315,6 +315,13 @@ export default function PeoplePanel({
                     src={person.avatar_url}
                     alt={person.username}
                     className="person-avatar-img"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onLoad={(e) => {
+                      e.currentTarget.style.display = "block";
+                      const fallback = e.currentTarget.parentElement?.querySelector(".person-avatar-fallback") as HTMLElement | null;
+                      if (fallback) fallback.style.display = "none";
+                    }}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                       const fallback = e.currentTarget.parentElement?.querySelector(".person-avatar-fallback") as HTMLElement | null;

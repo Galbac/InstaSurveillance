@@ -138,6 +138,7 @@ class Member(Identified, Base):
     identity_key: Mapped[str] = mapped_column(String(80))
     username: Mapped[str] = mapped_column(String(30))
     source_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     __table_args__ = (
         UniqueConstraint("snapshot_id", "relation", "identity_key"),
         Index("members_list", "snapshot_id", "relation", "username"),

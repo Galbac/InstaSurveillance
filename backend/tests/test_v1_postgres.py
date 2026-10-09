@@ -761,7 +761,7 @@ def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(contex
     assert guard is not None
     sid = publish(
         guard,
-        Relationships({"a": "a"}, {}),
+        Relationships({"a": "a"}, {}, avatars={"a": "https://cdn.example.fbcdn.net/avatar.jpg"}),
         now(),
         "aiograpi",
         "partial",
@@ -782,6 +782,7 @@ def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(contex
     assert people.status_code == 200
     assert people.json()["completeness"] == "partial"
     assert [x["username"] for x in people.json()["items"]] == ["a"]
+    assert people.json()["items"][0]["avatar_url"] == "https://cdn.example.fbcdn.net/avatar.jpg"
 
 
 def test_deletion_waits_for_inflight_object_write(context):

@@ -195,6 +195,27 @@ export default function ConnectionPanel({
         }}
       >
         {/* Instagram Header Brand / Logo */}
+        {profile && ["active", "syncing", "paused_by_user"].includes(connection.data?.display_status || "") && (
+          <button
+            className="button secondary full"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api(`/profiles/${profile.id}/connection`, { method: "DELETE" });
+                setJob(null);
+                await connection.refetch();
+                qc.invalidateQueries();
+              } catch (e) {
+                setError(e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Отключить Instagram
+          </button>
+        )}
         <div
           style={{
             display: "flex",
@@ -569,7 +590,7 @@ export default function ConnectionPanel({
           </button>
         )}
 
-        {current?.status === "completed" && (
+        {(current?.status === "completed" || connection.data?.display_status === "active") && (
           <button
             className="button full"
             style={{ marginTop: 12 }}

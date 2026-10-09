@@ -411,6 +411,7 @@ async def collect(
     client.policy_pages = 0
     initial = await client.user_info_v1(external_id)
     results = {}
+    avatars: dict[str, str] = {}
     for relation, method in (
         ("followers", client.user_followers_v1_chunk),
         ("following", client.user_following_v1_chunk),
@@ -426,6 +427,20 @@ async def collect(
                 if key in rows:
                     raise ProviderError("inconsistent_snapshot")
                 rows[key] = person.username
+                avatar = str(getattr(person, "profile_pic_url", "") or "")
+                parsed = urlparse(avatar)
+                host = parsed.hostname or ""
+                if (
+                    parsed.scheme == "https"
+                    and not parsed.username
+                    and not parsed.password
+                    and len(avatar) <= 4096
+                    and any(
+                        host.endswith("." + domain)
+                        for domain in ("instagram.com", "cdninstagram.com", "fbcdn.net")
+                    )
+                ):
+                    avatars[key] = avatar
             if sum(len(x) for x in results.values()) + len(rows) > max_members:
                 raise ProviderError("members_limit")
             await asyncio.to_thread(progress, relation, len(rows))
@@ -459,6 +474,7 @@ async def collect(
             else "collection_validated",
             "completeness": "partial" if incomplete else "collection_validated",
         },
+        avatars=avatars,
     )
 
 

@@ -153,6 +153,22 @@ def test_partial_collection_still_rejects_changing_profile_counts():
         asyncio.run(collect(client, "owner", 100, lambda *_: None, allow_partial=True))
 
 
+def test_collection_keeps_cdn_avatars_and_rejects_untrusted_urls():
+    client = FakeClient()
+
+    async def avatars(*args, **kwargs):
+        return [
+            SimpleNamespace(
+                pk="1", username="anna", profile_pic_url="https://cdn.example.fbcdn.net/avatar.jpg"
+            ),
+            SimpleNamespace(pk="2", username="boris", profile_pic_url="https://untrusted.example/avatar.jpg"),
+        ], None
+
+    client.user_followers_v1_chunk = avatars
+    result = asyncio.run(collect(client, "owner", 100, lambda *_: None))
+    assert result.avatars == {"1": "https://cdn.example.fbcdn.net/avatar.jpg"}
+
+
 def test_settings_allowlist_excludes_password_and_code():
     client = SimpleNamespace(
         get_settings=lambda: {
