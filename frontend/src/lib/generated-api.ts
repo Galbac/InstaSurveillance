@@ -576,8 +576,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse Connection Session */
-        post: operations["parse_connection_session_api_v1_instagram_connections_post"];
+        /** Connect */
+        post: operations["connect_api_v1_instagram_connections_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3275,7 +3275,7 @@ export interface operations {
             };
         };
     };
-    parse_connection_session_api_v1_instagram_connections_post: {
+    connect_api_v1_instagram_connections_post: {
         parameters: {
             query?: never;
             header?: never;

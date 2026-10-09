@@ -467,6 +467,21 @@ def test_saved_session_requires_mobile_identity_and_does_not_import_route():
     for invalid in ("[]", "{}", "not-json", json.dumps({"cookies": {"sessionid": "web"}})):
         with pytest.raises(ValueError):
             parse_saved_session(invalid)
+    # Raw sessionid support
+    raw_session = "123456789%3AABCDEFGHIJKLM1234567890abcdef"
+    saved_raw = parse_saved_session(raw_session)
+    assert saved_raw["authorization_data"]["ds_user_id"] == "123456789"
+    assert saved_raw["authorization_data"]["sessionid"] == raw_session
+    assert "device_settings" in saved_raw and "uuids" in saved_raw
+
+    # Cookie header support
+    cookie_str = (
+        "mid=xyz; ds_user_id=987654321; sessionid=987654321%3ASOMESESSIONKEY1234567890; csrftoken=123"
+    )
+    saved_cookie = parse_saved_session(cookie_str)
+    assert saved_cookie["authorization_data"]["ds_user_id"] == "987654321"
+    assert saved_cookie["authorization_data"]["sessionid"] == "987654321%3ASOMESESSIONKEY1234567890"
+
     with pytest.raises(ValueError):
         ConnectInput(
             username="owner",

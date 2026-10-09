@@ -42,7 +42,7 @@ class ConnectInput(ProfileInput):
     @model_validator(mode="after")
     def validate_credentials(self):
         if bool(self.password) == bool(self.session_json):
-            raise ValueError("Укажите пароль либо файл сессии")
+            raise ValueError("Укажите пароль либо данные сессии (sessionid / cookies / session.json)")
         if self.session_json:
             from app.integrations.instagram import parse_saved_session
 
@@ -234,7 +234,6 @@ def add_profile(body: ProfileInput, user: Verified, db: DB):
     return profile_dict(profile)
 
 
-@router.post("/instagram/connections", status_code=202, response_model=JobDTO)
 def parse_connection_session(body: ConnectInput) -> dict | None:
     if body.session_json is None:
         return None
@@ -243,6 +242,7 @@ def parse_connection_session(body: ConnectInput) -> dict | None:
     return parse_saved_session(body.session_json.get_secret_value())
 
 
+@router.post("/instagram/connections", status_code=202, response_model=JobDTO)
 def connect(body: ConnectInput, user: Verified, db: DB, request: Request, response: Response):
     from app.core.commands import audit, begin_command, finish_command, heavy_limit
     from app.models import Consent

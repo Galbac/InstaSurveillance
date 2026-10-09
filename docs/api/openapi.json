@@ -4433,7 +4433,7 @@
     },
     "/api/v1/instagram/connections": {
       "post": {
-        "operationId": "parse_connection_session_api_v1_instagram_connections_post",
+        "operationId": "connect_api_v1_instagram_connections_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4466,7 +4466,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Parse Connection Session"
+        "summary": "Connect"
       }
     },
     "/api/v1/jobs/{job_id}": {

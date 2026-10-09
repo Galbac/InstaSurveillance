@@ -283,7 +283,33 @@ def process_instagram(guard):
             guard()
             from app.integrations.archive import normalize_username
 
-            identity = client.account_info()
+            try:
+                identity = client.account_info()
+            except Exception as error:
+                from importlib.metadata import version
+
+                import structlog
+
+                diagnostic = {
+                    "provider_responses": client.policy_responses.copy(),
+                    "provider_version": version("instagrapi"),
+                    "requests": details.get("requests", 0) + client.policy_requests,
+                }
+                failure = error
+                if not isinstance(failure, AppError):
+                    status = getattr(client.last_response, "status_code", None)
+                    failure = ProviderError(
+                        classify(error), http_status=status if status and status >= 400 else None
+                    )
+                failure.details.update(diagnostic)
+                structlog.get_logger().error(
+                    "instagram_identity_check_failed",
+                    job_id=guard.job_id,
+                    error_type=type(error).__name__,
+                    error_code=classify(error),
+                    provider_http_status=getattr(error, "details", {}).get("provider_http_status"),
+                )
+                raise failure from None
             if normalize_username(identity.username) != credentials["username"] or str(identity.pk) != str(
                 client.user_id
             ):

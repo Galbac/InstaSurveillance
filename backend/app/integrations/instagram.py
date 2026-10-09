@@ -100,32 +100,88 @@ def safe_settings(client) -> dict:
 
 
 def parse_saved_session(raw: str) -> dict:
-    """Accept private mobile settings only; never import route or arbitrary fields."""
+    """Accept private mobile settings, browser sessionid, or cookie header."""
     import json
+    import re
+    from urllib.parse import unquote
 
     if len(raw.encode()) > 65536:
         raise ValueError("Файл сессии слишком большой")
-    try:
-        value = json.loads(raw)
-    except ValueError, RecursionError:
-        raise ValueError("Нужен JSON-файл настроек instagrapi") from None
-    if not isinstance(value, dict):
-        raise ValueError("Нужен JSON-файл настроек instagrapi")
-    auth = value.get("authorization_data")
-    uuids = value.get("uuids")
-    device = value.get("device_settings")
-    if (
-        not isinstance(auth, dict)
-        or not isinstance(auth.get("sessionid"), str)
-        or not auth["sessionid"]
-        or not str(auth.get("ds_user_id", "")).isdigit()
-        or not isinstance(uuids, dict)
-        or not all(isinstance(uuids.get(k), str) and uuids[k] for k in ("uuid", "phone_id", "device_id"))
-        or not isinstance(device, dict)
-        or not device.get("app_version")
-    ):
-        raise ValueError("Нужна сохранённая мобильная сессия instagrapi с устройством и авторизацией")
-    return {k: v for k, v in value.items() if k in SETTINGS_KEYS}
+    raw_str = raw.strip()
+    if not raw_str:
+        raise ValueError("Нужен JSON-файл настроек instagrapi или sessionid")
+
+    # 1. Try full instagrapi JSON or custom JSON
+    if raw_str.startswith("{"):
+        try:
+            value = json.loads(raw_str)
+            if isinstance(value, dict):
+                auth = value.get("authorization_data")
+                uuids = value.get("uuids")
+                device = value.get("device_settings")
+                if (
+                    isinstance(auth, dict)
+                    and isinstance(auth.get("sessionid"), str)
+                    and auth["sessionid"]
+                    and str(auth.get("ds_user_id", "")).isdigit()
+                    and isinstance(uuids, dict)
+                    and all(
+                        isinstance(uuids.get(k), str) and uuids[k] for k in ("uuid", "phone_id", "device_id")
+                    )
+                    and isinstance(device, dict)
+                    and device.get("app_version")
+                ):
+                    return {k: v for k, v in value.items() if k in SETTINGS_KEYS}
+                if "sessionid" in value and isinstance(value["sessionid"], str):
+                    return _build_session_settings(value["sessionid"], str(value.get("ds_user_id", "")))
+        except Exception:
+            pass
+
+    # 2. Try Cookie header string or raw sessionid
+    sessionid = None
+    ds_user_id = ""
+    if "sessionid=" in raw_str:
+        m = re.search(r"sessionid=([^;\s]+)", raw_str)
+        if m:
+            sessionid = m.group(1)
+        m_uid = re.search(r"ds_user_id=([^;\s]+)", raw_str)
+        if m_uid:
+            ds_user_id = m_uid.group(1)
+    elif not raw_str.startswith("{") and not raw_str.startswith("["):
+        sessionid = raw_str
+
+    if not sessionid or len(sessionid) < 20:
+        raise ValueError("Нужна сохранённая мобильная сессия instagrapi или корректный sessionid")
+
+    if not ds_user_id:
+        unquoted = unquote(sessionid)
+        m_uid = re.search(r"^(\d+)", unquoted)
+        if m_uid:
+            ds_user_id = m_uid.group(1)
+
+    if not ds_user_id or not ds_user_id.isdigit():
+        raise ValueError("Не удалось определить ID пользователя из sessionid")
+
+    return _build_session_settings(sessionid, ds_user_id)
+
+
+def _build_session_settings(sessionid: str, ds_user_id: str) -> dict:
+    from instagrapi import Client
+
+    if not str(ds_user_id).isdigit():
+        raise ValueError("Некорректный ID пользователя в сессии")
+    cl = Client()
+    settings = cl.get_settings()
+    settings["authorization_data"] = {
+        "sessionid": sessionid,
+        "ds_user_id": str(ds_user_id),
+        "should_use_header_over_cookies": True,
+    }
+    settings["cookies"] = {
+        "sessionid": sessionid,
+        "ds_user_id": str(ds_user_id),
+    }
+    return {k: v for k, v in settings.items() if k in SETTINGS_KEYS}
 
 
 def new_client(
