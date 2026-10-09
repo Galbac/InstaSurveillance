@@ -20,6 +20,8 @@ FIELDS = {
     "release",
     "job_id",
     "error_type",
+    "error_code",
+    "provider_http_status",
 }
 
 

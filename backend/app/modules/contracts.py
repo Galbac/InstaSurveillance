@@ -86,6 +86,7 @@ class EventDTO(BaseModel):
 
 
 class JobDetails(BaseModel):
+    provider_http_status: int | None = None
     counts: Counts | None = None
     stage_count: int | None = None
     snapshot_id: str | None = None

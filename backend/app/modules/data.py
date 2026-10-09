@@ -134,6 +134,7 @@ def job_dict(x: Job) -> dict:
                 "method",
                 "destination_mask",
                 "expires_at",
+                "provider_http_status",
             )
         },
         "updated_at": x.updated_at,
@@ -146,6 +147,7 @@ def job_dict(x: Job) -> dict:
         else [],
         "error_code": x.error_code,
         "created_at": x.created_at,
+        "next_allowed_at": x.details.get("next_allowed_at"),
     }
 
 
@@ -244,7 +246,9 @@ def connect(body: ConnectInput, user: Verified, db: DB, request: Request, respon
         from app.core.security import digest
 
         rate_limit(
-            "iglogin-account:" + digest(normalize_username(body.username)), s.instagram_login_max_attempts, 3600
+            "iglogin-account:" + digest(normalize_username(body.username)),
+            s.instagram_login_max_attempts,
+            3600,
         )
         rate_limit(
             "iglogin-ip:" + (request.client.host if request.client else "unknown"),
@@ -254,7 +258,7 @@ def connect(body: ConnectInput, user: Verified, db: DB, request: Request, respon
     heavy_limit(db, user.id)
     profile = create_profile(db, user, body.username)
     db.refresh(profile, with_for_update=True)
-    if s.app_env == "production" and profile.cooldown_until and profile.cooldown_until > now():
+    if profile.cooldown_until and profile.cooldown_until > now():
         raise AppError("cooldown", "Дождитесь окончания ограничения", 429)
     pending = db.scalar(
         select(Job).where(
@@ -294,7 +298,11 @@ def connect(body: ConnectInput, user: Verified, db: DB, request: Request, respon
 @router.get("/syncs/{job_id}", response_model=JobDTO, response_model_exclude_unset=True)
 @router.get("/imports/{job_id}", response_model=JobDTO, response_model_exclude_unset=True)
 def get_job(job_id: str, user: Verified, db: DB):
-    return job_dict(job_owned(db, user, job_id))
+    job = job_owned(db, user, job_id)
+    result = job_dict(job)
+    if job.error_code == "cooldown" and job.profile_id:
+        result["next_allowed_at"] = profile_owned(db, user, job.profile_id).cooldown_until
+    return result
 
 
 @router.post("/instagram/connection-attempts/{job_id}/verify", status_code=202, response_model=JobDTO)

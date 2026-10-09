@@ -1665,6 +1665,8 @@ export interface components {
             method?: string | null;
             /** Pages */
             pages?: number | null;
+            /** Provider Http Status */
+            provider_http_status?: number | null;
             /** Provider Version */
             provider_version?: string | null;
             /** Requests */
@@ -3870,7 +3872,7 @@ export interface operations {
             query?: {
                 start?: string | null;
                 end?: string | null;
-                days?: (7 | 30 | 90) | null;
+                days?: number | null;
             };
             header?: never;
             path: {

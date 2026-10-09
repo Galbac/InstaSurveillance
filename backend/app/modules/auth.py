@@ -244,7 +244,9 @@ def verify_email(body: VerifyEmailInput, request: Request, db: DB):
         .with_for_update()
     )
     if not entry:
-        message = "Неверный код подтверждения" if len(body.token) <= 8 else "Ссылка недействительна или истекла"
+        message = (
+            "Неверный код подтверждения" if len(body.token) <= 8 else "Ссылка недействительна или истекла"
+        )
         raise AppError("invalid_token", message)
     required(db.get(User, entry.user_id), "invalid_token").verified = True
     db.delete(entry)

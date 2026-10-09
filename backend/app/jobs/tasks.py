@@ -173,12 +173,13 @@ def process_instagram(guard):
                 client.login(credentials["username"], credentials["password"], verification_code=verification)
             except Exception as error:
                 import structlog
+
                 structlog.get_logger().error(
                     "instagram_login_failed",
                     job_id=guard.job_id,
                     error_type=type(error).__name__,
-                    error_str=str(error),
-                    code=classify(error),
+                    error_code=classify(error),
+                    provider_http_status=getattr(error, "details", {}).get("provider_http_status"),
                 )
                 if classify(error) != "awaiting_2fa":
                     raise
@@ -385,6 +386,9 @@ def fail(guard, error):
             job.finished_at = now()
             job.stage = "stopped"
         job.error_code = code
+        provider_http_status = getattr(error, "details", {}).get("provider_http_status")
+        if provider_http_status:
+            job.details = {**job.details, "provider_http_status": provider_http_status}
         if job.kind in ("connect", "sync"):
             profile = required(db.get(Profile, job.profile_id))
             if profile and profile.generation == job.details.get("generation"):
@@ -392,9 +396,11 @@ def fail(guard, error):
                     profile.status = code
                     if code == "cooldown":
                         retry_after = getattr(error, "details", {}).get("retry_after", 0)
-                        profile.cooldown_until = now() + timedelta(
+                        cooldown_until = now() + timedelta(
                             seconds=max(settings.instagram_platform_cooldown_hours * 3600, retry_after)
                         )
+                        profile.cooldown_until = cooldown_until
+                        job.details = {**job.details, "next_allowed_at": cooldown_until.isoformat()}
                 elif job.kind == "connect":
                     profile.status = "reconnect_required"
                 elif profile.status == "syncing":

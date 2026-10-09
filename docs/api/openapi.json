@@ -1359,6 +1359,17 @@
             ],
             "title": "Pages"
           },
+          "provider_http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Http Status"
+          },
           "provider_version": {
             "anyOf": [
               {
@@ -5143,11 +5154,6 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    7,
-                    30,
-                    90
-                  ],
                   "type": "integer"
                 },
                 {

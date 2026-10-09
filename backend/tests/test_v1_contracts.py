@@ -209,6 +209,7 @@ def test_instagram_429_stops_at_one_request(monkeypatch):
     with pytest.raises(ProviderError) as error:
         client.private.request("GET", "https://i.instagram.com/api/v1/users/123/info/")
     assert error.value.code == "cooldown" and error.value.details["retry_after"] == 90000 and len(calls) == 1
+    assert error.value.details["provider_http_status"] == 429
 
 
 def test_versioned_encryption_rotates_without_losing_old_records():

@@ -25,10 +25,12 @@ SETTINGS_KEYS = {
 
 
 class ProviderError(AppError):
-    def __init__(self, code: str, retry_after: int = 0):
+    def __init__(self, code: str, retry_after: int = 0, http_status: int | None = None):
         super().__init__(
             code, "Instagram временно не разрешает выполнить эту операцию", 409, {"retry_after": retry_after}
         )
+        if http_status is not None:
+            self.details["provider_http_status"] = http_status
 
 
 def safe_settings(client) -> dict:
@@ -140,7 +142,7 @@ def new_client(
                         )
                     except ValueError, KeyError, TypeError:
                         retry_after = 0
-                raise ProviderError("cooldown", retry_after=max(0, retry_after))
+                raise ProviderError("cooldown", retry_after=max(0, retry_after), http_status=429)
             return result
 
         session.request = guarded  # pyright: ignore[reportAttributeAccessIssue] -- pinned library passes method, URL and keyword arguments; policy tests cover this seam.

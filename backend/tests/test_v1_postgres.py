@@ -468,6 +468,30 @@ def test_admin_mfa_role_gate_and_replay(context):
     )
 
 
+def test_local_instagram_cooldown_blocks_credentials_before_vault_write(context, monkeypatch):
+    from app.modules import data
+
+    client, factory, _uid, pid = context
+    calls = []
+    monkeypatch.setattr(data, "redis_command", lambda *args: calls.append(args))
+    with factory() as db:
+        profile = db.get(Profile, pid)
+        profile.status = "cooldown"
+        profile.cooldown_until = now() + timedelta(hours=24)
+        db.commit()
+    response = mutate(
+        client,
+        "POST",
+        "/instagram/connections",
+        json={"username": "owner", "password": "synthetic-only", "accepted_connection_risks": True},
+    )
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "cooldown"
+    assert calls == []
+    with factory() as db:
+        assert not db.scalar(select(Job).where(Job.profile_id == pid, Job.kind == "connect"))
+
+
 def test_credentials_idempotency_never_hashes_password(context):
     c, f, uid, pid = context
     from starlette.requests import Request
