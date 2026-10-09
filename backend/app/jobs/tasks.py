@@ -201,6 +201,9 @@ def process_instagram(guard):
                         stored = json.loads(
                             session_cipher(secret.key_version).decrypt(secret.encrypted_settings.encode())
                         )
+            imported_session = credentials.get("session_settings")
+            if imported_session:
+                stored = imported_session
             remaining = settings.instagram_request_budget - details.get("requests", 0)
             if remaining <= 0:
                 raise ProviderError("budget_exceeded")
@@ -215,7 +218,10 @@ def process_instagram(guard):
             verification = pending_cipher().decrypt(code).decode() if code else ""
             persist_login_device(guard, client)
             try:
-                client.login(credentials["username"], credentials["password"], verification_code=verification)
+                if not imported_session:
+                    client.login(
+                        credentials["username"], credentials["password"], verification_code=verification
+                    )
             except Exception as error:
                 from importlib.metadata import version
 

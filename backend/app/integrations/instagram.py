@@ -99,6 +99,35 @@ def safe_settings(client) -> dict:
     return {k: v for k, v in client.get_settings().items() if k in SETTINGS_KEYS}
 
 
+def parse_saved_session(raw: str) -> dict:
+    """Accept private mobile settings only; never import route or arbitrary fields."""
+    import json
+
+    if len(raw.encode()) > 65536:
+        raise ValueError("Файл сессии слишком большой")
+    try:
+        value = json.loads(raw)
+    except ValueError, RecursionError:
+        raise ValueError("Нужен JSON-файл настроек instagrapi") from None
+    if not isinstance(value, dict):
+        raise ValueError("Нужен JSON-файл настроек instagrapi")
+    auth = value.get("authorization_data")
+    uuids = value.get("uuids")
+    device = value.get("device_settings")
+    if (
+        not isinstance(auth, dict)
+        or not isinstance(auth.get("sessionid"), str)
+        or not auth["sessionid"]
+        or not str(auth.get("ds_user_id", "")).isdigit()
+        or not isinstance(uuids, dict)
+        or not all(isinstance(uuids.get(k), str) and uuids[k] for k in ("uuid", "phone_id", "device_id"))
+        or not isinstance(device, dict)
+        or not device.get("app_version")
+    ):
+        raise ValueError("Нужна сохранённая мобильная сессия instagrapi с устройством и авторизацией")
+    return {k: v for k, v in value.items() if k in SETTINGS_KEYS}
+
+
 def new_client(
     settings: dict | None,
     budget: int,

@@ -568,10 +568,31 @@
             "type": "string"
           },
           "password": {
-            "maxLength": 256,
-            "minLength": 1,
-            "title": "Password",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "session_json": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 65536,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Json"
           },
           "username": {
             "maxLength": 31,
@@ -582,7 +603,6 @@
         },
         "required": [
           "username",
-          "password",
           "accepted_connection_risks"
         ],
         "title": "ConnectInput",
@@ -4413,7 +4433,7 @@
     },
     "/api/v1/instagram/connections": {
       "post": {
-        "operationId": "connect_api_v1_instagram_connections_post",
+        "operationId": "parse_connection_session_api_v1_instagram_connections_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4446,7 +4466,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Connect"
+        "summary": "Parse Connection Session"
       }
     },
     "/api/v1/jobs/{job_id}": {

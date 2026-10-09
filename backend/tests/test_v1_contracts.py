@@ -446,3 +446,33 @@ def test_archive_source_timestamp_is_separate_from_observed_time():
     )
     data = parse_archive(content, "archive.zip", 5000000, 5000, 100000)
     assert data.timestamps["followers:alice"] == datetime.fromtimestamp(1700000000, UTC)
+
+
+def test_saved_session_requires_mobile_identity_and_does_not_import_route():
+    from app.integrations.instagram import parse_saved_session
+    from app.modules.data import ConnectInput, parse_connection_session
+
+    session = {
+        "authorization_data": {"ds_user_id": "123", "sessionid": "secret-test-session"},
+        "uuids": {"uuid": "u", "phone_id": "p", "device_id": "android-test"},
+        "device_settings": {"app_version": "449.0.0.52.84"},
+        "proxy": "http://untrusted.example",
+        "password": "never-import",
+    }
+    body = ConnectInput(username="owner", session_json=json.dumps(session), accepted_connection_risks=True)
+    assert "secret-test-session" not in repr(body)
+    saved = parse_connection_session(body)
+    assert saved is not None and "proxy" not in saved and "password" not in saved
+    assert saved["authorization_data"]["ds_user_id"] == "123"
+    for invalid in ("[]", "{}", "not-json", json.dumps({"cookies": {"sessionid": "web"}})):
+        with pytest.raises(ValueError):
+            parse_saved_session(invalid)
+    with pytest.raises(ValueError):
+        ConnectInput(
+            username="owner",
+            password="password",
+            session_json=json.dumps(session),
+            accepted_connection_risks=True,
+        )
+    with pytest.raises(ValueError):
+        ConnectInput(username="owner", accepted_connection_risks=True)

@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 
 from fastapi import Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from sqlalchemy import delete, func, select
 
 from app.core.dependencies import DB, Verified, rate_limit
@@ -34,9 +34,20 @@ class ProfileInput(BaseModel):
 
 
 class ConnectInput(ProfileInput):
-    password: str = Field(min_length=1, max_length=256)
+    password: str | None = Field(default=None, min_length=1, max_length=256)
+    session_json: SecretStr | None = Field(default=None, max_length=65536)
     accepted_connection_risks: bool
     connection_terms_version: str = "2026-10-07"
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        if bool(self.password) == bool(self.session_json):
+            raise ValueError("Укажите пароль либо файл сессии")
+        if self.session_json:
+            from app.integrations.instagram import parse_saved_session
+
+            parse_saved_session(self.session_json.get_secret_value())
+        return self
 
 
 class VerifyInput(BaseModel):
@@ -224,6 +235,14 @@ def add_profile(body: ProfileInput, user: Verified, db: DB):
 
 
 @router.post("/instagram/connections", status_code=202, response_model=JobDTO)
+def parse_connection_session(body: ConnectInput) -> dict | None:
+    if body.session_json is None:
+        return None
+    from app.integrations.instagram import parse_saved_session
+
+    return parse_saved_session(body.session_json.get_secret_value())
+
+
 def connect(body: ConnectInput, user: Verified, db: DB, request: Request, response: Response):
     from app.core.commands import audit, begin_command, finish_command, heavy_limit
     from app.models import Consent
@@ -282,7 +301,13 @@ def connect(body: ConnectInput, user: Verified, db: DB, request: Request, respon
         "login:" + job.id,
         s.instagram_credential_ttl_seconds,
         cipher(s.instagram_pending_encryption_key.get_secret_value()).encrypt(
-            json.dumps({"username": profile.username, "password": body.password}).encode()
+            json.dumps(
+                {
+                    "username": profile.username,
+                    "password": body.password,
+                    "session_settings": parse_connection_session(body),
+                }
+            ).encode()
         ),
     )
     db.add(Consent(user_id=user.id, purpose="instagram-connection", version=body.connection_terms_version))

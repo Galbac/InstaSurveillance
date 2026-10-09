@@ -46,7 +46,8 @@ export default function ConnectionPanel({
   const [job, setJob] = useState<Job | null>(null),
     [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false),
-    [showPassword, setShowPassword] = useState(false);
+    [showPassword, setShowPassword] = useState(false),
+    [connectionMode, setConnectionMode] = useState<"password" | "session">("password");
   const flags = useQuery({
     queryKey: ["public-config"],
     queryFn: () => api<PublicConfig>("/config/public"),
@@ -93,8 +94,12 @@ export default function ConnectionPanel({
     if (!username) {
       errs.username = "Укажи username Instagram";
     }
-    if (!password) {
+    const sessionFile = data.get("session_file");
+    if (connectionMode === "password" && !password) {
       errs.password = "Укажи пароль Instagram";
+    }
+    if (connectionMode === "session" && (!(sessionFile instanceof File) || !sessionFile.size || sessionFile.size > 65536)) {
+      errs.password = "Выбери session.json размером до 64 КБ";
     }
     if (!accepted) {
       errs.consent = "Необходимо подтвердить условия подключения";
@@ -118,7 +123,9 @@ export default function ConnectionPanel({
             : "/instagram/connections",
           {
             username,
-            password,
+            ...(connectionMode === "session" && sessionFile instanceof File
+              ? { session_json: await sessionFile.text() }
+              : { password }),
             accepted_connection_risks: accepted,
             connection_terms_version: flags.data!.connection_terms_version,
           },
@@ -344,6 +351,29 @@ export default function ConnectionPanel({
             </label>
 
             <label style={{ width: "100%", marginTop: 12 }}>
+              Способ подключения
+              <select value={connectionMode} onChange={(e) => {
+                setConnectionMode(e.target.value as "password" | "session");
+                setConnectErrors({});
+                setError(null);
+              }}>
+                <option value="password">Логин и пароль</option>
+                <option value="session">Сохранённая сессия instagrapi</option>
+              </select>
+            </label>
+            {connectionMode === "session" ? (
+              <label style={{ width: "100%", marginTop: 12 }}>
+                Файл session.json
+                <input name="session_file" type="file" accept=".json,application/json" required
+                  style={{ width: "100%", minWidth: 0 }} aria-invalid={!!connectErrors.password} />
+                <span style={{ display: "block", fontSize: 12, marginTop: 8 }}>
+                  Нужен файл, сохранённый instagrapi после успешного входа в этот аккаунт.
+                  Проверим владельца сессии. Файл даёт доступ к аккаунту: не публикуй его.
+                </span>
+                {connectErrors.password && <span className="field-error" role="alert">{connectErrors.password}</span>}
+              </label>
+            ) : (
+            <label style={{ width: "100%", marginTop: 12 }}>
               Пароль
               <div style={{ position: "relative" }}>
                 <input
@@ -392,6 +422,8 @@ export default function ConnectionPanel({
                 </span>
               )}
             </label>
+
+            )}
 
             <div style={{ margin: "16px 0 20px" }}>
               <label className="check" style={{ margin: 0, alignItems: "flex-start" }}>

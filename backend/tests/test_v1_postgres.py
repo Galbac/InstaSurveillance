@@ -1116,3 +1116,101 @@ def test_async_database_io_and_cancel_return_connections(context):
             await pool.dispose()
 
     client.portal.call(verify)
+
+
+@pytest.mark.parametrize("identity_username", ["owner", "another_account"])
+def test_imported_mobile_session_checks_identity_without_password_login(
+    context, monkeypatch, identity_username
+):
+    from types import SimpleNamespace
+
+    from cryptography.fernet import Fernet
+
+    from app.integrations.instagram import ProviderError
+    from app.jobs import tasks
+    from app.models import SessionSecret
+    from app.modules import data
+
+    _, factory, uid, pid = context
+    synthetic_cipher = Fernet(Fernet.generate_key())
+    monkeypatch.setattr(tasks, "pending_cipher", lambda: synthetic_cipher)
+    monkeypatch.setattr(tasks, "session_cipher", lambda version=None: synthetic_cipher)
+    with factory() as db:
+        job = Job(user_id=uid, profile_id=pid, kind="connect", status="connecting", details={"generation": 0})
+        db.add(job)
+        db.commit()
+        job_id = job.id
+    saved = {
+        "authorization_data": {"sessionid": "synthetic-session", "ds_user_id": "123"},
+        "uuids": {"uuid": "u", "phone_id": "p", "device_id": "android-test"},
+        "device_settings": {"app_version": "449.0.0.52.84"},
+    }
+    encrypted = synthetic_cipher.encrypt(
+        json.dumps({"username": "owner", "password": None, "session_settings": saved}).encode()
+    )
+    deleted = []
+
+    class Vault:
+        def get(self, key):
+            return encrypted if key == "login:" + job_id else None
+
+        def getdel(self, key):
+            return None
+
+        def delete(self, *keys):
+            deleted.extend(keys)
+
+        def lock(self, *args, **kwargs):
+            return SimpleNamespace(acquire=lambda: True, release=lambda: None)
+
+    monkeypatch.setattr(tasks.Redis, "from_url", lambda *args, **kwargs: Vault())
+    monkeypatch.setattr(data, "request_sync", lambda *args: None)
+
+    class Client:
+        user_id = "123"
+        policy_requests = 1
+        policy_responses = []
+
+        def login(self, *args, **kwargs):
+            pytest.fail("Imported sessions must never start password login")
+
+        def account_info(self):
+            return SimpleNamespace(username=identity_username, pk=123)
+
+        def get_settings(self):
+            return saved
+
+    def new_client(settings, *args, **kwargs):
+        assert settings == saved
+        return Client()
+
+    monkeypatch.setattr(tasks, "new_client", new_client)
+
+    class Guard:
+        def __init__(self):
+            self.job_id = job_id
+
+        def __call__(self):
+            pass
+
+    if identity_username != "owner":
+        with pytest.raises(ProviderError) as error:
+            tasks.process_instagram(Guard())
+        assert error.value.code == "identity_mismatch"
+        with factory() as db:
+            assert db.get(Profile, pid).status != "active"
+            secret = db.get(SessionSecret, pid)
+            if secret:
+                assert "authorization_data" not in json.loads(
+                    synthetic_cipher.decrypt(secret.encrypted_settings.encode())
+                )
+    else:
+        tasks.process_instagram(Guard())
+        with factory() as db:
+            assert db.get(Profile, pid).status == "active"
+            assert db.get(Job, job_id).status == "completed"
+            secret = db.get(SessionSecret, pid)
+            assert secret is not None
+            assert "synthetic-session" not in secret.encrypted_settings
+            assert json.loads(synthetic_cipher.decrypt(secret.encrypted_settings.encode())) == saved
+        assert "login:" + job_id in deleted
