@@ -233,22 +233,24 @@ function Workspace({
       setMore(false);
       return;
     }
+    const [route, query] = target.split("?");
+    const queryString = query ? `?${query}` : "";
     if (demo) {
-      if (target === "people") {
-        router.push("/demo?category=mutual", { scroll: false });
+      if (route === "people") {
+        router.push(`/demo${queryString || "?category=mutual"}`, { scroll: false });
       } else {
-        router.push(`/demo?view=${target}`, { scroll: false });
+        router.push(`/demo?view=${route}${query ? `&${query}` : ""}`, { scroll: false });
       }
     } else {
-      router.push(
-        target === "overview"
+      const basePath =
+        route === "overview"
           ? "/app"
-          : target === "connect"
+          : route === "connect"
             ? "/app/instagram/connect"
-            : target === "import"
+            : route === "import"
               ? "/app/imports/new"
-              : "/app/" + target,
-      );
+              : "/app/" + route;
+      router.push(basePath + queryString);
     }
     setMore(false);
   };
@@ -786,7 +788,7 @@ function Overview({
         ))}
       </div>
       <div className="relationship-grid">
-        <button className="relationship-card" onClick={() => go("people")}>
+        <button className="relationship-card" onClick={() => go("people?category=not_following_back")}>
           <div>
             <span className="card-eyebrow eyebrow">ВЗАИМНОСТЬ ПОДПИСОК</span>
             <h3>Я подписан без ответа</h3>
@@ -799,7 +801,7 @@ function Overview({
             <ArrowUpRight size={21} />
           </span>
         </button>
-        <button className="relationship-card mint" onClick={() => go("people")}>
+        <button className="relationship-card mint" onClick={() => go("people?category=fans")}>
           <div>
             <span className="card-eyebrow eyebrow">ТВОЯ АУДИТОРИЯ</span>
             <h3>На меня подписаны без ответа</h3>
@@ -833,7 +835,11 @@ function Overview({
           <div className="panel-heading">
             <div>
               <h3>Последние изменения</h3>
-              <p>Между двумя снимками</p>
+              <p>
+                {summary.snapshot && summary.previous_snapshot
+                  ? `Снимки: ${date(summary.previous_snapshot.observed_at)} → ${date(summary.snapshot.observed_at)}`
+                  : "Между двумя последними снимками"}
+              </p>
             </div>
             <button className="text-link" onClick={() => go("changes")}>
               Все <ArrowUpRight size={16} />
@@ -867,7 +873,7 @@ function Overview({
           ) : (
             <div className="small-empty">
               {summary.changes
-                ? "Изменений между снимками нет"
+                ? "Изменений между последними двумя снимками нет"
                 : summary.previous_snapshot
                   ? "Сравнение готовится в фоне или снимки несопоставимы"
                   : "Для изменений нужен следующий снимок"}

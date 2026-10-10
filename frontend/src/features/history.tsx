@@ -183,15 +183,53 @@ export default function HistoryPanel({
     return map;
   }, [rawRows]);
 
-  // Display rows according to chosen sort order
+  // Dynamic date options from rawRows
+  const dateOptions = useMemo(() => {
+    const list: { value: string; label: string }[] = [
+      { value: "all", label: "Все даты" },
+      { value: "7d", label: "За последние 7 дней" },
+      { value: "30d", label: "За последние 30 дней" },
+    ];
+    const seenDays = new Set<string>();
+    for (const row of rawRows) {
+      if (!row.observed_at) continue;
+      const d = new Date(row.observed_at);
+      const isoDay = d.toISOString().split("T")[0];
+      if (!seenDays.has(isoDay)) {
+        seenDays.add(isoDay);
+        const day = d.getUTCDate();
+        const month = MONTHS_GENITIVE[d.getUTCMonth()] || "";
+        const year = d.getUTCFullYear();
+        list.push({
+          value: `day:${isoDay}`,
+          label: `${day} ${month} ${year}`,
+        });
+      }
+    }
+    return list;
+  }, [rawRows]);
+
+  // Display rows according to chosen date filter and sort order
   const displayRows = useMemo(() => {
-    const list = [...rawRows];
+    let list = [...rawRows];
+
+    if (dateFilter === "7d") {
+      const cutoff = Date.now() - 7 * 86400 * 1000;
+      list = list.filter((r) => Date.parse(r.observed_at) >= cutoff);
+    } else if (dateFilter === "30d") {
+      const cutoff = Date.now() - 30 * 86400 * 1000;
+      list = list.filter((r) => Date.parse(r.observed_at) >= cutoff);
+    } else if (dateFilter.startsWith("day:")) {
+      const targetDay = dateFilter.slice(4);
+      list = list.filter((r) => r.observed_at && r.observed_at.startsWith(targetDay));
+    }
+
     list.sort((a, b) => {
       const diff = Date.parse(b.observed_at) - Date.parse(a.observed_at);
       return sortOrder === "desc" ? diff : -diff;
     });
     return list;
-  }, [rawRows, sortOrder]);
+  }, [rawRows, sortOrder, dateFilter]);
 
   // Find latest snapshot id across the entire set
   const latestSnapshotId = useMemo(() => {
@@ -238,7 +276,15 @@ export default function HistoryPanel({
           </div>
 
           <div className="history-controls-group">
-            <div className="history-select-wrapper">
+            <div
+              className="history-select-wrapper"
+              onClick={(e) => {
+                const s = e.currentTarget.querySelector("select") as (HTMLSelectElement & { showPicker?: () => void }) | null;
+                try {
+                  s?.showPicker?.();
+                } catch {}
+              }}
+            >
               <Calendar size={14} className="control-icon" />
               <select
                 className="history-select"
@@ -246,12 +292,24 @@ export default function HistoryPanel({
                 onChange={(e) => setDateFilter(e.target.value)}
                 aria-label="Фильтр по датам"
               >
-                <option value="all">Все даты</option>
+                {dateOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown size={14} className="chevron-icon" />
             </div>
 
-            <div className="history-select-wrapper">
+            <div
+              className="history-select-wrapper"
+              onClick={(e) => {
+                const s = e.currentTarget.querySelector("select") as (HTMLSelectElement & { showPicker?: () => void }) | null;
+                try {
+                  s?.showPicker?.();
+                } catch {}
+              }}
+            >
               <ArrowUpDown size={14} className="control-icon" />
               <select
                 className="history-select"

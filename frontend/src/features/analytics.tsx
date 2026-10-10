@@ -20,6 +20,10 @@ import {
   TrendingUp,
   TrendingDown,
   Scale,
+  Camera,
+  Info,
+  ArrowDown,
+  ArrowUpRight,
 } from "lucide-react";
 import { api, Profile, number } from "@/lib/api";
 import { demoHistory } from "@/lib/demo";
@@ -71,49 +75,83 @@ function formatTableDate(isoString: string) {
   return `${day} ${month}, ${hours}:${minutes}`;
 }
 
-interface CustomPointLabelProps {
-  x?: number | string;
-  y?: number | string;
-  value?: unknown;
-  index?: number;
-  total?: number;
-  [key: string]: unknown;
+function formatBadgeDate(isoString?: string) {
+  if (!isoString) return "Нет данных";
+  const d = new Date(isoString);
+  const day = d.getUTCDate();
+  const month = SHORT_MONTHS[d.getUTCMonth()];
+  const hours = String(d.getUTCHours()).padStart(2, "0");
+  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${day} ${month}, ${hours}:${minutes}`;
 }
 
-function ChartPointLabel(props: CustomPointLabelProps) {
-  const { x, y, value, index = 0, total = 0 } = props;
-  if (value === undefined || value === null) return null;
-  const isLast = index === total - 1;
+function getSnapshotsWord(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `${count} снимков`;
+  if (mod10 === 1) return `${count} снимок`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} снимка`;
+  return `${count} снимков`;
+}
 
-  if (isLast) {
-    const numX = Number(x) || 0;
-    const numY = Number(y) || 0;
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name?: string;
+    value?: unknown;
+    stroke?: string;
+    [key: string]: unknown;
+  }>;
+  label?: string;
+}
+
+function CustomChartTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (active && payload && payload.length) {
     return (
-      <g>
-        <rect
-          x={numX - 52}
-          y={numY - 28}
-          width={48}
-          height={22}
-          rx={6}
-          fill="#7c3aed"
-        />
-        <text
-          x={numX - 28}
-          y={numY - 13}
-          textAnchor="middle"
-          fill="#ffffff"
-          fontSize={11.5}
-          fontWeight="700"
-        >
-          {number(Number(value))}
-        </text>
-      </g>
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: "12px",
+          padding: "8px 14px",
+          boxShadow: "0 6px 16px rgba(0, 0, 0, 0.08)",
+          fontSize: "12px",
+        }}
+      >
+        <div style={{ color: "#64748b", marginBottom: "4px", fontWeight: 500 }}>
+          {label}
+        </div>
+        {payload.map((entry, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontWeight: 600,
+              color: "#0f172a",
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: entry.stroke || "#7c3aed",
+                display: "inline-block",
+              }}
+            />
+            <span>
+              {entry.name}: {number(Number(entry.value))}
+            </span>
+          </div>
+        ))}
+      </div>
     );
   }
-
   return null;
 }
+
 
 export default function AnalyticsPanel({
   profile,
@@ -241,6 +279,49 @@ export default function AnalyticsPanel({
   const historyRows = useMemo(() => {
     return [...chartData].reverse();
   }, [chartData]);
+
+  const currentMetricValues = useMemo(() => {
+    return chartData.map((d) =>
+      metricView === "following" ? d.following : d.followers
+    );
+  }, [chartData, metricView]);
+
+  const minMetricVal = currentMetricValues.length
+    ? Math.min(...currentMetricValues)
+    : 0;
+  const maxMetricVal = currentMetricValues.length
+    ? Math.max(...currentMetricValues)
+    : 0;
+  const currentVal = latestPoint
+    ? metricView === "following"
+      ? latestPoint.following
+      : latestPoint.followers
+    : 0;
+
+  const yDomain = useMemo(() => {
+    if (!currentMetricValues.length) return [0, 10];
+    if (minMetricVal === maxMetricVal) {
+      return [minMetricVal - 2, maxMetricVal + 2];
+    }
+    const padding = Math.max(1, Math.ceil((maxMetricVal - minMetricVal) * 0.15));
+    return [minMetricVal - padding, maxMetricVal + padding];
+  }, [currentMetricValues, minMetricVal, maxMetricVal]);
+
+  const yTicks = useMemo(() => {
+    if (minMetricVal === maxMetricVal && minMetricVal > 0) {
+      return [
+        minMetricVal - 2,
+        minMetricVal - 1,
+        minMetricVal,
+        minMetricVal + 1,
+        minMetricVal + 2,
+      ];
+    }
+    return undefined;
+  }, [minMetricVal, maxMetricVal]);
+
+  const selectedGrowth = metricView === "following" ? followingGrowth : followersGrowth;
+  const isStable = selectedGrowth === 0;
 
   // Period comparison calculations
   const comparison = useMemo(() => {
@@ -398,37 +479,45 @@ export default function AnalyticsPanel({
       {/* 2. Main Dynamic Chart Card */}
       <section className="analytics-v2-chart-card">
         <header className="analytics-v2-chart-header">
-          <div>
-            <h2 className="analytics-v2-chart-title">Динамика твоего круга</h2>
-            <p className="analytics-v2-chart-subtitle">
-              Как менялись показатели по дням
-            </p>
+          <div className="analytics-v2-header-left">
+            <div className="analytics-v2-icon-box">
+              <TrendingUp size={20} />
+            </div>
+            <div>
+              <h2 className="analytics-v2-chart-title">Динамика твоего круга</h2>
+              <p className="analytics-v2-chart-subtitle">
+                Как менялись показатели по сохранённым снимкам
+              </p>
+            </div>
           </div>
 
-          <div className="analytics-v2-timeframe-group" role="tablist">
-            {[
-              ["7", "7 дней"],
-              ["30", "30 дней"],
-              ["90", "90 дней"],
-              ["all", "Всё время"],
-            ].map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                role="tab"
-                aria-selected={period === val}
-                className={`analytics-v2-timeframe-btn ${
-                  period === val ? "active" : ""
+          <div className="analytics-v2-header-badges">
+            <span className="analytics-v2-badge-pill">
+              <Camera size={13} />
+              <span>{getSnapshotsWord(snapshotCount)}</span>
+            </span>
+            <span className="analytics-v2-badge-pill">
+              <Calendar size={13} />
+              <span>Последнее обновление: {formatBadgeDate(latestPoint?.date)}</span>
+            </span>
+            <span className="analytics-v2-badge-pill status">
+              <span
+                className={`analytics-v2-badge-dot ${
+                  isStable ? "purple" : selectedGrowth > 0 ? "green" : "red"
                 }`}
-                onClick={() => handlePeriodChange(val)}
-              >
-                {label}
-              </button>
-            ))}
+              />
+              <span>
+                {isStable
+                  ? "Без изменений за период"
+                  : selectedGrowth > 0
+                  ? `+${selectedGrowth} за период`
+                  : `${selectedGrowth} за период`}
+              </span>
+            </span>
           </div>
         </header>
 
-        {/* Controls row: metric toggle */}
+        {/* Controls row: metric toggle and timeframe */}
         <div className="analytics-v2-chart-controls">
           <div className="analytics-v2-metric-group">
             <button
@@ -459,24 +548,66 @@ export default function AnalyticsPanel({
               onClick={() => setMetricView("both")}
             >
               <Scale size={15} />
-              <span className="analytics-v2-metric-full">Оба показателя</span>
-              <span className="analytics-v2-metric-short">Оба</span>
+              <span>Оба</span>
             </button>
           </div>
+
+          <div className="analytics-v2-timeframe-group" role="tablist">
+            {[
+              ["7", "7 дней"],
+              ["30", "30 дней"],
+              ["90", "90 дней"],
+              ["all", "Всё время"],
+            ].map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                role="tab"
+                aria-selected={period === val}
+                className={`analytics-v2-timeframe-btn ${
+                  period === val ? "active" : ""
+                }`}
+                onClick={() => handlePeriodChange(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Big metric highlight */}
+        <div className="analytics-v2-highlight">
+          <span className="analytics-v2-highlight-num">
+            {number(currentVal)}
+          </span>
+          <span className="analytics-v2-highlight-status">
+            <span
+              className={`analytics-v2-badge-dot ${
+                isStable ? "green" : selectedGrowth > 0 ? "green" : "red"
+              }`}
+            />
+            <span>
+              {isStable
+                ? "Стабильно за выбранный период"
+                : selectedGrowth > 0
+                ? `+${selectedGrowth} за выбранный период`
+                : `${selectedGrowth} за выбранный период`}
+            </span>
+          </span>
         </div>
 
         <ErrorNotice error={q.error} />
 
         {q.isPending && !demo && profile && !chartData.length ? (
           <div className="analytics-v2-chart-skeleton" aria-busy="true">
-            <div className="skeleton-shimmer" style={{ width: "100%", height: 320, borderRadius: 16 }} />
+            <div className="skeleton-shimmer" style={{ width: "100%", height: 260, borderRadius: 16 }} />
           </div>
         ) : chartData.length > 0 ? (
           <div className={`analytics-v2-chart-wrapper ${q.isFetching && q.isPlaceholderData ? "chart-updating" : ""}`}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260}>
               <AreaChart
                 data={chartData}
-                margin={{ top: 20, right: 16, left: 0, bottom: 12 }}
+                margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
               >
                 <defs>
                   <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
@@ -490,39 +621,29 @@ export default function AnalyticsPanel({
                 </defs>
                 <CartesianGrid
                   vertical={false}
-                  strokeDasharray="3 4"
-                  stroke="#edf0f5"
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
                 />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickMargin={12}
+                  tickMargin={10}
                   padding={{ left: 24, right: 24 }}
-                  minTickGap={28}
+                  minTickGap={20}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  domain={["auto", "auto"]}
+                  domain={yDomain}
+                  ticks={yTicks}
                   tickLine={false}
                   axisLine={false}
-                  width={44}
+                  width={36}
                   tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  tickFormatter={(val) => number(val)}
+                  tickFormatter={(val) => String(Math.round(val))}
                 />
-                <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    color: "#171a27",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 12,
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
-                    fontSize: 13,
-                  }}
-                  formatter={(val: unknown) => [number(Number(val)), ""]}
-                  labelFormatter={(lbl) => `Снимок: ${lbl}`}
-                />
+                <Tooltip content={<CustomChartTooltip />} />
                 {(metricView === "followers" || metricView === "both") && (
                   <Area
                     type="monotone"
@@ -538,12 +659,6 @@ export default function AnalyticsPanel({
                       fill: "#ffffff",
                     }}
                     activeDot={{ r: 6, fill: "#7c3aed" }}
-                    label={(props) => (
-                      <ChartPointLabel
-                        {...props}
-                        total={chartData.length}
-                      />
-                    )}
                   />
                 )}
                 {(metricView === "following" || metricView === "both") && (
@@ -561,16 +676,6 @@ export default function AnalyticsPanel({
                       fill: "#ffffff",
                     }}
                     activeDot={{ r: 6, fill: "#3b82f6" }}
-                    label={
-                      metricView === "following"
-                        ? (props) => (
-                            <ChartPointLabel
-                              {...props}
-                              total={chartData.length}
-                            />
-                          )
-                        : undefined
-                    }
                   />
                 )}
               </AreaChart>
@@ -583,14 +688,78 @@ export default function AnalyticsPanel({
           </div>
         )}
 
-        <footer className="analytics-v2-chart-footer">
-          <span>{chartData.length} наблюдений</span>
-          <span>
-            {latestPoint
-              ? `Последнее обновление: ${formatTableDate(latestPoint.date)}`
-              : "Нет данных"}
-          </span>
-        </footer>
+        {/* Info callout banner */}
+        <div className="analytics-v2-info-banner">
+          <Info size={18} className="analytics-v2-info-icon" />
+          <div className="analytics-v2-info-text">
+            <strong className="analytics-v2-info-title">
+              {isStable
+                ? "Изменений не было"
+                : selectedGrowth > 0
+                ? "Рост аудитории"
+                : "Снижение аудитории"}
+            </strong>
+            <span className="analytics-v2-info-desc">
+              {isStable
+                ? `Количество ${
+                    metricView === "following" ? "подписок" : "подписчиков"
+                  } оставалось на уровне ${number(currentVal)} в течение ${getSnapshotsWord(
+                    snapshotCount
+                  )}.`
+                : selectedGrowth > 0
+                ? `Количество ${
+                    metricView === "following" ? "подписок" : "подписчиков"
+                  } увеличилось на +${selectedGrowth} за ${getSnapshotsWord(
+                    snapshotCount
+                  )}.`
+                : `Количество ${
+                    metricView === "following" ? "подписок" : "подписчиков"
+                  } уменьшилось на ${selectedGrowth} за ${getSnapshotsWord(
+                    snapshotCount
+                  )}.`}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom 4 mini stats cards */}
+        <div className="analytics-v2-mini-stats-grid">
+          <div className="analytics-v2-mini-stat">
+            <div className="analytics-v2-mini-icon">
+              <User size={16} />
+            </div>
+            <div className="analytics-v2-mini-content">
+              <span className="analytics-v2-mini-label">Текущее</span>
+              <strong className="analytics-v2-mini-value">{number(currentVal)}</strong>
+            </div>
+          </div>
+          <div className="analytics-v2-mini-stat">
+            <div className="analytics-v2-mini-icon">
+              <ArrowDown size={16} />
+            </div>
+            <div className="analytics-v2-mini-content">
+              <span className="analytics-v2-mini-label">Мин</span>
+              <strong className="analytics-v2-mini-value">{number(minMetricVal)}</strong>
+            </div>
+          </div>
+          <div className="analytics-v2-mini-stat">
+            <div className="analytics-v2-mini-icon">
+              <ArrowUpRight size={16} />
+            </div>
+            <div className="analytics-v2-mini-content">
+              <span className="analytics-v2-mini-label">Макс</span>
+              <strong className="analytics-v2-mini-value">{number(maxMetricVal)}</strong>
+            </div>
+          </div>
+          <div className="analytics-v2-mini-stat">
+            <div className="analytics-v2-mini-icon">
+              <Camera size={16} />
+            </div>
+            <div className="analytics-v2-mini-content">
+              <span className="analytics-v2-mini-label">Снимков</span>
+              <strong className="analytics-v2-mini-value">{snapshotCount}</strong>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* 3. Bottom Grid: History Table & Period Comparison */}
