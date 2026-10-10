@@ -204,7 +204,7 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
           </span>
         </aside>
         <section className="auth-card">
-          <span className="overline">INSTASURVEILLANCE</span>
+          <span className="card-eyebrow eyebrow">INSTASURVEILLANCE</span>
           <h2>{localCodeStep ? "Подтверди email" : titles[mode]}</h2>
           <p className="muted">
             {localCodeStep

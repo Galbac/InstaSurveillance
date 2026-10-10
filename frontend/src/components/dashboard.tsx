@@ -9,8 +9,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bell,
-  ChevronDown,
-  ChevronRight,
   CircleHelp,
   Clock3,
   HeartHandshake,
@@ -40,6 +38,8 @@ import SettingsPanel from "@/features/settings";
 import ConnectionPanel, { SyncPanel } from "@/features/connection";
 import ImportPanel from "@/features/import";
 import { NotificationsPanel, SupportPanel } from "@/features/support";
+import type { components } from "@/lib/generated-api";
+import { Page } from "@/lib/workflows";
 import { Modal } from "@/features/common";
 import {
   api,
@@ -63,7 +63,6 @@ const nav = [
   { view: "analytics", label: "Аналитика", icon: TrendingUp },
 ];
 const extra = [
-  { view: "notifications", label: "Уведомления", icon: Bell },
   { view: "settings", label: "Настройки", icon: Settings },
   { view: "help", label: "Помощь", icon: CircleHelp },
 ];
@@ -204,6 +203,15 @@ function Workspace({
       p?.status === "syncing" || p?.status === "connecting" ? 10000 : false,
   });
   const summary = demo ? demoSummary : summaryQuery.data;
+  const notificationsQuery = useQuery({
+    queryKey: ["notifications", "count"],
+    queryFn: ({ signal }) =>
+      api<Page<components["schemas"]["NotificationDTO"]>>("/notifications?limit=50", { signal }),
+    enabled: !demo && !!me.data,
+    refetchInterval: 60000,
+  });
+  const unreadCount =
+    notificationsQuery.data?.items?.filter((n) => !n.read).length || 0;
   useEffect(() => {
     if (me.error instanceof ApiError && me.error.status === 401) {
       qc.clear();
@@ -272,6 +280,20 @@ function Workspace({
       );
       qc.invalidateQueries({ queryKey: ["profiles"] });
     } catch (e) {
+      if (e instanceof ApiError && e.code === "already_running") {
+        if (typeof e.details?.job_id === "string") {
+          router.push(`/app/syncs/${e.details.job_id}`);
+          return;
+        }
+        try {
+          const syncs = await api<Page<Job>>(`/profiles/${p.id}/syncs?limit=1`);
+          const latest = syncs?.items?.[0];
+          if (latest) {
+            router.push(`/app/syncs/${latest.id}`);
+            return;
+          }
+        } catch {}
+      }
       setNotice(e instanceof Error ? e.message : "Обновление недоступно");
     }
   }
@@ -317,32 +339,30 @@ function Workspace({
             {demo ? <UserPlus size={19} className="nav-icon" /> : <LogOut size={19} className="nav-icon" />}
             <span>{demo ? "Создать аккаунт" : "Выйти"}</span>
           </button>
+          {!demo && me.data?.email && (
+            <div className="sidebar-user-email" title={me.data.email}>
+              {me.data.email}
+            </div>
+          )}
         </div>
       </aside>
       <div className="workspace-main">
         <header className="topbar">
-          <div className="breadcrumb">
-            <span className="breadcrumb-parent">Мое пространство</span>
-            <ChevronRight size={13} className="breadcrumb-chevron" />
-            <span className="breadcrumb-current">
-              {view === "overview" ? "Обзор" : title}
-            </span>
-          </div>
+          <div className="topbar-left" />
           <div className="topbar-right">
             {demo && <span className="badge demo-badge">ДЕМО</span>}
             <button
-              className="icon-button"
+              className="icon-button topbar-bell-btn"
               aria-label="Уведомления"
               onClick={() => go("notifications")}
             >
               <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="topbar-unread-badge">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
-            <div className="topbar-user-badge">
-              <div className="topbar-user-avatar">
-                {demo ? "N" : p?.username?.[0]?.toUpperCase() || "Y"}
-              </div>
-              <ChevronDown size={14} className="topbar-user-chevron" />
-            </div>
             <button
               className="mobile-more icon-button"
               aria-label="Открыть меню"
@@ -355,10 +375,7 @@ function Workspace({
         <main className="dashboard-content">
           <div className="page-heading">
             <div className="page-heading-left">
-              <h1>
-                {title}
-                <span className="heading-spark">✱</span>
-              </h1>
+              <h1>{title}</h1>
               <p>
                 {view === "people" ? (
                   <>
@@ -373,9 +390,15 @@ function Workspace({
             </div>
             {view === "people" && <HeroOrbitGraphic />}
             {view === "overview" && (
-              <button className="button" onClick={sync}>
-                <RefreshCw size={17} />
-                Обновить данные
+              <button
+                className={`button ${p?.status === "syncing" ? "secondary" : ""}`}
+                onClick={sync}
+              >
+                <RefreshCw
+                  size={17}
+                  className={p?.status === "syncing" ? "animate-spin" : ""}
+                />
+                {p?.status === "syncing" ? "Идёт сбор данных…" : "Обновить данные"}
               </button>
             )}
           </div>
@@ -446,7 +469,7 @@ function Workspace({
             <>
               {view === "overview" &&
                 (summary?.counts ? (
-                  <Overview summary={summary} go={go} demo={demo} />
+                  <Overview summary={summary} go={go} demo={demo} onSync={sync} />
                 ) : (
                   <Empty
                     go={go}
@@ -653,10 +676,12 @@ function Overview({
   summary,
   go,
   demo,
+  onSync,
 }: {
   summary: Summary;
   go: (v: string) => void;
   demo: boolean;
+  onSync?: () => void;
 }) {
   const c = summary.counts!;
   const removed =
@@ -666,6 +691,22 @@ function Overview({
     ).length;
   return (
     <>
+      {summary.profile.status === "syncing" && (
+        <div className="active-sync-banner">
+          <div className="active-sync-banner-left">
+            <span className="live-dot" style={{ background: "#7c3aed" }} />
+            <div>
+              <strong>Идёт фоновый сбор данных Instagram</strong>
+              <p>Обновляем списки подписчиков и подписок. Свежий снимок появится здесь сразу по готовности.</p>
+            </div>
+          </div>
+          {onSync && (
+            <button className="button secondary small" onClick={onSync}>
+              Статус сбора
+            </button>
+          )}
+        </div>
+      )}
       {summary.snapshot?.completeness === "partial" && (
         <p className="notice" role="status">
           Данные неполные: получено {c.followers} из {Number(summary.snapshot.provenance.expected_followers ?? c.followers)} подписчиков
@@ -747,7 +788,7 @@ function Overview({
       <div className="relationship-grid">
         <button className="relationship-card" onClick={() => go("people")}>
           <div>
-            <span className="overline">ВЗАИМНОСТЬ ПОДПИСОК</span>
+            <span className="card-eyebrow eyebrow">ВЗАИМНОСТЬ ПОДПИСОК</span>
             <h3>Я подписан без ответа</h3>
             <p>{summary.snapshot?.completeness === "partial"
               ? "Ты читаешь их; в доступном списке подписчиков они не найдены"
@@ -760,7 +801,7 @@ function Overview({
         </button>
         <button className="relationship-card mint" onClick={() => go("people")}>
           <div>
-            <span className="overline">ТВОЯ АУДИТОРИЯ</span>
+            <span className="card-eyebrow eyebrow">ТВОЯ АУДИТОРИЯ</span>
             <h3>На меня подписаны без ответа</h3>
             <p>Они читают тебя, ты не подписан на них</p>
           </div>

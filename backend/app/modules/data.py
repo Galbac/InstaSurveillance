@@ -417,10 +417,13 @@ def request_sync(db, p: Profile) -> Job:
         raise AppError("connection_unavailable", "Подключение не активно", 409)
     if p.cooldown_until and p.cooldown_until > now():
         raise AppError("cooldown", "Instagram ограничил запросы", 429)
-    if db.scalar(
-        select(Job).where(Job.profile_id == p.id, Job.kind == "sync", Job.status.in_(["queued", "syncing"]))
-    ):
-        raise AppError("already_running", "Сбор уже выполняется", 409)
+    running_job = db.scalar(
+        select(Job)
+        .where(Job.profile_id == p.id, Job.kind == "sync", Job.status.in_(["queued", "syncing"]))
+        .order_by(Job.created_at.desc())
+    )
+    if running_job:
+        raise AppError("already_running", "Сбор уже выполняется", 409, details={"job_id": running_job.id})
     from app.core.commands import heavy_limit
     from app.core.security import csrf
     from app.models import PlatformRun

@@ -2,7 +2,7 @@
 
 import type { components } from "@/lib/generated-api";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -18,12 +18,12 @@ import {
   HeartHandshake,
   Calendar,
   TrendingUp,
+  TrendingDown,
   Scale,
 } from "lucide-react";
 import { api, Profile, number } from "@/lib/api";
 import { demoHistory } from "@/lib/demo";
-import { useUrlValue } from "@/lib/workflows";
-import { ErrorNotice, Loader } from "./common";
+import { ErrorNotice } from "./common";
 
 type Point = components["schemas"]["AnalyticsPoint"];
 
@@ -124,7 +124,25 @@ export default function AnalyticsPanel({
   demo?: boolean;
   compact?: boolean;
 }) {
-  const [period, setPeriod] = useUrlValue("analytics_period", "7");
+  const [period, setPeriodState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search).get("analytics_period");
+      if (sp) return sp;
+    }
+    return "7";
+  });
+
+  const handlePeriodChange = (val: string) => {
+    setPeriodState(val);
+    if (typeof window !== "undefined") {
+      const next = new URLSearchParams(window.location.search);
+      if (val === "7") next.delete("analytics_period");
+      else next.set("analytics_period", val);
+      const qs = next.toString();
+      window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : ""));
+    }
+  };
+
   const [metricView, setMetricView] = useState<"followers" | "following" | "both">("followers");
 
   const params = new URLSearchParams();
@@ -137,6 +155,7 @@ export default function AnalyticsPanel({
     queryKey: ["analytics", profile?.id, params.toString()],
     queryFn: ({ signal }) =>
       api<Point[]>(`/profiles/${profile!.id}/analytics?${params}`, { signal }),
+    placeholderData: keepPreviousData,
     enabled: !demo && !!profile,
   });
 
@@ -157,12 +176,32 @@ export default function AnalyticsPanel({
   }, [demo, q.data]);
 
   const chartData = useMemo(() => {
+    const timestamps = rawPoints.map((p) => new Date(p.date).getTime()).filter((t) => !isNaN(t));
+    const minTime = timestamps.length ? Math.min(...timestamps) : 0;
+    const maxTime = timestamps.length ? Math.max(...timestamps) : 0;
+    const spanHours = (maxTime - minTime) / (1000 * 3600);
+
+    const dayKeys = rawPoints.map((p) => {
+      const d = new Date(p.date);
+      return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    });
+    const hasDuplicateDays = new Set(dayKeys).size < dayKeys.length;
+    const showTimeOnTicks = spanHours <= 48 || hasDuplicateDays;
+
     return rawPoints.map((p, index) => {
       const prev = index > 0 ? rawPoints[index - 1] : null;
+      const d = new Date(p.date);
+      const dayShort = `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]}`;
+      const hours = String(d.getUTCHours()).padStart(2, "0");
+      const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+      const label = showTimeOnTicks
+        ? `${dayShort}, ${hours}:${minutes}`
+        : dayShort;
+
       return {
         id: p.id,
         date: p.date,
-        label: formatShortDate(p.date),
+        label,
         followers: p.followers,
         following: p.following,
         followersDelta: prev ? p.followers - prev.followers : null,
@@ -204,47 +243,82 @@ export default function AnalyticsPanel({
   }, [chartData]);
 
   // Period comparison calculations
-  const periodA = useMemo(() => {
-    if (rawPoints.length >= 3) {
-      const start = rawPoints[0];
-      const end = rawPoints[2];
+  const comparison = useMemo(() => {
+    if (demo) {
       return {
-        start,
-        end,
-        followersDelta: end.followers - start.followers,
-        followingDelta: end.following - start.following,
+        hasEnoughData: true,
+        totalPoints: 7,
+        requiredPoints: 4,
+        periodA: {
+          label: "Период A",
+          dateRange: "1–3 октября",
+          followersDelta: 26,
+          followingDelta: 6,
+        },
+        periodB: {
+          label: "Период B",
+          dateRange: "5–7 октября",
+          followersDelta: 28,
+          followingDelta: 6,
+        },
+        followersDiff: 2,
+        growthPercent: "7,7",
       };
     }
-    if (demo) {
-      return { followersDelta: 26, followingDelta: 6 };
-    }
-    return { followersDelta: 0, followingDelta: 0 };
-  }, [rawPoints, demo]);
 
-  const periodB = useMemo(() => {
-    if (rawPoints.length >= 7) {
-      const start = rawPoints[4];
-      const end = rawPoints[6];
+    if (rawPoints.length < 4) {
       return {
-        start,
-        end,
-        followersDelta: end.followers - start.followers,
-        followingDelta: end.following - start.following,
+        hasEnoughData: false,
+        totalPoints: rawPoints.length,
+        requiredPoints: 4,
+        periodA: null,
+        periodB: null,
+        followersDiff: 0,
+        growthPercent: "0",
       };
     }
-    if (demo) {
-      return { followersDelta: 28, followingDelta: 6 };
-    }
-    return { followersDelta: 0, followingDelta: 0 };
-  }, [rawPoints, demo]);
 
-  const growthDiff = periodB.followersDelta - periodA.followersDelta;
-  const growthPercent =
-    periodA.followersDelta > 0
-      ? ((growthDiff / periodA.followersDelta) * 100).toFixed(1).replace(".", ",")
-      : demo
-      ? "7,7"
-      : "0";
+    const mid = Math.floor(rawPoints.length / 2);
+    const firstHalfStart = rawPoints[0];
+    const firstHalfEnd = rawPoints[mid - 1];
+    const secondHalfStart = rawPoints[mid];
+    const secondHalfEnd = rawPoints[rawPoints.length - 1];
+
+    const pAFollowers = firstHalfEnd.followers - firstHalfStart.followers;
+    const pAFollowing = firstHalfEnd.following - firstHalfStart.following;
+
+    const pBFollowers = secondHalfEnd.followers - secondHalfStart.followers;
+    const pBFollowing = secondHalfEnd.following - secondHalfStart.following;
+
+    const followersDiff = pBFollowers - pAFollowers;
+    const growthPercent =
+      pAFollowers !== 0
+        ? ((followersDiff / Math.abs(pAFollowers)) * 100).toFixed(1).replace(".", ",")
+        : "0";
+
+    const dateA = `${formatShortDate(firstHalfStart.date)} – ${formatShortDate(firstHalfEnd.date)}`;
+    const dateB = `${formatShortDate(secondHalfStart.date)} – ${formatShortDate(secondHalfEnd.date)}`;
+
+    return {
+      hasEnoughData: true,
+      totalPoints: rawPoints.length,
+      requiredPoints: 4,
+      periodA: {
+        label: "Период A",
+        dateRange: dateA,
+        followersDelta: pAFollowers,
+        followingDelta: pAFollowing,
+      },
+      periodB: {
+        label: "Период B",
+        dateRange: dateB,
+        followersDelta: pBFollowers,
+        followingDelta: pBFollowing,
+      },
+      followersDiff,
+      growthPercent,
+    };
+  }, [rawPoints, demo]);
 
   return (
     <div className="analytics-v2-container">
@@ -258,7 +332,7 @@ export default function AnalyticsPanel({
             </div>
             <span
               className={`analytics-v2-stat-badge ${
-                followersGrowth >= 0 ? "green" : "red"
+                followersGrowth > 0 ? "green" : followersGrowth < 0 ? "red" : "neutral"
               }`}
             >
               {chartData.length < 2 ? "Первый снимок" : followersGrowth === 0 ? "Без изменения" : followersGrowth > 0 ? `+${followersGrowth} ↑` : `${followersGrowth} ↓`}
@@ -279,7 +353,7 @@ export default function AnalyticsPanel({
             </div>
             <span
               className={`analytics-v2-stat-badge ${
-                followingGrowth >= 0 ? "green" : "red"
+                followingGrowth > 0 ? "green" : followingGrowth < 0 ? "red" : "neutral"
               }`}
             >
               {chartData.length < 2 ? "Первый снимок" : followingGrowth === 0 ? "Без изменения" : followingGrowth > 0 ? `+${followingGrowth} ↑` : `${followingGrowth} ↓`}
@@ -346,7 +420,7 @@ export default function AnalyticsPanel({
                 className={`analytics-v2-timeframe-btn ${
                   period === val ? "active" : ""
                 }`}
-                onClick={() => setPeriod(val)}
+                onClick={() => handlePeriodChange(val)}
               >
                 {label}
               </button>
@@ -393,16 +467,16 @@ export default function AnalyticsPanel({
 
         <ErrorNotice error={q.error} />
 
-        {q.isPending && !demo && profile ? (
-          <div style={{ padding: 48, display: "flex", justifyContent: "center" }}>
-            <Loader />
+        {q.isPending && !demo && profile && !chartData.length ? (
+          <div className="analytics-v2-chart-skeleton" aria-busy="true">
+            <div className="skeleton-shimmer" style={{ width: "100%", height: 320, borderRadius: 16 }} />
           </div>
         ) : chartData.length > 0 ? (
-          <div className="analytics-v2-chart-wrapper">
+          <div className={`analytics-v2-chart-wrapper ${q.isFetching && q.isPlaceholderData ? "chart-updating" : ""}`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={chartData}
-                margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
+                margin={{ top: 20, right: 16, left: 0, bottom: 12 }}
               >
                 <defs>
                   <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
@@ -424,6 +498,10 @@ export default function AnalyticsPanel({
                   tickLine={false}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tick={{ fontSize: 11, fill: "#64748b" }}
+                  tickMargin={12}
+                  padding={{ left: 24, right: 24 }}
+                  minTickGap={28}
+                  interval="preserveStartEnd"
                 />
                 <YAxis
                   domain={["auto", "auto"]}
@@ -679,101 +757,182 @@ export default function AnalyticsPanel({
               <div>
                 <h3 className="analytics-v2-card-title">Сравнение периодов</h3>
                 <p className="analytics-v2-card-subtitle">
-                  Узнай, в какой период твой круг рос быстрее.
+                  Сравнивает динамику прироста между равными интервалами.
                 </p>
               </div>
             </header>
 
-            <div className="analytics-v2-compare-boxes">
-              {/* Box A */}
-              <div className="analytics-v2-compare-box">
-                <div className="analytics-v2-compare-box-head">
-                  <span className="analytics-v2-box-label">Период A</span>
-                  <span className="analytics-v2-box-dates">
-                    <Calendar size={14} className="text-gray-400" />
-                    {periodA.start && periodA.end
-                      ? `${formatShortDate(periodA.start.date)} – ${formatShortDate(periodA.end.date)}`
-                      : demo
-                      ? "1–3 октября"
-                      : "Нет данных"}
+            {!comparison.hasEnoughData ? (
+              <div className="analytics-v2-compare-pending">
+                <div className="analytics-v2-pending-icon-box">
+                  <Scale size={22} />
+                </div>
+                <div className="analytics-v2-pending-info">
+                  <h4 className="analytics-v2-pending-title">
+                    Для точного сравнения требуется от 4 снимков
+                  </h4>
+                  <p className="analytics-v2-pending-desc">
+                    Сохранено {comparison.totalPoints} из {comparison.requiredPoints} снимков. При следующих автоматических обновлениях здесь появится сравнительный анализ темпов роста.
+                  </p>
+                  <div className="analytics-v2-progress-bar-wrap">
+                    <div
+                      className="analytics-v2-progress-bar-fill"
+                      style={{
+                        width: `${Math.min(100, Math.max(15, (comparison.totalPoints / comparison.requiredPoints) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="analytics-v2-progress-label">
+                    {comparison.totalPoints} / {comparison.requiredPoints} снимков накоплено
                   </span>
                 </div>
-                <div className="analytics-v2-compare-metrics">
-                  <div>
-                    <p className="analytics-v2-metric-sub">
-                      Прирост подписчиков
-                    </p>
-                    <div className="analytics-v2-metric-val">
-                      {periodA.followersDelta >= 0
-                        ? `+${periodA.followersDelta}`
-                        : periodA.followersDelta}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="analytics-v2-metric-sub">Прирост подписок</p>
-                    <div className="analytics-v2-metric-val">
-                      {periodA.followingDelta >= 0
-                        ? `+${periodA.followingDelta}`
-                        : periodA.followingDelta}
-                    </div>
-                  </div>
-                </div>
               </div>
+            ) : (
+              <>
+                <div className="analytics-v2-compare-boxes">
+                  {/* Box A */}
+                  <div className="analytics-v2-compare-box period-a">
+                    <div className="analytics-v2-compare-box-head">
+                      <div className="analytics-v2-box-badge-row">
+                        <span className="analytics-v2-box-badge neutral">Период A</span>
+                        <span className="analytics-v2-box-tag">Предыдущий</span>
+                      </div>
+                      <span className="analytics-v2-box-dates">
+                        <Calendar size={13} className="text-gray-400" />
+                        {comparison.periodA!.dateRange}
+                      </span>
+                    </div>
+                    <div className="analytics-v2-compare-metrics">
+                      <div className="analytics-v2-compare-metric-cell">
+                        <span className="analytics-v2-metric-sub">Подписчики</span>
+                        <div
+                          className={`analytics-v2-metric-val ${
+                            comparison.periodA!.followersDelta > 0
+                              ? "positive"
+                              : comparison.periodA!.followersDelta < 0
+                              ? "negative"
+                              : "zero"
+                          }`}
+                        >
+                          {comparison.periodA!.followersDelta > 0
+                            ? `+${comparison.periodA!.followersDelta} ↑`
+                            : comparison.periodA!.followersDelta < 0
+                            ? `${comparison.periodA!.followersDelta} ↓`
+                            : "0"}
+                        </div>
+                      </div>
+                      <div className="analytics-v2-compare-metric-cell">
+                        <span className="analytics-v2-metric-sub">Подписки</span>
+                        <div
+                          className={`analytics-v2-metric-val ${
+                            comparison.periodA!.followingDelta > 0
+                              ? "positive"
+                              : comparison.periodA!.followingDelta < 0
+                              ? "negative"
+                              : "zero"
+                          }`}
+                        >
+                          {comparison.periodA!.followingDelta > 0
+                            ? `+${comparison.periodA!.followingDelta} ↑`
+                            : comparison.periodA!.followingDelta < 0
+                            ? `${comparison.periodA!.followingDelta} ↓`
+                            : "0"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Box B */}
-              <div className="analytics-v2-compare-box">
-                <div className="analytics-v2-compare-box-head">
-                  <span className="analytics-v2-box-label">Период B</span>
-                  <span className="analytics-v2-box-dates">
-                    <Calendar size={14} className="text-gray-400" />
-                    {periodB.start && periodB.end
-                      ? `${formatShortDate(periodB.start.date)} – ${formatShortDate(periodB.end.date)}`
-                      : demo
-                      ? "5–7 октября"
-                      : "Нет данных"}
-                  </span>
-                </div>
-                <div className="analytics-v2-compare-metrics">
-                  <div>
-                    <p className="analytics-v2-metric-sub">
-                      Прирост подписчиков
-                    </p>
-                    <div className="analytics-v2-metric-val">
-                      {periodB.followersDelta >= 0
-                        ? `+${periodB.followersDelta}`
-                        : periodB.followersDelta}
+                  {/* Box B */}
+                  <div className="analytics-v2-compare-box period-b">
+                    <div className="analytics-v2-compare-box-head">
+                      <div className="analytics-v2-box-badge-row">
+                        <span className="analytics-v2-box-badge active">Период B</span>
+                        <span className="analytics-v2-box-tag active">Текущий</span>
+                      </div>
+                      <span className="analytics-v2-box-dates">
+                        <Calendar size={13} className="text-purple-500" />
+                        {comparison.periodB!.dateRange}
+                      </span>
+                    </div>
+                    <div className="analytics-v2-compare-metrics">
+                      <div className="analytics-v2-compare-metric-cell">
+                        <span className="analytics-v2-metric-sub">Подписчики</span>
+                        <div
+                          className={`analytics-v2-metric-val ${
+                            comparison.periodB!.followersDelta > 0
+                              ? "positive"
+                              : comparison.periodB!.followersDelta < 0
+                              ? "negative"
+                              : "zero"
+                          }`}
+                        >
+                          {comparison.periodB!.followersDelta > 0
+                            ? `+${comparison.periodB!.followersDelta} ↑`
+                            : comparison.periodB!.followersDelta < 0
+                            ? `${comparison.periodB!.followersDelta} ↓`
+                            : "0"}
+                        </div>
+                      </div>
+                      <div className="analytics-v2-compare-metric-cell">
+                        <span className="analytics-v2-metric-sub">Подписки</span>
+                        <div
+                          className={`analytics-v2-metric-val ${
+                            comparison.periodB!.followingDelta > 0
+                              ? "positive"
+                              : comparison.periodB!.followingDelta < 0
+                              ? "negative"
+                              : "zero"
+                          }`}
+                        >
+                          {comparison.periodB!.followingDelta > 0
+                            ? `+${comparison.periodB!.followingDelta} ↑`
+                            : comparison.periodB!.followingDelta < 0
+                            ? `${comparison.periodB!.followingDelta} ↓`
+                            : "0"}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <p className="analytics-v2-metric-sub">Прирост подписок</p>
-                    <div className="analytics-v2-metric-val">
-                      {periodB.followingDelta >= 0
-                        ? `+${periodB.followingDelta}`
-                        : periodB.followingDelta}
-                    </div>
-                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Bottom Insight Banner */}
-            <div className="analytics-v2-compare-insight">
-              <div className="analytics-v2-insight-icon">
-                <TrendingUp size={18} />
-              </div>
-              <div className="analytics-v2-insight-text">
-                <h4 className="analytics-v2-insight-title">
-                  {growthDiff >= 0
-                    ? `Период B: +${growthDiff} подписчиков`
-                    : `Период B: ${growthDiff} подписчиков`}
-                </h4>
-                <p className="analytics-v2-insight-desc">
-                  {chartData.length >= 7 || demo
-                    ? `Прирост за второй период отличается на ${growthDiff}. Темп роста: ${growthPercent}%.`
-                    : "Для точного сопоставления периодов требуется накопить от 7 снимков."}
-                </p>
-              </div>
-            </div>
+                {/* Bottom Insight Banner */}
+                <div
+                  className={`analytics-v2-compare-insight ${
+                    comparison.followersDiff > 0
+                      ? "positive"
+                      : comparison.followersDiff < 0
+                      ? "negative"
+                      : "neutral"
+                  }`}
+                >
+                  <div className="analytics-v2-insight-icon">
+                    {comparison.followersDiff < 0 ? (
+                      <TrendingDown size={18} />
+                    ) : comparison.followersDiff > 0 ? (
+                      <TrendingUp size={18} />
+                    ) : (
+                      <Scale size={18} />
+                    )}
+                  </div>
+                  <div className="analytics-v2-insight-text">
+                    <h4 className="analytics-v2-insight-title">
+                      {comparison.followersDiff > 0
+                        ? `Период B: прирост выше на +${comparison.followersDiff}`
+                        : comparison.followersDiff < 0
+                        ? `Период B: прирост ниже на ${comparison.followersDiff}`
+                        : "Одинаковый темп прироста в обоих периодах"}
+                    </h4>
+                    <p className="analytics-v2-insight-desc">
+                      {comparison.followersDiff > 0
+                        ? `Во втором периоде аудитория росла быстрее на ${comparison.followersDiff} подписчиков (+${comparison.growthPercent}% к темпу периода A).`
+                        : comparison.followersDiff < 0
+                        ? `Во втором периоде прирост составил ${comparison.periodB!.followersDelta} против ${comparison.periodA!.followersDelta} в первом периоде.`
+                        : "Количество новых подписчиков в обоих интервалах оказалось равным."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}

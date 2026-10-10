@@ -3,7 +3,7 @@ import type { components } from "@/lib/generated-api";
 import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
-import { Download, X } from "lucide-react";
+import { Download, X, Loader2, CheckCircle2, AlertCircle, Check } from "lucide-react";
 import { message } from "@/lib/messages";
 import { api, post, date, Job } from "@/lib/api";
 import { errorText, polling, useVisible } from "@/lib/workflows";
@@ -179,47 +179,168 @@ export const errorCodes: Record<string, string> = {
     "Серверы Instagram временно недоступны или отклонили запрос. Попробуйте позже или используйте загрузку архива.",
 };
 export function JobProgress({ job }: { job: Job }) {
+  const isCompleted = job.status === "completed";
+  const isFailed = Boolean(job.error_code) || job.status === "failed" || job.status === "cancelled" || job.status === "canceled";
+  const isActive = !isCompleted && !isFailed;
+
+  // Calculate percentage and stage index
+  let percent = 20;
+  let activeStep = 1;
+
+  if (isCompleted) {
+    percent = 100;
+    activeStep = 4;
+  } else if (job.status === "queued") {
+    percent = 12;
+    activeStep = 0;
+  } else if (job.stage === "validating_session" || job.stage === "prepare") {
+    percent = 25;
+    activeStep = 1;
+  } else if (job.stage === "fetching_followers") {
+    percent = 55;
+    activeStep = 2;
+  } else if (job.stage === "fetching_following") {
+    percent = 78;
+    activeStep = 3;
+  } else if (job.stage === "validating_snapshot" || job.stage === "committing") {
+    percent = 92;
+    activeStep = 4;
+  }
+
+  const cardClass = isCompleted
+    ? "sync-progress-card completed"
+    : isFailed
+      ? "sync-progress-card failed"
+      : "sync-progress-card active";
+
   return (
-    <section className="job-progress" aria-live="polite">
-      {!job.error_code && (
-        <span className={`badge ${job.status === "completed" ? "success" : ""}`}>
-          {job.status === "completed"
-            ? "Готово"
-            : job.status === "queued"
-              ? "В очереди на обработку"
-              : job.status === "awaiting_confirmation"
-                ? "Проверьте данные"
-                : job.status === "awaiting_2fa"
-                  ? "Нужен код"
+    <section className={cardClass} aria-live="polite">
+      <div className="sync-progress-header">
+        <div className="sync-progress-title-box">
+          <div
+            className={`sync-progress-icon-wrap ${
+              isCompleted ? "completed" : isFailed ? "failed" : ""
+            }`}
+          >
+            {isCompleted ? (
+              <CheckCircle2 size={24} />
+            ) : isFailed ? (
+              <AlertCircle size={24} />
+            ) : (
+              <Loader2 size={24} className="animate-spin" />
+            )}
+          </div>
+          <div>
+            <h3>
+              {isCompleted
+                ? "Сбор данных успешно завершён"
+                : isFailed
+                  ? "Сбор остановлен"
+                  : job.status === "queued"
+                    ? "В очереди на сбор данных…"
+                    : "Идёт сбор данных из Instagram…"}
+            </h3>
+            <p>
+              {isCompleted
+                ? "Все списки обновлены и сохранены в истории профиля"
+                : isFailed
+                  ? errorCodes[job.error_code || ""] || "Не удалось завершить операцию."
                   : message(job.stage)}
-        </span>
-      )}
-      {job.details.stage_count !== undefined && (
-        <p>Получено записей: {job.details.stage_count}</p>
-      )}
-      {job.details.requests !== undefined && (
-        <p>Сетевых запросов: {job.details.requests}</p>
-      )}
+            </p>
+          </div>
+        </div>
+
+        {isActive && (
+          <span className="badge" style={{ background: "#ede9fe", color: "#6d28d9", border: "none" }}>
+            <span className="live-dot" style={{ background: "#7c3aed" }} />
+            В процессе
+          </span>
+        )}
+        {isCompleted && (
+          <span className="badge success">
+            <Check size={12} />
+            Готово
+          </span>
+        )}
+      </div>
+
+      <div className="sync-progress-bar-track">
+        <div
+          className={`sync-progress-bar-fill ${isActive ? "animated" : ""} ${
+            isCompleted ? "completed" : ""
+          }`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+
+      <div className="sync-steps-track">
+        <div className={`sync-step-item ${activeStep > 1 || isCompleted ? "done" : activeStep === 1 ? "active" : ""}`}>
+          <span>{activeStep > 1 || isCompleted ? "✓" : "1"}</span>
+          <span>Сессия</span>
+        </div>
+        <div className={`sync-step-item ${activeStep > 2 || isCompleted ? "done" : activeStep === 2 ? "active" : ""}`}>
+          <span>{activeStep > 2 || isCompleted ? "✓" : "2"}</span>
+          <span>Подписчики</span>
+        </div>
+        <div className={`sync-step-item ${activeStep > 3 || isCompleted ? "done" : activeStep === 3 ? "active" : ""}`}>
+          <span>{activeStep > 3 || isCompleted ? "✓" : "3"}</span>
+          <span>Подписки</span>
+        </div>
+        <div className={`sync-step-item ${isCompleted ? "done" : activeStep === 4 ? "active" : ""}`}>
+          <span>{isCompleted ? "✓" : "4"}</span>
+          <span>Анализ</span>
+        </div>
+      </div>
+
+      <div className="sync-stats-chips">
+        {job.details.stage_count !== undefined && (
+          <span className="sync-stat-chip">
+            Получено записей: <strong>{job.details.stage_count}</strong>
+          </span>
+        )}
+        {job.details.requests !== undefined && (
+          <span className="sync-stat-chip">
+            Запросов к Instagram: <strong>{job.details.requests}</strong>
+          </span>
+        )}
+        {isActive && (
+          <span className="sync-stat-chip" style={{ color: "#7c3aed", background: "#f5f3ff" }}>
+            Страница обновляется автоматически в реальном времени
+          </span>
+        )}
+        {isCompleted && (
+          <span className="sync-stat-chip">
+            Завершено: {date(job.updated_at || job.created_at)}
+          </span>
+        )}
+        {job.details.expires_at && (
+          <span className="sync-stat-chip">
+            Действует до {date(job.details.expires_at)}
+          </span>
+        )}
+      </div>
+
       {job.error_code && (
-        <p className="notice error">
+        <p className="notice error" style={{ marginTop: 14 }}>
           {job.error_code === "cooldown" && job.kind === "connect"
             ? "Instagram отклонил создание новой сессии через сервис. Вход через официальный Instagram может при этом работать."
             : errorCodes[job.error_code] ||
-            "Не удалось завершить операцию. История сохранена; обратитесь в поддержку."}
+              "Не удалось завершить операцию. История сохранена; обратитесь в поддержку."}
         </p>
       )}
+
       {job.error_code === "cooldown" && (
-        <p className="muted">
+        <p className="muted" style={{ marginTop: 8 }}>
           {job.next_allowed_at
             ? `Повтор доступен после ${date(job.next_allowed_at)}.`
             : "Instagram не сообщил срок повторной попытки."}
         </p>
       )}
+
       {job.status === "partial" && (
-        <p>Частичный результат не используется для вывода об отписках.</p>
-      )}
-      {job.details.expires_at && (
-        <p className="muted">Действует до {date(job.details.expires_at)}</p>
+        <p className="muted" style={{ marginTop: 8 }}>
+          Частичный результат не используется для вывода об отписках.
+        </p>
       )}
     </section>
   );

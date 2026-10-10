@@ -195,27 +195,6 @@ export default function ConnectionPanel({
         }}
       >
         {/* Instagram Header Brand / Logo */}
-        {profile && ["active", "syncing", "paused_by_user"].includes(connection.data?.display_status || "") && (
-          <button
-            className="button secondary full"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await api(`/profiles/${profile.id}/connection`, { method: "DELETE" });
-                setJob(null);
-                await connection.refetch();
-                qc.invalidateQueries();
-              } catch (e) {
-                setError(e);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Отключить Instagram
-          </button>
-        )}
         <div
           style={{
             display: "flex",
@@ -600,6 +579,29 @@ export default function ConnectionPanel({
           </button>
         )}
 
+        {profile && ["active", "syncing", "paused_by_user"].includes(connection.data?.display_status || "") && (
+          <button
+            className="button danger full"
+            style={{ marginTop: 14 }}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api(`/profiles/${profile.id}/connection`, { method: "DELETE" });
+                setJob(null);
+                await connection.refetch();
+                qc.invalidateQueries();
+              } catch (e) {
+                setError(e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Отключить Instagram
+          </button>
+        )}
+
         <div
           style={{
             marginTop: 24,
@@ -633,32 +635,39 @@ export function SyncPanel({ id }: { id: string }) {
   });
   return (
     <section className="panel">
-      <h2>Сбор списков</h2>
+      <h2>Сбор списков Instagram</h2>
       <ErrorNotice error={error || q.error} />
       {q.isPending ? (
         <Loader />
       ) : q.data ? (
         <>
           <JobProgress job={q.data} />
-          {!terminalStates.includes(q.data.status) && (
-            <button
-              className="button secondary"
-              onClick={async () => {
-                try {
-                  await post(`/syncs/${id}/cancel`, {});
-                  await q.refetch();
-                  qc.invalidateQueries({ queryKey: ["profiles"] });
-                } catch (e) {
-                  setError(e);
-                }
-              }}
-            >
-              Отменить сбор
-            </button>
-          )}
-          <Link className="button secondary" href="/app">
-            Вернуться в кабинет
-          </Link>
+          <div className="sync-actions-row">
+            {!terminalStates.includes(q.data.status) && (
+              <button
+                className="button secondary danger-outline"
+                onClick={async () => {
+                  try {
+                    await post(`/syncs/${id}/cancel`, {});
+                    await q.refetch();
+                    qc.invalidateQueries({ queryKey: ["profiles"] });
+                  } catch (e) {
+                    setError(e);
+                  }
+                }}
+              >
+                Отменить сбор
+              </button>
+            )}
+            {q.data.status === "completed" && (
+              <Link className="button" href="/app">
+                Открыть обзор
+              </Link>
+            )}
+            <Link className="button secondary" href="/app">
+              Вернуться в кабинет
+            </Link>
+          </div>
         </>
       ) : null}
     </section>

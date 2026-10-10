@@ -1,12 +1,34 @@
 "use client";
 import type { components } from "@/lib/generated-api";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Search, Star, ArrowUpRight, FileText, MoreHorizontal, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { api, post, Profile, Person, date, number } from "@/lib/api";
 import { demoPeople } from "@/lib/demo";
-import { ErrorNotice, ExportButton, Loader, Modal } from "./common";
+import { ErrorNotice, ExportButton, Modal } from "./common";
+
+function PeopleSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="people-skeleton-list" aria-busy="true" aria-label="Загрузка списка">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="person-row-skeleton">
+          <div className="skeleton-shimmer" style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0 }} />
+          <div className="skeleton-shimmer" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 7 }}>
+            <div className="skeleton-shimmer" style={{ width: `${30 + (i % 3) * 12}%`, height: 14 }} />
+            <div className="skeleton-shimmer" style={{ width: `${20 + (i % 2) * 10}%`, height: 12 }} />
+          </div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <div className="skeleton-shimmer" style={{ width: 32, height: 32, borderRadius: 8 }} />
+            <div className="skeleton-shimmer" style={{ width: 32, height: 32, borderRadius: 8 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const categories = [
   ["followers", "Подписчики"],
   ["following", "Мои подписки"],
@@ -26,9 +48,19 @@ export default function PeoplePanel({
     pathname = usePathname(),
     params = useSearchParams(),
     qc = useQueryClient();
-  const category = categories.some(([key]) => key === params.get("category"))
-    ? params.get("category")!
-    : "followers";
+
+  const [category, setCategory] = useState<string>(() => {
+    const fromUrl = params.get("category");
+    return categories.some(([key]) => key === fromUrl) ? fromUrl! : "followers";
+  });
+
+  useEffect(() => {
+    const fromUrl = params.get("category");
+    if (fromUrl && categories.some(([key]) => key === fromUrl) && fromUrl !== category) {
+      setCategory(fromUrl);
+    }
+  }, [params, category]);
+
   const favorite = params.get("favorite") === "true",
     hasNote = params.get("has_note") === "true",
     sort = params.get("sort") || "username",
@@ -38,13 +70,23 @@ export default function PeoplePanel({
     [error, setError] = useState<unknown>(null),
     [selected, setSelected] = useState<string[]>([]),
     [filterSheet, setFilterSheet] = useState(false);
+
+  function handleCategoryChange(key: string) {
+    if (key === category) return;
+    setCategory(key);
+    const next = new URLSearchParams(params.toString());
+    next.set("category", key);
+    window.history.replaceState(null, "", pathname + "?" + next.toString());
+    setSelected([]);
+  }
+
   function update(values: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
     for (const [key, value] of Object.entries(values)) {
       if (value) next.set(key, value);
       else next.delete(key);
     }
-    router.replace(pathname + "?" + next.toString(), { scroll: false });
+    window.history.replaceState(null, "", pathname + "?" + next.toString());
     setSelected([]);
   }
   useEffect(() => {
@@ -74,6 +116,7 @@ export default function PeoplePanel({
       ),
     initialPageParam: "",
     getNextPageParam: (last) => last.next_cursor || undefined,
+    placeholderData: keepPreviousData,
     enabled: !demo && !!profile,
   });
   const rows: Person[] = demo
@@ -102,6 +145,35 @@ export default function PeoplePanel({
     : (q.data?.pages.flatMap((page) => page.items) as Person[] || []);
   const total = demo ? rows.length : q.data?.pages[0]?.total || 0,
     context = q.data?.pages[0];
+
+  const [showPartialNotice, setShowPartialNotice] = useState<boolean>(false);
+  useEffect(() => {
+    if (context?.completeness === "partial") {
+      setShowPartialNotice(true);
+    } else if (context?.completeness && context.completeness !== "partial") {
+      setShowPartialNotice(false);
+    }
+  }, [context?.completeness]);
+
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = observerTarget.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && q.hasNextPage && !q.isFetchingNextPage) {
+          q.fetchNextPage();
+        }
+      },
+      { rootMargin: "350px" },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [q.hasNextPage, q.isFetchingNextPage, q.fetchNextPage]);
+
   async function star(person: Person) {
     if (demo) {
       setError(new Error("Пометки доступны в личном кабинете."));
@@ -201,12 +273,6 @@ export default function PeoplePanel({
   );
   return (
     <section className="people-panel-card">
-      {context?.completeness === "partial" && (
-        <p className="notice" role="status">
-          Показаны доступные аккаунты из неполного списка. Отсутствие аккаунта
-          не подтверждает отписку или отсутствие взаимной подписки.
-        </p>
-      )}
       <div
         className="category-tabs-container"
         role="tablist"
@@ -218,7 +284,7 @@ export default function PeoplePanel({
             aria-selected={category === key}
             className={`category-tab-btn ${category === key ? "active" : ""}`}
             key={key}
-            onClick={() => update({ category: key })}
+            onClick={() => handleCategoryChange(key)}
           >
             {label}
             {category === key && <span className="category-tab-indicator" />}
@@ -253,6 +319,12 @@ export default function PeoplePanel({
           ? ` из ${number(context.category_total)} в категории · снимок ${date(context.observed_at || null)} · ${context.completeness === "partial" ? "неполный список" : context.source === "archive" ? "полнота подтверждена пользователем" : "сбор проверен"}`
           : ""}
       </div>
+      {showPartialNotice && (
+        <p className="notice" role="status">
+          Показаны доступные аккаунты из неполного списка. Отсутствие аккаунта
+          не подтверждает отписку или отсутствие взаимной подписки.
+        </p>
+      )}
       {context?.identity_mode === "username" && (
         <p className="muted">
           Сопоставление по username: переименование может выглядеть как
@@ -288,9 +360,9 @@ export default function PeoplePanel({
           </button>
         </div>
       )}
-      <div className="people-list-wrapper">
-        {q.isPending && !demo ? (
-          <Loader />
+      <div className={`people-list-wrapper ${q.isFetching && q.isPlaceholderData ? "people-list-loading" : ""}`}>
+        {q.isPending && !demo && !rows.length ? (
+          <PeopleSkeleton />
         ) : rows.length ? (
           rows.map((person, index) => (
             <article className="person-row-card" key={person.identity_key}>
@@ -392,14 +464,19 @@ export default function PeoplePanel({
           </div>
         )}
       </div>
-      {q.hasNextPage && (
-        <button
-          className="button secondary"
-          onClick={() => q.fetchNextPage()}
-          disabled={q.isFetchingNextPage}
-        >
-          {q.isFetchingNextPage ? "Загружаем…" : "Показать ещё 50"}
-        </button>
+      {/* Infinite scroll sentinel */}
+      <div ref={observerTarget} style={{ height: "1px", width: "100%", pointerEvents: "none" }} />
+      {q.isFetchingNextPage && (
+        <div className="people-infinite-loading">
+          <PeopleSkeleton count={3} />
+        </div>
+      )}
+      {q.isError && (
+        <div style={{ textAlign: "center", margin: "16px 0" }}>
+          <button className="button secondary small" onClick={() => q.fetchNextPage()}>
+            Повторить попытку
+          </button>
+        </div>
       )}
       {note && (
         <Modal
