@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 class ProfileInput(BaseModel):
-    username: str = Field(min_length=1, max_length=31)
+    username: str = Field(min_length=1, max_length=30, pattern=r"^[a-zA-Z0-9._]{1,30}$")
     label: str = Field(default="", max_length=80)
 
 

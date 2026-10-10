@@ -25,7 +25,6 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Upload,
   UserPlus,
   Users,
   X,
@@ -354,7 +353,7 @@ function Workspace({
   return (
     <div className="workspace">
       <aside className="sidebar">
-        <Brand />
+        <Brand href="/app" />
         <div className="sidebar-caption">МОЕ ПРОСТРАНСТВО</div>
         <nav className="sidebar-nav">
           {nav.map(({ view: v, label, icon: Icon }) => (
@@ -757,10 +756,6 @@ function Empty({
             Подключить Instagram
           </button>
         )}
-        <button className="button secondary" onClick={() => go("import")}>
-          <Upload size={18} />
-          Загрузить архив
-        </button>
       </div>
       {profile && (
         <p className="muted">

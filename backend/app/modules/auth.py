@@ -498,7 +498,10 @@ class NotificationPreferences(BaseModel):
 
 @router.get("/me/notification-settings", response_model=NotificationPreferences)
 def notification_settings(user: UserDep):
-    return NotificationPreferences(**user.notification_settings)
+    settings = dict(user.notification_settings or {})
+    if "email_results" not in settings:
+        settings["email_results"] = user.email_notifications
+    return NotificationPreferences(**settings)
 
 
 @router.patch("/me/notification-settings", response_model=NotificationPreferences)

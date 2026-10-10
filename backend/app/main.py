@@ -135,12 +135,29 @@ async def expected_error(request: Request, error: AppError):
 @app.exception_handler(RequestValidationError)
 async def invalid_input(request: Request, error: RequestValidationError):
     # Never echo pydantic input values (credentials/verification codes).
+    errors = error.errors()
+    first_msg = "Проверьте заполненные поля"
+    details: dict[str, str] = {}
+    for err in errors:
+        loc = err.get("loc", ())
+        field = str(loc[-1]) if loc else "general"
+        msg = err.get("msg", "")
+        if msg.startswith("Value error, "):
+            msg = msg[len("Value error, "):]
+        elif "pattern" in err.get("type", "") or "string_pattern_mismatch" in err.get("type", ""):
+            if field == "username":
+                msg = "Instagram username может содержать только латинские буквы, цифры, точки и подчёркивания (до 30 символов)"
+        details[field] = msg
+        if first_msg == "Проверьте заполненные поля" and msg:
+            first_msg = msg
+
     return JSONResponse(
         {
             "error": {
                 "code": "invalid_input",
-                "message": "Проверьте заполненные поля",
-                "request_id": request.state.request_id,
+                "message": first_msg,
+                "details": details,
+                "request_id": getattr(request.state, "request_id", None),
             }
         },
         status_code=422,

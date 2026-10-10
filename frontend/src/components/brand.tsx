@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-export default function Brand() {
+export default function Brand({ href = "/" }: { href?: string }) {
   return (
-    <Link href="/" className="brand" aria-label="InstaSurveillance, главная">
+    <Link href={href} className="brand" aria-label="InstaSurveillance">
       <span className="brand-mark">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="24" height="24" rx="7.5" fill="currentColor" />

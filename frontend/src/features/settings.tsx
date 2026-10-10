@@ -7,8 +7,6 @@ import {
   Globe,
   Lock,
   Bell,
-  Monitor,
-  Smartphone,
   Database,
   Trash2,
   UserX,
@@ -16,7 +14,6 @@ import {
   Eye,
   EyeOff,
   ChevronDown,
-  Power,
   Pause,
   Play,
   RefreshCw,
@@ -30,7 +27,6 @@ import type { components } from "@/lib/generated-api";
 import { useUrlValue, useVisible } from "@/lib/workflows";
 import { ErrorNotice, ExportButton, Modal } from "./common";
 
-type Session = components["schemas"]["SessionDTO"];
 type NotificationSettings = components["schemas"]["NotificationPreferences"];
 
 function InstagramIcon({ size = 20 }: { size?: number }) {
@@ -51,33 +47,6 @@ function InstagramIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
-
-const MOCK_DEMO_SESSIONS = [
-  {
-    id: "demo-session-1",
-    device: "Chrome · macOS · Moscow, Russia",
-    title: "Текущая сессия",
-    isCurrent: true,
-    isOnline: true,
-    type: "laptop",
-  },
-  {
-    id: "demo-session-2",
-    device: "Safari · macOS · Moscow, Russia",
-    title: "MacBook Pro",
-    isCurrent: false,
-    dateStr: "12 марта 2025, 14:32",
-    type: "laptop",
-  },
-  {
-    id: "demo-session-3",
-    device: "Instagram App · iOS · Moscow, Russia",
-    title: "iPhone",
-    isCurrent: false,
-    dateStr: "10 марта 2025, 09:15",
-    type: "phone",
-  },
-];
 
 export default function SettingsPanel({
   user,
@@ -133,12 +102,6 @@ export default function SettingsPanel({
       visible && query.state.data?.status !== "completed" ? 5000 : false,
   });
 
-  const sessions = useQuery({
-    queryKey: ["sessions"],
-    queryFn: ({ signal }) => api<Session[]>("/me/sessions", { signal }),
-    enabled: !demo,
-  });
-
   const preferences = useQuery({
     queryKey: ["notification-settings"],
     queryFn: ({ signal }) =>
@@ -146,14 +109,14 @@ export default function SettingsPanel({
     enabled: !demo,
   });
 
-  // Local notification toggles state (initialized with demo/backend defaults)
-  const [toggles, setToggles] = useState<Record<string, boolean>>({
-    email_results: true,
+  // Local notification toggles state (initialized with user preferences or backend defaults)
+  const [toggles, setToggles] = useState<Record<string, boolean>>(() => ({
+    email_results: user?.email_notifications ?? false,
     email_connection: false,
     email_support: false,
     in_app_results: true,
     in_app_connection: true,
-  });
+  }));
 
   useEffect(() => {
     if (preferences.data) {
@@ -169,18 +132,20 @@ export default function SettingsPanel({
 
   const handleToggle = async (key: string) => {
     const updated = !toggles[key];
-    setToggles((prev) => ({ ...prev, [key]: updated }));
+    const nextSettings = { ...toggles, [key]: updated };
+    setToggles(nextSettings);
 
     if (!demo) {
       try {
-        const nextSettings = { ...toggles, [key]: updated };
         await api("/me/notification-settings", {
           method: "PATCH",
           body: JSON.stringify(nextSettings),
         });
         qc.invalidateQueries({ queryKey: ["notification-settings"] });
+        qc.invalidateQueries({ queryKey: ["me"] });
       } catch (err) {
         setError(err);
+        setToggles((prev) => ({ ...prev, [key]: !updated }));
       }
     }
   };
@@ -334,20 +299,6 @@ export default function SettingsPanel({
       setError(err);
     }
   };
-
-  async function revoke(id?: string) {
-    try {
-      guard();
-      if (id) await api(`/me/sessions/${id}`, { method: "DELETE" });
-      else await post("/me/sessions/revoke-others", {});
-      if (sessions.data?.find((x) => x.id === id)?.current) {
-        qc.clear();
-        router.replace("/login");
-      } else sessions.refetch();
-    } catch (err) {
-      setError(err);
-    }
-  }
 
   const supportedTimezones = Array.from(
     new Set([
@@ -596,139 +547,7 @@ export default function SettingsPanel({
         </div>
       </section>
 
-      {/* 4. CARD 5: Активные сессии сервиса */}
-      <section className="settings-v2-card">
-        <header className="settings-v2-card-header">
-          <div className="settings-v2-header-left">
-            <div className="settings-v2-icon-box" aria-hidden="true">
-              <Monitor size={20} />
-            </div>
-            <div>
-              <h2 className="settings-v2-card-title">Активные сессии сервиса</h2>
-              <p className="settings-v2-card-subtitle">
-                Здесь отображаются все активные сессии в твоём аккаунте.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="settings-v2-btn-revoke-others"
-            onClick={() => revoke()}
-          >
-            <Power size={14} className="text-gray-500" />
-            <span>Завершить остальные</span>
-          </button>
-        </header>
-
-        <div className="settings-v2-sessions-list">
-          {demo || !sessions.data?.length
-            ? MOCK_DEMO_SESSIONS.map((s) => (
-                <div key={s.id} className="settings-v2-session-item">
-                  <div className="settings-v2-session-left">
-                    <span
-                      className={`settings-v2-session-dot ${
-                        s.isOnline ? "green" : "gray"
-                      }`}
-                    />
-                    <div className="settings-v2-session-device-icon">
-                      {s.type === "phone" ? (
-                        <Smartphone size={18} />
-                      ) : (
-                        <Monitor size={18} />
-                      )}
-                    </div>
-                    <div className="settings-v2-session-details">
-                      <div className="settings-v2-session-title-row">
-                        <span className="settings-v2-session-title">
-                          {s.title}
-                        </span>
-                        {s.isCurrent && (
-                          <span className="settings-v2-current-badge">
-                            Это устройство
-                          </span>
-                        )}
-                      </div>
-                      <span className="settings-v2-session-meta">
-                        {s.device}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="settings-v2-session-right">
-                    {s.isOnline ? (
-                      <span className="settings-v2-session-online">
-                        Сейчас онлайн
-                      </span>
-                    ) : (
-                      <>
-                        <span className="settings-v2-session-time">
-                          {s.dateStr}
-                        </span>
-                        <button
-                          type="button"
-                          className="settings-v2-btn-revoke"
-                          onClick={() =>
-                            onNotice(
-                              "В демо-режиме сессия не может быть завершена.",
-                            )
-                          }
-                        >
-                          Завершить
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))
-            : sessions.data.map((s) => (
-                <div key={s.id} className="settings-v2-session-item">
-                  <div className="settings-v2-session-left">
-                    <span
-                      className={`settings-v2-session-dot ${
-                        s.current ? "green" : "gray"
-                      }`}
-                    />
-                    <div className="settings-v2-session-device-icon">
-                      <Monitor size={18} />
-                    </div>
-                    <div className="settings-v2-session-details">
-                      <div className="settings-v2-session-title-row">
-                        <span className="settings-v2-session-title">
-                          {s.device || "Браузер"}
-                        </span>
-                        {s.current && (
-                          <span className="settings-v2-current-badge">
-                            Это устройство
-                          </span>
-                        )}
-                      </div>
-                      <span className="settings-v2-session-meta">
-                        Вход {new Date(s.created_at).toLocaleDateString("ru-RU")}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="settings-v2-session-right">
-                    {s.current ? (
-                      <span className="settings-v2-session-online">
-                        Сейчас онлайн
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="settings-v2-btn-revoke"
-                        onClick={() => revoke(s.id)}
-                      >
-                        Завершить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-        </div>
-      </section>
-
-      {/* 5. CARD 6: Instagram Profile Settings */}
+      {/* 4. CARD: Instagram Profile Settings */}
       <section className="settings-v2-card">
         <header className="settings-v2-card-header">
           <div className="settings-v2-header-left">

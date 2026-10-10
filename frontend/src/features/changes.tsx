@@ -21,6 +21,7 @@ import {
   X,
   Layers,
   Check,
+  CheckCircle2,
   Copy,
 } from "lucide-react";
 import { api, post, Profile, Event, getDateParts } from "@/lib/api";
@@ -180,6 +181,13 @@ export default function ChangesPanel({
   const filters = new URLSearchParams();
   if (search) filters.set("search", search);
 
+  const comparisonTotalEvents = q.data?.counts
+    ? (q.data.counts.followers_added || 0) +
+      (q.data.counts.followers_removed || 0) +
+      (q.data.counts.following_added || 0) +
+      (q.data.counts.following_removed || 0)
+    : undefined;
+
   const events = useInfiniteQuery({
     queryKey: ["events", id, filters.toString()],
     queryFn: ({ pageParam, signal }) =>
@@ -189,7 +197,10 @@ export default function ChangesPanel({
       ),
     initialPageParam: "",
     getNextPageParam: (last) => last.next_cursor || undefined,
-    enabled: !!id && q.data?.status === "completed",
+    enabled:
+      !!id &&
+      q.data?.status === "completed" &&
+      (comparisonTotalEvents === undefined || comparisonTotalEvents > 0),
   });
 
   async function calculate() {
@@ -762,7 +773,7 @@ export default function ChangesPanel({
         </header>
 
         {/* Events Table (Desktop) */}
-        {events.isPending && !demo ? (
+        {events.isLoading && !demo && totalEvents > 0 ? (
           <div style={{ padding: 48, display: "flex", justifyContent: "center" }}>
             <Loader />
           </div>
@@ -1063,6 +1074,19 @@ export default function ChangesPanel({
               })}
             </div>
           </>
+        ) : totalEvents === 0 ? (
+          <div className="changes-v2-empty-state">
+            <div
+              className="changes-v2-empty-icon"
+              style={{ background: "#ecfdf5", color: "#10b981" }}
+            >
+              <CheckCircle2 size={24} />
+            </div>
+            <h3 className="changes-v2-empty-title">Нет изменений между снимками</h3>
+            <p className="changes-v2-empty-text">
+              Списки подписчиков и подписок между выбранными снимками полностью совпадают.
+            </p>
+          </div>
         ) : (
           <div className="changes-v2-empty-state">
             <div className="changes-v2-empty-icon">

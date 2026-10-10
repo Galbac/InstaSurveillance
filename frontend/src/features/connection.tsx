@@ -3,14 +3,14 @@ import type { components } from "@/lib/generated-api";
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, post, Profile, Job, date } from "@/lib/api";
+import { api, post, Profile, Job, date, ApiError } from "@/lib/api";
 import {
   PublicConfig,
   polling,
   useVisible,
   terminalStates,
 } from "@/lib/workflows";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { ErrorNotice, JobProgress, Loader } from "./common";
 type Connection = components["schemas"]["ConnectionDTO"];
 
@@ -45,9 +45,7 @@ export default function ConnectionPanel({
     visible = useVisible();
   const [job, setJob] = useState<Job | null>(null),
     [error, setError] = useState<unknown>(null),
-    [busy, setBusy] = useState(false),
-    [showPassword, setShowPassword] = useState(false),
-    [connectionMode, setConnectionMode] = useState<"password" | "session">("session");
+    [busy, setBusy] = useState(false);
   const flags = useQuery({
     queryKey: ["public-config"],
     queryFn: () => api<PublicConfig>("/config/public"),
@@ -86,33 +84,26 @@ export default function ConnectionPanel({
     e.preventDefault();
     const form = e.currentTarget,
       data = new FormData(form);
-    const username = String(data.get("username") || "").trim(),
-      password = String(data.get("password") || ""),
+    const rawUsername = String(data.get("username") || "").trim(),
+      cleanUsername = rawUsername.replace(/^@/, "").trim(),
       accepted = !!data.get("consent");
 
     const errs: { username?: string; password?: string; consent?: string } = {};
-    if (!username) {
+    if (!cleanUsername) {
       errs.username = "Укажи username Instagram";
+    } else if (!/^[a-zA-Z0-9._]{1,30}$/.test(cleanUsername)) {
+      errs.username =
+        "Username может содержать только латинские буквы, цифры, точки и _ (до 30 символов)";
     }
+
     const sessionText = String(data.get("session_text") || "").trim();
-    const sessionFile = data.get("session_file");
-    let sessionPayload = "";
-    if (connectionMode === "password" && !password) {
-      errs.password = "Укажи пароль Instagram";
+    if (!sessionText) {
+      errs.password = "Вставьте sessionid или строку Cookie из браузера";
+    } else if (/[а-яА-ЯёЁ]/.test(sessionText) || sessionText.length < 15) {
+      errs.password =
+        "Некорректный sessionid. Скопируйте значение sessionid из Cookie браузера (только латиница и цифры)";
     }
-    if (connectionMode === "session") {
-      if (sessionText) {
-        sessionPayload = sessionText;
-      } else if (sessionFile instanceof File && sessionFile.size > 0) {
-        if (sessionFile.size > 65536) {
-          errs.password = "Файл session.json должен быть до 64 КБ";
-        } else {
-          sessionPayload = await sessionFile.text();
-        }
-      } else {
-        errs.password = "Вставьте sessionid / Cookie или прикрепите файл session.json";
-      }
-    }
+
     if (!accepted) {
       errs.consent = "Необходимо подтвердить условия подключения";
     }
@@ -134,10 +125,8 @@ export default function ConnectionPanel({
             ? `/profiles/${profile.id}/connection/reconnect`
             : "/instagram/connections",
           {
-            username,
-            ...(connectionMode === "session"
-              ? { session_json: sessionPayload }
-              : { password }),
+            username: cleanUsername,
+            session_json: sessionText,
             accepted_connection_risks: accepted,
             connection_terms_version: flags.data!.connection_terms_version,
           },
@@ -145,13 +134,49 @@ export default function ConnectionPanel({
       );
       qc.invalidateQueries({ queryKey: ["profiles"] });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e || "");
-      if (msg.toLowerCase().includes("парол") || msg.toLowerCase().includes("password")) {
-        setConnectErrors((prev) => ({ ...prev, password: msg }));
-      } else if (msg.toLowerCase().includes("пользовател") || msg.toLowerCase().includes("username")) {
-        setConnectErrors((prev) => ({ ...prev, username: msg }));
+      if (e instanceof ApiError) {
+        const details = (e.details || {}) as Record<string, string>;
+        const uErr = details.username;
+        const sErr = details.session_json || details.password;
+        if (uErr) {
+          setConnectErrors((prev) => ({ ...prev, username: uErr }));
+        }
+        if (sErr) {
+          setConnectErrors((prev) => ({ ...prev, password: sErr }));
+        }
+        if (!uErr && !sErr) {
+          const msg = e.message || "";
+          if (
+            msg.toLowerCase().includes("username") ||
+            msg.toLowerCase().includes("пользовател")
+          ) {
+            setConnectErrors((prev) => ({ ...prev, username: msg }));
+          } else if (
+            msg.toLowerCase().includes("session") ||
+            msg.toLowerCase().includes("cookie") ||
+            msg.toLowerCase().includes("парол")
+          ) {
+            setConnectErrors((prev) => ({ ...prev, password: msg }));
+          } else {
+            setError(e);
+          }
+        }
       } else {
-        setError(e);
+        const msg = e instanceof Error ? e.message : String(e || "");
+        if (
+          msg.toLowerCase().includes("username") ||
+          msg.toLowerCase().includes("пользовател")
+        ) {
+          setConnectErrors((prev) => ({ ...prev, username: msg }));
+        } else if (
+          msg.toLowerCase().includes("session") ||
+          msg.toLowerCase().includes("cookie") ||
+          msg.toLowerCase().includes("парол")
+        ) {
+          setConnectErrors((prev) => ({ ...prev, password: msg }));
+        } else {
+          setError(e);
+        }
       }
     } finally {
       setBusy(false);
@@ -379,138 +404,67 @@ export default function ConnectionPanel({
                   {connectErrors.username}
                 </span>
               )}
-            </label>
-
-            <label style={{ width: "100%", marginTop: 12 }}>
-              Способ подключения
-              <select
-                value={connectionMode}
-                onChange={(e) => {
-                  setConnectionMode(e.target.value as "password" | "session");
-                  setConnectErrors({});
-                  setError(null);
-                }}
-              >
-                <option value="session">Через Session ID / Cookie (Рекомендуется)</option>
-                <option value="password">Логин и пароль</option>
-              </select>
-            </label>
-            {connectionMode === "session" ? (
-              <div style={{ width: "100%", marginTop: 12 }}>
-                <label style={{ width: "100%", display: "block" }}>
-                  Session ID или строка Cookie
-                  <textarea
-                    name="session_text"
-                    rows={3}
-                    placeholder="Вставьте sessionid (например, 5827361823%3AQwErTy...) или строку Cookie из браузера"
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      fontFamily: "monospace",
-                      fontSize: 12,
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: connectErrors.password ? "1px solid #ef4444" : "1px solid #cbd5e1",
-                      resize: "vertical",
-                      marginTop: 4,
-                    }}
-                    aria-invalid={!!connectErrors.password}
-                    onChange={() => {
-                      if (connectErrors.password) {
-                        setConnectErrors((prev) => ({ ...prev, password: undefined }));
-                      }
-                    }}
-                  />
-                </label>
-
-                <div
-                  style={{
-                    margin: "8px 0 12px",
-                    padding: "10px 12px",
-                    background: "#f8fafc",
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    fontSize: 12,
-                    color: "#475569",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <strong style={{ color: "#1e293b" }}>💡 Как скопировать sessionid из браузера за 10 секунд:</strong>
-                  <ol style={{ margin: "6px 0 0", paddingLeft: 18, color: "#64748b" }}>
-                    <li>Откройте instagram.com в Chrome/Safari/Firefox (где выполнен вход в аккаунт)</li>
-                    <li>Нажмите <kbd style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>F12</kbd> (или ПКМ → «Просмотреть код») → вкладка <strong>Application</strong> (или «Хранилище»)</li>
-                    <li>Слева выберите <strong>Cookies</strong> → <code>https://www.instagram.com</code></li>
-                    <li>Дважды кликните и скопируйте значение <strong>sessionid</strong></li>
-                  </ol>
-                </div>
-
-                <details style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
-                  <summary style={{ cursor: "pointer", color: "#3b82f6" }}>Или загрузить файл session.json</summary>
-                  <input
-                    name="session_file"
-                    type="file"
-                    accept=".json,application/json"
-                    style={{ width: "100%", minWidth: 0, marginTop: 8 }}
-                  />
-                </details>
-                {connectErrors.password && (
-                  <span className="field-error" role="alert" style={{ marginTop: 6, display: "block" }}>
-                    {connectErrors.password}
-                  </span>
-                )}
-              </div>
-            ) : (
-            <label style={{ width: "100%", marginTop: 12 }}>
-              Пароль
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  autoComplete="current-password"
-                  maxLength={256}
-                  required
-                  placeholder="Пароль"
-                  style={{ paddingRight: 40 }}
-                  aria-invalid={!!connectErrors.password}
-                  onChange={() => {
-                    if (connectErrors.password) {
-                      setConnectErrors((prev) => ({
-                        ...prev,
-                        password: undefined,
-                      }));
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    color: "var(--muted)",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
-                </button>
-              </div>
-              {connectErrors.password && (
-                <span className="field-error" role="alert">
-                  {connectErrors.password}
+              {!profile && (
+                <span style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, display: "block" }}>
+                  Только латиница, цифры, точки и _ (до 30 символов)
                 </span>
               )}
             </label>
 
-            )}
+            <div style={{ width: "100%", marginTop: 14 }}>
+              <label style={{ width: "100%", display: "block" }}>
+                Session ID или строка Cookie
+                <textarea
+                  name="session_text"
+                  rows={3}
+                  placeholder="Вставьте sessionid (например, 5827361823%3AQwErTy...) или строку Cookie из браузера"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: connectErrors.password ? "1px solid #ef4444" : "1px solid #cbd5e1",
+                    resize: "vertical",
+                    marginTop: 4,
+                  }}
+                  aria-invalid={!!connectErrors.password}
+                  onChange={() => {
+                    if (connectErrors.password) {
+                      setConnectErrors((prev) => ({ ...prev, password: undefined }));
+                    }
+                  }}
+                />
+              </label>
+
+              <div
+                style={{
+                  margin: "8px 0 12px",
+                  padding: "10px 12px",
+                  background: "#f8fafc",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  fontSize: 12,
+                  color: "#475569",
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong style={{ color: "#1e293b" }}>💡 Как скопировать sessionid из браузера за 10 секунд:</strong>
+                <ol style={{ margin: "6px 0 0", paddingLeft: 18, color: "#64748b" }}>
+                  <li>Откройте instagram.com в Chrome/Safari/Firefox (где выполнен вход в аккаунт)</li>
+                  <li>Нажмите <kbd style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>F12</kbd> (или ПКМ → «Просмотреть код») → вкладка <strong>Application</strong> (или «Хранилище»)</li>
+                  <li>Слева выберите <strong>Cookies</strong> → <code>https://www.instagram.com</code></li>
+                  <li>Дважды кликните и скопируйте значение <strong>sessionid</strong></li>
+                </ol>
+              </div>
+
+              {connectErrors.password && (
+                <span className="field-error" role="alert" style={{ marginTop: 6, display: "block" }}>
+                  {connectErrors.password}
+                </span>
+              )}
+            </div>
 
             <div style={{ margin: "16px 0 20px" }}>
               <label className="check" style={{ margin: 0, alignItems: "flex-start" }}>
