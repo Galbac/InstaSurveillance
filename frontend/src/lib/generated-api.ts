@@ -1974,6 +1974,8 @@ export interface components {
         };
         /** EventDTO */
         EventDTO: {
+            /** Avatar Url */
+            avatar_url?: string | null;
             /** Id */
             id: string;
             /** Identity Key */
@@ -2345,6 +2347,10 @@ export interface components {
             first_observed_at?: string | null;
             /** Identity Key */
             identity_key: string;
+            /** Is Following */
+            is_following?: boolean | null;
+            /** Is Mutual */
+            is_mutual?: boolean | null;
             /** Note */
             note: string;
             /** Username */

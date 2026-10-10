@@ -36,6 +36,8 @@ class PersonDTO(BaseModel):
     favorite: bool
     note: str
     first_observed_at: datetime | None = None
+    is_following: bool | None = None
+    is_mutual: bool | None = None
 
 
 class PeoplePage(BaseModel):
@@ -84,6 +86,7 @@ class EventDTO(BaseModel):
     username: str
     relation: Literal["followers", "following"]
     type: Literal["added", "removed"]
+    avatar_url: str | None = None
 
 
 class ProviderResponseDTO(BaseModel):

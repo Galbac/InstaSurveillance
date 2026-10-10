@@ -598,26 +598,53 @@ export default function PeoplePanel({
                       )}
                       {category === "followers" && (
                         <>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item primary"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserPlus size={16} />
-                            <span>Подписаться в ответ</span>
-                          </a>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserX size={16} />
-                            <span>Удалить из подписчиков</span>
-                          </a>
+                          {person.is_following ? (
+                            <>
+                              <a
+                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="person-action-item danger"
+                                onClick={() => setMenuPerson(null)}
+                              >
+                                <UserMinus size={16} />
+                                <span>Отписаться в Instagram</span>
+                              </a>
+                              <a
+                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="person-action-item danger"
+                                onClick={() => setMenuPerson(null)}
+                              >
+                                <UserX size={16} />
+                                <span>Удалить из подписчиков</span>
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              <a
+                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="person-action-item primary"
+                                onClick={() => setMenuPerson(null)}
+                              >
+                                <UserPlus size={16} />
+                                <span>Подписаться в ответ</span>
+                              </a>
+                              <a
+                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="person-action-item danger"
+                                onClick={() => setMenuPerson(null)}
+                              >
+                                <UserX size={16} />
+                                <span>Удалить из подписчиков</span>
+                              </a>
+                            </>
+                          )}
                           <a
                             href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
                             target="_blank"
@@ -642,6 +669,18 @@ export default function PeoplePanel({
                             <UserMinus size={16} />
                             <span>Отписаться в Instagram</span>
                           </a>
+                          {person.is_mutual && (
+                            <a
+                              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="person-action-item danger"
+                              onClick={() => setMenuPerson(null)}
+                            >
+                              <UserX size={16} />
+                              <span>Удалить из подписчиков</span>
+                            </a>
+                          )}
                           <a
                             href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
                             target="_blank"

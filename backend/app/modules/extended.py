@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Literal
+from urllib.parse import quote
 
 from fastapi import Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -372,6 +373,42 @@ def comparison_events(
         query = query.where(ChangeEvent.type == type)
     if search:
         query = query.where(func.lower(ChangeEvent.username).contains(search.lower(), autoescape=True))
+
+    def serialize_event(x):
+        target_snapshot = comparison.after_id if x.type == "added" else comparison.before_id
+        has_avatar = db.scalar(
+            select(Member.avatar_url.is_not(None))
+            .where(
+                Member.snapshot_id == target_snapshot,
+                Member.identity_key == x.identity_key,
+            )
+            .limit(1)
+        )
+        if not has_avatar:
+            has_avatar = db.scalar(
+                select(Member.avatar_url.is_not(None))
+                .join(Snapshot, Snapshot.id == Member.snapshot_id)
+                .where(
+                    Snapshot.profile_id == comparison.profile_id,
+                    Member.identity_key == x.identity_key,
+                    Member.avatar_url.is_not(None),
+                )
+                .limit(1)
+            )
+        avatar_url = (
+            f"/api/v1/profiles/{comparison.profile_id}/snapshots/{target_snapshot}/people/{quote(x.identity_key, safe='')}/avatar"
+            if has_avatar
+            else None
+        )
+        return {
+            "id": x.id,
+            "identity_key": x.identity_key,
+            "username": x.username,
+            "relation": x.relation,
+            "type": x.type,
+            "avatar_url": avatar_url,
+        }
+
     return page(
         db,
         query,
@@ -379,13 +416,7 @@ def comparison_events(
         {"owner": user.id, "comparison": comparison_id, "relation": relation, "type": type, "search": search},
         cursor,
         limit,
-        lambda x: {
-            "id": x.id,
-            "identity_key": x.identity_key,
-            "username": x.username,
-            "relation": x.relation,
-            "type": x.type,
-        },
+        serialize_event,
     )
 
 

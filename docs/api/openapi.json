@@ -1953,6 +1953,17 @@
       },
       "EventDTO": {
         "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -3108,6 +3119,28 @@
           "identity_key": {
             "title": "Identity Key",
             "type": "string"
+          },
+          "is_following": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Following"
+          },
+          "is_mutual": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Mutual"
           },
           "note": {
             "title": "Note",

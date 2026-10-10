@@ -84,7 +84,7 @@ def people_query(
         )
     )
     query = (
-        select(Member, Annotation)
+        select(Member, Annotation, matching.label("is_mutual"))
         .outerjoin(
             Annotation,
             and_(Annotation.profile_id == profile_id, Annotation.identity_key == Member.identity_key),
@@ -170,6 +170,7 @@ def people_page(
         sort_value.desc() if descending else sort_value.asc(), Member.identity_key.asc()
     ).limit(limit + 1)
     rows: list = list(db.execute(query))
+    rel = "following" if category in ("following", "not_following_back") else "followers"
     items = [
         {
             "identity_key": row[0].identity_key,
@@ -179,14 +180,16 @@ def people_page(
             else None,
             "favorite": bool(row[1] and row[1].favorite),
             "note": row[1].note if row[1] else "",
-            "first_observed_at": row[2] if sort == "first_observed" else None,
+            "first_observed_at": row[3] if sort == "first_observed" else None,
+            "is_following": bool(row[2]) if rel == "followers" else True,
+            "is_mutual": bool(row[2]),
         }
         for row in rows[:limit]
     ]
     next_cursor = None
     if len(rows) > limit:
         row = rows[limit - 1]
-        value = row[2] if sort == "first_observed" else row[0].username.lower()
+        value = row[3] if sort == "first_observed" else row[0].username.lower()
         next_cursor = cursor_encode([value, row[0].identity_key], scope)
     return {
         "items": items,

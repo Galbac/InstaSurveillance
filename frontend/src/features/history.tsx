@@ -18,7 +18,7 @@ import {
   ExternalLink,
   Layers,
 } from "lucide-react";
-import { api, Profile, Snapshot, date, number } from "@/lib/api";
+import { api, post, Profile, Snapshot, date, number } from "@/lib/api";
 import { Page } from "@/lib/workflows";
 import { demoHistory } from "@/lib/demo";
 import { ErrorNotice, Loader, Modal } from "./common";
@@ -128,7 +128,7 @@ export default function HistoryPanel({
     demo ? ["6", "5"] : [],
   );
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
-  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("7d");
   const [details, setDetails] = useState<Snapshot | null>(null);
   const [deleting, setDeleting] = useState<Snapshot | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -183,46 +183,30 @@ export default function HistoryPanel({
     return map;
   }, [rawRows]);
 
-  // Dynamic date options from rawRows
+  // Exact date options requested by user: 7, 30, 180, 365 days only
   const dateOptions = useMemo(() => {
-    const list: { value: string; label: string }[] = [
-      { value: "all", label: "Все даты" },
+    return [
       { value: "7d", label: "За последние 7 дней" },
       { value: "30d", label: "За последние 30 дней" },
+      { value: "180d", label: "За последние 180 дней" },
+      { value: "365d", label: "За последние 365 дней" },
     ];
-    const seenDays = new Set<string>();
-    for (const row of rawRows) {
-      if (!row.observed_at) continue;
-      const d = new Date(row.observed_at);
-      const isoDay = d.toISOString().split("T")[0];
-      if (!seenDays.has(isoDay)) {
-        seenDays.add(isoDay);
-        const day = d.getUTCDate();
-        const month = MONTHS_GENITIVE[d.getUTCMonth()] || "";
-        const year = d.getUTCFullYear();
-        list.push({
-          value: `day:${isoDay}`,
-          label: `${day} ${month} ${year}`,
-        });
-      }
-    }
-    return list;
-  }, [rawRows]);
+  }, []);
 
   // Display rows according to chosen date filter and sort order
   const displayRows = useMemo(() => {
     let list = [...rawRows];
 
-    if (dateFilter === "7d") {
-      const cutoff = Date.now() - 7 * 86400 * 1000;
-      list = list.filter((r) => Date.parse(r.observed_at) >= cutoff);
-    } else if (dateFilter === "30d") {
-      const cutoff = Date.now() - 30 * 86400 * 1000;
-      list = list.filter((r) => Date.parse(r.observed_at) >= cutoff);
-    } else if (dateFilter.startsWith("day:")) {
-      const targetDay = dateFilter.slice(4);
-      list = list.filter((r) => r.observed_at && r.observed_at.startsWith(targetDay));
-    }
+    const days =
+      dateFilter === "30d"
+        ? 30
+        : dateFilter === "180d"
+          ? 180
+          : dateFilter === "365d"
+            ? 365
+            : 7;
+    const cutoff = Date.now() - days * 86400 * 1000;
+    list = list.filter((r) => Date.parse(r.observed_at) >= cutoff);
 
     list.sort((a, b) => {
       const diff = Date.parse(b.observed_at) - Date.parse(a.observed_at);
@@ -706,7 +690,7 @@ export default function HistoryPanel({
               <button
                 type="button"
                 className="floating-compare-cta-btn"
-                onClick={() => {
+                onClick={async () => {
                   if (demo) {
                     router.push("/demo?category=mutual");
                   } else {
@@ -714,6 +698,21 @@ export default function HistoryPanel({
                       (a, b) =>
                         Date.parse(a.observed_at) - Date.parse(b.observed_at),
                     );
+                    try {
+                      if (profile) {
+                        const res = await post<{ id: string }>(
+                          `/profiles/${profile.id}/comparisons`,
+                          {
+                            before_snapshot_id: pair[0].id,
+                            after_snapshot_id: pair[1].id,
+                          },
+                        );
+                        router.push(
+                          `/app/changes?before=${pair[0].id}&after=${pair[1].id}&comparison=${res.id}`,
+                        );
+                        return;
+                      }
+                    } catch {}
                     router.push(
                       `/app/changes?before=${pair[0].id}&after=${pair[1].id}`,
                     );

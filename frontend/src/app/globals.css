@@ -64,7 +64,7 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  box-shadow: none;
 }
 h1,
 h2,
@@ -4321,6 +4321,16 @@ textarea[aria-invalid="true"]:focus {
   cursor: pointer;
   outline: none;
   width: 100%;
+}
+
+.history-select:focus,
+.history-select:focus-visible,
+.history-select:active,
+.history-select-wrapper:focus,
+.history-select-wrapper:focus-within,
+.history-select-wrapper:active {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .history-select option {
