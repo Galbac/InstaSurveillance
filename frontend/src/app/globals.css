@@ -1680,11 +1680,48 @@ input[type="checkbox"] {
 .notification-row {
   display: flex;
   gap: 14px;
-  padding: 20px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+.notification-row.is-newly-read {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-left: 4px solid #ef4444;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 6px 0 10px 0;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.05);
+}
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+.notification-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .notification-row h3 {
   font-size: 13px;
+}
+.notification-row.is-newly-read h3 {
+  color: #991b1b;
+}
+.notification-new-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fee2e2;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 .notification-row p {
   font-size: 12px;
@@ -1694,6 +1731,22 @@ input[type="checkbox"] {
 .notification-row small {
   font-size: 12px;
   color: var(--muted);
+}
+.notification-open-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c3aed;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.notification-open-link:hover {
+  background: #ede9fe;
+  color: #6d28d9;
 }
 .faq {
   border-bottom: 1px solid var(--border);
@@ -3899,6 +3952,25 @@ textarea[aria-invalid="true"]:focus {
 
 .person-more-box {
   position: relative;
+}
+
+.person-more-box.is-active {
+  z-index: 100;
+}
+
+.person-desktop-backdrop,
+.changes-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: transparent;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .person-desktop-backdrop {
+    display: none;
+  }
 }
 
 .person-action-menu {

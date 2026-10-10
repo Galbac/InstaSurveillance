@@ -1,7 +1,7 @@
 "use client";
 import type { components } from "@/lib/generated-api";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { api, post, date } from "@/lib/api";
 import { Page } from "@/lib/workflows";
@@ -11,6 +11,9 @@ type Ticket = components["schemas"]["TicketDTO"];
 export function NotificationsPanel({ demo = false }: { demo?: boolean }) {
   const qc = useQueryClient(),
     [error, setError] = useState<unknown>(null);
+  const [newlyReadIds, setNewlyReadIds] = useState<Set<string>>(() => new Set());
+  const markedRef = useRef<Set<string>>(new Set());
+
   const q = useInfiniteQuery({
     queryKey: ["notifications"],
     initialPageParam: "",
@@ -24,6 +27,28 @@ export function NotificationsPanel({ demo = false }: { demo?: boolean }) {
     enabled: !demo,
   });
   const rows = q.data?.pages.flatMap((p) => p.items) || [];
+
+  useEffect(() => {
+    if (demo || !rows.length) return;
+    const unread = rows.filter((x) => !x.read && !markedRef.current.has(x.id));
+    if (unread.length > 0) {
+      const ids = unread.map((x) => x.id);
+      ids.forEach((id) => markedRef.current.add(id));
+      setNewlyReadIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+      post("/notifications/read", { ids })
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["notifications", "count"] });
+        })
+        .catch((e) => {
+          setError(e);
+        });
+    }
+  }, [rows, demo, qc]);
+
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -39,50 +64,31 @@ export function NotificationsPanel({ demo = false }: { demo?: boolean }) {
         </p>
       ) : (
         <>
-          <button
-            className="button secondary"
-            onClick={async () => {
-              try {
-                await post("/notifications/read", {
-                  ids: rows.filter((x) => !x.read).map((x) => x.id),
-                });
-                qc.invalidateQueries({ queryKey: ["notifications"] });
-              } catch (e) {
-                setError(e);
-              }
-            }}
-          >
-            Прочитать показанные
-          </button>
-          {rows.map((x) => (
-            <article className="notification-row" key={x.id}>
-              <div>
-                <h3>{x.title}</h3>
-                <p>{x.body}</p>
-                <small>
-                  {date(x.created_at)} · {x.read ? "прочитано" : "новое"}
-                </small>
-              </div>
-              {x.link && x.link.startsWith("/app") && (
-                <Link href={x.link}>Открыть</Link>
-              )}
-              {!x.read && (
-                <button
-                  className="text-link"
-                  onClick={async () => {
-                    try {
-                      await post("/notifications/read", { ids: [x.id] });
-                      qc.invalidateQueries({ queryKey: ["notifications"] });
-                    } catch (e) {
-                      setError(e);
-                    }
-                  }}
-                >
-                  Прочитано
-                </button>
-              )}
-            </article>
-          ))}
+          {rows.map((x) => {
+            const isNew = newlyReadIds.has(x.id);
+            return (
+              <article
+                className={`notification-row ${isNew ? "is-newly-read" : ""}`}
+                key={x.id}
+              >
+                <div className="notification-content">
+                  <div className="notification-title-wrap">
+                    <h3>{x.title}</h3>
+                    {isNew && <span className="notification-new-badge">Новое</span>}
+                  </div>
+                  <p>{x.body}</p>
+                  <small>
+                    {date(x.created_at)}
+                  </small>
+                </div>
+                {x.link && x.link.startsWith("/app") && (
+                  <Link href={x.link} className="notification-open-link">
+                    Открыть
+                  </Link>
+                )}
+              </article>
+            );
+          })}
           {q.hasNextPage && (
             <button
               className="button secondary"

@@ -130,6 +130,11 @@ export default function ChangesPanel({
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [copiedUser, setCopiedUser] = useState<string | null>(null);
   const [menuEventKey, setMenuEventKey] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
   const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
   const [sheetEvent, setSheetEvent] = useState<{ event: Event; itemKey: string } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -138,11 +143,23 @@ export default function ChangesPanel({
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuEventKey(null);
+        setMenuCoords(null);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuEventKey(null);
+        setMenuCoords(null);
+        setSheetEvent(null);
       }
     }
     if (menuEventKey) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
   }, [menuEventKey]);
 
@@ -236,6 +253,10 @@ export default function ChangesPanel({
     navigator.clipboard?.writeText(`@${username}`);
     setCopiedUser(username);
     setTimeout(() => setCopiedUser(null), 2000);
+    setTimeout(() => {
+      setMenuEventKey(null);
+      setMenuCoords(null);
+    }, 300);
   };
 
   const toggleMenu = (event: Event, itemKey: string, e: React.MouseEvent<HTMLElement>) => {
@@ -243,14 +264,23 @@ export default function ChangesPanel({
     if (typeof window !== "undefined" && window.innerWidth <= 768) {
       setSheetEvent({ event, itemKey });
       setMenuEventKey(null);
+      setMenuCoords(null);
       return;
     }
     if (menuEventKey === itemKey) {
       setMenuEventKey(null);
+      setMenuCoords(null);
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
+      const menuHeight = 250;
       const spaceBelow = window.innerHeight - rect.bottom;
-      setMenuPlacement(spaceBelow < 280 ? "top" : "bottom");
+      const openUp = spaceBelow < menuHeight && rect.top > menuHeight;
+      setMenuPlacement(openUp ? "top" : "bottom");
+      setMenuCoords({
+        top: openUp ? undefined : rect.bottom + 6,
+        bottom: openUp ? window.innerHeight - rect.top + 6 : undefined,
+        right: Math.max(16, window.innerWidth - rect.right),
+      });
       setMenuEventKey(itemKey);
     }
   };
@@ -261,6 +291,7 @@ export default function ChangesPanel({
     const dividerClass = isMobileSheet ? "mobile-sheet-divider" : "person-action-divider";
     const closeAll = () => {
       setMenuEventKey(null);
+      setMenuCoords(null);
       setSheetEvent(null);
     };
 
@@ -875,7 +906,9 @@ export default function ChangesPanel({
                               <ExternalLink size={15} />
                             </a>
                             <div
-                              className="person-more-box"
+                              className={`person-more-box ${
+                                menuEventKey === itemKey ? "is-active" : ""
+                              }`}
                               ref={menuEventKey === itemKey ? menuRef : undefined}
                             >
                               <button
@@ -886,12 +919,18 @@ export default function ChangesPanel({
                               >
                                 <MoreHorizontal size={15} />
                               </button>
-                              {menuEventKey === itemKey && (
+                              {menuEventKey === itemKey && menuCoords && (
                                 <div
                                   className={`person-action-menu ${
                                     menuPlacement === "top" ? "placement-top" : ""
                                   }`}
-                                  style={{ right: 0 }}
+                                  style={{
+                                    position: "fixed",
+                                    top: menuCoords.top !== undefined ? `${menuCoords.top}px` : "auto",
+                                    bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : "auto",
+                                    right: `${menuCoords.right}px`,
+                                    zIndex: 1000,
+                                  }}
                                 >
                                   {renderEventActionItems(event, false, itemKey)}
                                 </div>
@@ -1061,6 +1100,17 @@ export default function ChangesPanel({
           </div>
         )}
       </section>
+
+      {menuEventKey && (
+        <div
+          className="changes-dropdown-backdrop"
+          onClick={() => {
+            setMenuEventKey(null);
+            setMenuCoords(null);
+          }}
+          aria-hidden="true"
+        />
+      )}
 
       {sheetEvent && (
         <div

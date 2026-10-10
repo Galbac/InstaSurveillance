@@ -112,9 +112,18 @@ export default function PeoplePanel({
         setMenuPerson(null);
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuPerson(null);
+      }
+    }
     if (menuPerson) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
   }, [menuPerson]);
 
@@ -123,6 +132,7 @@ export default function PeoplePanel({
       navigator.clipboard.writeText(`@${username}`);
       setCopiedUser(username);
       setTimeout(() => setCopiedUser(null), 2000);
+      setMenuPerson(null);
     } catch {}
   }
 
@@ -734,7 +744,9 @@ export default function PeoplePanel({
               </div>
               <div className="person-actions-col">
                 <div
-                  className="person-more-box"
+                  className={`person-more-box ${
+                    menuPerson?.identity_key === person.identity_key ? "is-active" : ""
+                  }`}
                   ref={menuPerson?.identity_key === person.identity_key ? menuRef : undefined}
                 >
                   <button
@@ -845,6 +857,13 @@ export default function PeoplePanel({
             </div>
           </form>
         </Modal>
+      )}
+      {menuPerson && (
+        <div
+          className="person-desktop-backdrop"
+          onClick={() => setMenuPerson(null)}
+          aria-hidden="true"
+        />
       )}
       {menuPerson && (
         <div
