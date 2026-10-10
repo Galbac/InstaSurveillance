@@ -103,13 +103,27 @@ export function NotificationsPanel({ demo = false }: { demo?: boolean }) {
     </section>
   );
 }
+const CATEGORY_LABELS: Record<string, string> = {
+  connection: "Подключение",
+  import: "Импорт",
+  analytics: "Аналитика",
+  privacy: "Данные и приватность",
+  other: "Другое",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Открыто",
+  in_progress: "В работе",
+  resolved: "Решено",
+  closed: "Закрыто",
+};
+
 export function SupportPanel({ demo = false }: { demo?: boolean }) {
   const qc = useQueryClient(),
     [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false);
   const [ticketErrors, setTicketErrors] = useState<{
     body?: string;
-    request_id?: string;
   }>({});
   const q = useInfiniteQuery({
     queryKey: ["tickets"],
@@ -150,15 +164,11 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
             e.preventDefault();
             const form = e.currentTarget,
               data = new FormData(form);
-            const body = String(data.get("body") || "").trim(),
-              requestId = String(data.get("request_id") || "").trim();
+            const body = String(data.get("body") || "").trim();
 
-            const errs: { body?: string; request_id?: string } = {};
+            const errs: { body?: string } = {};
             if (!body || body.length < 10) {
               errs.body = "Опиши проблему подробнее (не менее 10 символов)";
-            }
-            if (requestId && !/^[a-zA-Z0-9-]+$/.test(requestId)) {
-              errs.request_id = "Номер запроса может содержать только латиницу, цифры и дефис";
             }
 
             if (Object.keys(errs).length > 0) {
@@ -175,7 +185,7 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
               await post("/support/tickets", {
                 category: data.get("category"),
                 body,
-                request_id: requestId || null,
+                request_id: null,
               });
               form.reset();
               qc.invalidateQueries({ queryKey: ["tickets"] });
@@ -189,13 +199,7 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
           <label>
             Тема
             <select name="category">
-              {[
-                ["connection", "Подключение"],
-                ["import", "Импорт"],
-                ["analytics", "Аналитика"],
-                ["privacy", "Данные и приватность"],
-                ["other", "Другое"],
-              ].map(([v, l]) => (
+              {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
                 <option value={v} key={v}>
                   {l}
                 </option>
@@ -223,25 +227,6 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
               </span>
             )}
           </label>
-          <label>
-            Номер запроса, если есть
-            <input
-              name="request_id"
-              maxLength={40}
-              pattern="[a-zA-Z0-9-]+"
-              aria-invalid={!!ticketErrors.request_id}
-              onChange={() => {
-                if (ticketErrors.request_id) {
-                  setTicketErrors((p) => ({ ...p, request_id: undefined }));
-                }
-              }}
-            />
-            {ticketErrors.request_id && (
-              <span className="field-error" role="alert">
-                {ticketErrors.request_id}
-              </span>
-            )}
-          </label>
           <button className="button" disabled={busy}>
             Отправить
           </button>
@@ -254,11 +239,10 @@ export function SupportPanel({ demo = false }: { demo?: boolean }) {
           .map((t) => (
             <article className="ticket-row" key={t.id}>
               <b>
-                {t.category} · {t.status}
+                {CATEGORY_LABELS[t.category] || t.category} ·{" "}
+                {STATUS_LABELS[t.status] || t.status}
               </b>
-              <small>
-                {date(t.created_at)} · {t.id}
-              </small>
+              <small>{date(t.created_at)}</small>
               <p>{t.body}</p>
               {t.reply && <blockquote>Ответ поддержки: {t.reply}</blockquote>}
             </article>
