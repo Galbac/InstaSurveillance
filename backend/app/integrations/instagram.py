@@ -276,7 +276,6 @@ def new_client(
     mode: str = "connect",
     proxy_url: str | None = None,
 ) -> ControlledClient:
-
     for name in ("aiograpi", "private_request", "public_request"):
         logging.getLogger(name).disabled = True
 

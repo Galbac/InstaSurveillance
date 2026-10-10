@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/auth/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Status */
+        get: operations["auth_status_api_v1_admin_auth_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/jobs": {
         parameters: {
             query?: never;
@@ -124,6 +141,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profiles */
+        get: operations["profiles_api_v1_admin_profiles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Detail */
+        get: operations["profile_detail_api_v1_admin_profiles__profile_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/profiles/{profile_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause Profile */
+        post: operations["pause_profile_api_v1_admin_profiles__profile_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/profiles/{profile_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Profile */
+        post: operations["resume_profile_api_v1_admin_profiles__profile_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/support/tickets": {
         parameters: {
             query?: never;
@@ -148,7 +233,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Ticket Detail */
+        get: operations["ticket_detail_api_v1_admin_support_tickets__ticket_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -156,6 +242,23 @@ export interface paths {
         head?: never;
         /** Reply */
         patch: operations["reply_api_v1_admin_support_tickets__ticket_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** System Health */
+        get: operations["system_health_api_v1_admin_system_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/users": {
@@ -167,6 +270,23 @@ export interface paths {
         };
         /** Users */
         get: operations["users_api_v1_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** User Detail */
+        get: operations["user_detail_api_v1_admin_users__user_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1176,6 +1296,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminAuthStatusDTO */
+        AdminAuthStatusDTO: {
+            /** Email */
+            email: string;
+            /** Mfa Enrolled */
+            mfa_enrolled: boolean;
+            /** Privileged */
+            privileged: boolean;
+            /** Privileged Until */
+            privileged_until: string | null;
+            /** Role */
+            role: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** User Id */
+            user_id: string;
+        };
         /** AdminJobDTO */
         AdminJobDTO: {
             /** Attempts */
@@ -1198,20 +1338,251 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** AdminJobDetailDTO */
+        AdminJobDetailDTO: {
+            /** Attempts */
+            attempts: number;
+            /** Can Retry */
+            can_retry: boolean;
+            /** Comparison Id */
+            comparison_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Error Code */
+            error_code: string | null;
+            /** Export Id */
+            export_id?: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Owner Email */
+            owner_email: string | null;
+            /** Profile Id */
+            profile_id: string | null;
+            /** Profile Username */
+            profile_username: string | null;
+            /** Retry Forbidden Reason */
+            retry_forbidden_reason: string | null;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Stage */
+            stage: string;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Updated At */
+            updated_at: string | null;
+            /** User Id */
+            user_id: string;
+        };
+        /** AdminJobSummaryDTO */
+        AdminJobSummaryDTO: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+        };
         /** AdminOverviewDTO */
         AdminOverviewDTO: {
             /** Jobs */
             jobs: {
                 [key: string]: number;
             };
+            /** Jobs Failed 24H */
+            jobs_failed_24h: number;
             /** Limits */
             limits: {
                 [key: string]: number;
             };
+            /** Partial Snapshots 7D */
+            partial_snapshots_7d: number;
+            /** Profiles */
+            profiles: number;
+            /** Profiles Active */
+            profiles_active: number;
+            /** Profiles Cooldown */
+            profiles_cooldown: number;
+            /** Profiles Paused */
+            profiles_paused: number;
             /** Release */
             release: string;
+            /** Tickets In Progress */
+            tickets_in_progress: number;
+            /** Tickets Open */
+            tickets_open: number;
             /** Users */
             users: number;
+            /** Users Active */
+            users_active: number;
+            /** Users Suspended */
+            users_suspended: number;
+            /** Users Unverified */
+            users_unverified: number;
+        };
+        /** AdminProfileDTO */
+        AdminProfileDTO: {
+            /** Cooldown Until */
+            cooldown_until: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Has Connection */
+            has_connection: boolean;
+            /** Id */
+            id: string;
+            /** Interval Hours */
+            interval_hours: number;
+            last_job: components["schemas"]["AdminJobSummaryDTO"] | null;
+            /** Last Sync */
+            last_sync: string | null;
+            /** Next Sync */
+            next_sync: string | null;
+            /** Owner Email */
+            owner_email: string | null;
+            /** Paused */
+            paused: boolean;
+            /** Status */
+            status: string;
+            /** User Id */
+            user_id: string;
+            /** Username */
+            username: string;
+        };
+        /** AdminProfileDetailDTO */
+        AdminProfileDetailDTO: {
+            /** Cooldown Until */
+            cooldown_until: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generation */
+            generation: number;
+            /** Has Connection */
+            has_connection: boolean;
+            /** Id */
+            id: string;
+            /** Interval Hours */
+            interval_hours: number;
+            /** Key Version */
+            key_version: string | null;
+            /** Last Sync */
+            last_sync: string | null;
+            latest_snapshot: components["schemas"]["AdminSnapshotDiagnosticsDTO"] | null;
+            /** Next Sync */
+            next_sync: string | null;
+            /** Owner Email */
+            owner_email: string | null;
+            /** Owner Status */
+            owner_status: string | null;
+            /** Paused */
+            paused: boolean;
+            /** Recent Jobs */
+            recent_jobs: components["schemas"]["AdminJobSummaryDTO"][];
+            /** Status */
+            status: string;
+            /** User Id */
+            user_id: string;
+            /** Username */
+            username: string;
+        };
+        /** AdminProfileSummaryDTO */
+        AdminProfileSummaryDTO: {
+            /** Has Connection */
+            has_connection: boolean;
+            /** Id */
+            id: string;
+            /** Last Sync */
+            last_sync: string | null;
+            /** Paused */
+            paused: boolean;
+            /** Status */
+            status: string;
+            /** Username */
+            username: string;
+        };
+        /** AdminSnapshotDiagnosticsDTO */
+        AdminSnapshotDiagnosticsDTO: {
+            /** Checksum */
+            checksum: string;
+            /** Completeness */
+            completeness: string;
+            /** Expected Followers */
+            expected_followers: number | null;
+            /** Expected Following */
+            expected_following: number | null;
+            /** Followers */
+            followers: number;
+            /** Following */
+            following: number;
+            /** Id */
+            id: string;
+            /** Is Comparable */
+            is_comparable: boolean;
+            /** Mutual */
+            mutual: number;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Source */
+            source: string;
+        };
+        /** AdminSystemHealthDTO */
+        AdminSystemHealthDTO: {
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Db Healthy */
+            db_healthy: boolean;
+            /** Db Latency Ms */
+            db_latency_ms: number;
+            /** Outbox Oldest Age Seconds */
+            outbox_oldest_age_seconds: number | null;
+            /** Outbox Pending Count */
+            outbox_pending_count: number;
+            /** Pending Deletions Count */
+            pending_deletions_count: number;
+            /** Storage Accessible */
+            storage_accessible: boolean;
+            /** Storage Kind */
+            storage_kind: string;
+            /** Total File Objects */
+            total_file_objects: number;
+            /** Total Storage Bytes */
+            total_storage_bytes: number;
         };
         /** AdminTicketDTO */
         AdminTicketDTO: {
@@ -1226,6 +1597,10 @@ export interface components {
             created_at: string;
             /** Id */
             id: string;
+            /** Owner Email */
+            owner_email?: string | null;
+            /** Owner Status */
+            owner_status?: string | null;
             /** Reply */
             reply: string;
             /** Request Id */
@@ -1250,6 +1625,56 @@ export interface components {
             status: string;
             /** Verified */
             verified: boolean;
+        };
+        /** AdminUserDetailDTO */
+        AdminUserDetailDTO: {
+            /** Audit History */
+            audit_history: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /** Email Notifications */
+            email_notifications: boolean;
+            /** Id */
+            id: string;
+            /** Jobs By Status */
+            jobs_by_status: {
+                [key: string]: number;
+            };
+            /** Profiles Count */
+            profiles_count: number;
+            /** Recent Profiles */
+            recent_profiles: components["schemas"]["AdminProfileSummaryDTO"][];
+            /** Recent Tickets */
+            recent_tickets: components["schemas"]["TicketDTO"][];
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
+            storage: components["schemas"]["AdminUserStorageDTO"];
+            /** Theme */
+            theme: string;
+            /** Tickets Count */
+            tickets_count: number;
+            /** Timezone */
+            timezone: string;
+            /** Verified */
+            verified: boolean;
+        };
+        /** AdminUserStorageDTO */
+        AdminUserStorageDTO: {
+            /** File Count */
+            file_count: number;
+            /** Quota Bytes */
+            quota_bytes: number;
+            /** Total Bytes */
+            total_bytes: number;
         };
         /** AnalyticsPoint */
         AnalyticsPoint: {
@@ -1805,6 +2230,13 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** Page[AdminProfileDTO] */
+        Page_AdminProfileDTO_: {
+            /** Items */
+            items: components["schemas"]["AdminProfileDTO"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /** Page[AdminTicketDTO] */
         Page_AdminTicketDTO_: {
             /** Items */
@@ -2258,6 +2690,12 @@ export interface operations {
     events_api_v1_admin_audit_get: {
         parameters: {
             query?: {
+                actor_id?: string | null;
+                action?: string | null;
+                target?: string | null;
+                request_id?: string | null;
+                created_from?: string | null;
+                created_to?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -2320,10 +2758,36 @@ export interface operations {
             };
         };
     };
+    auth_status_api_v1_admin_auth_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuthStatusDTO"];
+                };
+            };
+        };
+    };
     jobs_api_v1_admin_jobs_get: {
         parameters: {
             query?: {
                 status?: string | null;
+                kind?: string | null;
+                error_code?: string | null;
+                user_id?: string | null;
+                profile_id?: string | null;
+                created_from?: string | null;
+                created_to?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -2370,7 +2834,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminJobDTO"];
+                    "application/json": components["schemas"]["AdminJobDetailDTO"];
                 };
             };
             /** @description Validation Error */
@@ -2492,9 +2956,147 @@ export interface operations {
             };
         };
     };
+    profiles_api_v1_admin_profiles_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                status?: string | null;
+                paused?: boolean | null;
+                has_cooldown?: boolean | null;
+                user_id?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AdminProfileDTO_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_detail_api_v1_admin_profiles__profile_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProfileDetailDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_profile_api_v1_admin_profiles__profile_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Reason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_profile_api_v1_admin_profiles__profile_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Reason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     tickets_api_v1_admin_support_tickets_get: {
         parameters: {
             query?: {
+                status?: string | null;
+                category?: string | null;
+                user_id?: string | null;
+                search?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -2511,6 +3113,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_AdminTicketDTO_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ticket_detail_api_v1_admin_support_tickets__ticket_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTicketDTO"];
                 };
             };
             /** @description Validation Error */
@@ -2559,9 +3192,35 @@ export interface operations {
             };
         };
     };
+    system_health_api_v1_admin_system_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSystemHealthDTO"];
+                };
+            };
+        };
+    };
     users_api_v1_admin_users_get: {
         parameters: {
             query?: {
+                search?: string | null;
+                role?: string | null;
+                status?: string | null;
+                verified?: boolean | null;
+                created_from?: string | null;
+                created_to?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -2578,6 +3237,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_AdminUserDTO_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    user_detail_api_v1_admin_users__user_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserDetailDTO"];
                 };
             };
             /** @description Validation Error */

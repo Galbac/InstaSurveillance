@@ -298,6 +298,41 @@ class DeletionStatusDTO(BaseModel):
     cleanup_deadline: datetime
 
 
+class AdminAuthStatusDTO(BaseModel):
+    role: str
+    email: str
+    user_id: str
+    server_time: datetime
+    privileged: bool
+    privileged_until: datetime | None
+    mfa_enrolled: bool
+
+
+class AdminJobSummaryDTO(BaseModel):
+    id: str
+    kind: str
+    status: str
+    stage: str
+    error_code: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class AdminProfileSummaryDTO(BaseModel):
+    id: str
+    username: str
+    status: str
+    paused: bool
+    has_connection: bool
+    last_sync: datetime | None
+
+
+class AdminUserStorageDTO(BaseModel):
+    total_bytes: int
+    file_count: int
+    quota_bytes: int
+
+
 class AdminUserDTO(BaseModel):
     id: str
     email: str
@@ -305,6 +340,75 @@ class AdminUserDTO(BaseModel):
     role: str
     status: str
     created_at: datetime
+
+
+class AdminUserDetailDTO(BaseModel):
+    id: str
+    email: str
+    verified: bool
+    role: str
+    status: str
+    timezone: str
+    theme: str
+    email_notifications: bool
+    created_at: datetime
+    profiles_count: int
+    jobs_by_status: dict[str, int]
+    storage: AdminUserStorageDTO
+    tickets_count: int
+    recent_tickets: list[TicketDTO]
+    recent_profiles: list[AdminProfileSummaryDTO]
+    audit_history: list[dict[str, Any]]
+
+
+class AdminProfileDTO(BaseModel):
+    id: str
+    user_id: str
+    username: str
+    status: str
+    paused: bool
+    interval_hours: int
+    last_sync: datetime | None
+    next_sync: datetime | None
+    cooldown_until: datetime | None
+    has_connection: bool
+    owner_email: str | None
+    created_at: datetime
+    last_job: AdminJobSummaryDTO | None
+
+
+class AdminSnapshotDiagnosticsDTO(BaseModel):
+    id: str
+    observed_at: datetime
+    completeness: str
+    source: str
+    checksum: str
+    followers: int
+    expected_followers: int | None
+    following: int
+    expected_following: int | None
+    mutual: int
+    is_comparable: bool
+
+
+class AdminProfileDetailDTO(BaseModel):
+    id: str
+    user_id: str
+    owner_email: str | None
+    owner_status: str | None
+    username: str
+    status: str
+    paused: bool
+    interval_hours: int
+    generation: int
+    last_sync: datetime | None
+    next_sync: datetime | None
+    cooldown_until: datetime | None
+    has_connection: bool
+    key_version: str | None
+    created_at: datetime
+    latest_snapshot: AdminSnapshotDiagnosticsDTO | None
+    recent_jobs: list[AdminJobSummaryDTO]
 
 
 class AdminJobDTO(BaseModel):
@@ -318,8 +422,34 @@ class AdminJobDTO(BaseModel):
     heartbeat_at: datetime | None
 
 
+class AdminJobDetailDTO(BaseModel):
+    id: str
+    kind: str
+    status: str
+    stage: str
+    error_code: str | None
+    attempts: int
+    user_id: str
+    profile_id: str | None
+    owner_email: str | None
+    profile_username: str | None
+    created_at: datetime
+    updated_at: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
+    heartbeat_at: datetime | None
+    can_retry: bool
+    retry_forbidden_reason: str | None
+    details: dict[str, Any]
+    snapshot_id: str | None = None
+    comparison_id: str | None = None
+    export_id: str | None = None
+
+
 class AdminTicketDTO(TicketDTO):
     request_id: str | None
+    owner_email: str | None = None
+    owner_status: str | None = None
 
 
 class AuditDTO(BaseModel):
@@ -334,6 +464,30 @@ class AuditDTO(BaseModel):
 
 class AdminOverviewDTO(BaseModel):
     users: int
+    users_active: int
+    users_suspended: int
+    users_unverified: int
+    profiles: int
+    profiles_active: int
+    profiles_paused: int
+    profiles_cooldown: int
     jobs: dict[str, int]
+    jobs_failed_24h: int
+    tickets_open: int
+    tickets_in_progress: int
+    partial_snapshots_7d: int
     limits: dict[str, int]
     release: str
+
+
+class AdminSystemHealthDTO(BaseModel):
+    db_healthy: bool
+    db_latency_ms: float
+    storage_kind: str
+    storage_accessible: bool
+    total_file_objects: int
+    total_storage_bytes: int
+    pending_deletions_count: int
+    outbox_pending_count: int
+    outbox_oldest_age_seconds: float | None
+    checked_at: datetime

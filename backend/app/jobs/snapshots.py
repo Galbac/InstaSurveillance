@@ -183,7 +183,6 @@ def publish(
 
 
 def enqueue_neighbors(db, snapshot):
-
     from app.models import Comparison
     from app.modules.query_service import comparable_relations
 
