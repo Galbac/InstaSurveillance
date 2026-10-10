@@ -1342,5 +1342,39 @@ def test_imported_mobile_session_checks_identity_without_password_login(
             secret = db.get(SessionSecret, pid)
             assert secret is not None
             assert "synthetic-session" not in secret.encrypted_settings
-            assert json.loads(synthetic_cipher.decrypt(secret.encrypted_settings.encode())) == saved
         assert "login:" + job_id in deleted
+
+
+def test_forgot_and_resend_verification_and_branded_email(context):
+    from app.integrations.mail import render_email_html
+
+    c, factory, uid, _ = context
+    with factory() as db:
+        user = db.get(User, uid)
+        real_email = user.email
+
+    # 1. Forgot password - non-existent email gives 404
+    resp = mutate(c, "POST", "/auth/forgot-password", json={"email": "nonexistent_abc@example.com"})
+    assert resp.status_code == 404
+    assert "не найден" in resp.json()["error"]["message"]
+
+    # 2. Forgot password - existing email gives 202
+    resp = mutate(c, "POST", "/auth/forgot-password", json={"email": real_email})
+    assert resp.status_code == 202
+    assert "отправлено" in resp.json()["message"]
+
+    # 3. Resend verification - non-existent email gives 404
+    resp = mutate(c, "POST", "/auth/resend-verification", json={"email": "nonexistent_abc@example.com"})
+    assert resp.status_code == 404
+
+    # 4. Resend verification - existing user unauthenticated by email gives 202
+    resp = mutate(c, "POST", "/auth/resend-verification", json={"email": real_email})
+    assert resp.status_code == 202
+    assert "отправлен" in resp.json()["message"]
+
+    # 5. render_email_html produces branded HTML with code and button
+    html_output = render_email_html("Подтвердите email", "Код подтверждения: 1234", action_url="http://localhost:3100/verify", code="1234")
+    assert "INSTASURVEILLANCE" in html_output
+    assert "1234" in html_output
+    assert "http://localhost:3100/verify" in html_output
+

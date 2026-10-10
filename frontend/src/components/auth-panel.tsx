@@ -36,17 +36,24 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [resendCountdown, setResendCountdown] = useState(60);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
   const localCodeStep =
     mode === "register" &&
     !!verificationEmail &&
     !!config.data?.local_email_verification;
   useEffect(() => {
-    if (mode === "login" && new URLSearchParams(window.location.search).get("verified") === "1") {
-      setEmailVerified(true);
+    if (localCodeStep && resendCountdown > 0) {
+      const timer = setInterval(() => {
+        setResendCountdown((c) => (c > 0 ? c - 1 : 0));
+      }, 1000);
+      return () => clearInterval(timer);
     }
+  }, [localCodeStep, resendCountdown]);
+  useEffect(() => {
     if (mode === "login" || mode === "register") {
       api<User>("/me")
         .then((user) => {
@@ -153,21 +160,46 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Не удалось выполнить действие";
+      let assignedToField = false;
       if (
         msg.toLowerCase().includes("парол") ||
         msg.toLowerCase().includes("credentials") ||
         msg.toLowerCase().includes("неверный")
       ) {
         form.setError("password", { message: msg });
+        assignedToField = true;
       } else if (
         msg.toLowerCase().includes("email") ||
-        msg.toLowerCase().includes("почт")
+        msg.toLowerCase().includes("почт") ||
+        msg.toLowerCase().includes("найден") ||
+        msg.toLowerCase().includes("аккаунт")
       ) {
         form.setError("email", { message: msg });
+        assignedToField = true;
       }
-      setError(msg);
+      if (!assignedToField) {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
+    }
+  }
+  async function resendVerificationCode(targetEmail?: string) {
+    const emailToUse = targetEmail || verificationEmail || form.getValues("email");
+    if (!emailToUse || resendBusy || resendCountdown > 0) return;
+    setResendBusy(true);
+    setError("");
+    setResendNotice("");
+    try {
+      await post("/auth/resend-verification", { email: emailToUse });
+      setResendNotice("Код подтверждения отправлен повторно");
+      setResendCountdown(60);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Не удалось отправить код повторно",
+      );
+    } finally {
+      setResendBusy(false);
     }
   }
   async function verifyLocalEmail(event: FormEvent<HTMLFormElement>) {
@@ -239,27 +271,20 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                 ? "Войди, чтобы увидеть изменения в твоем круге."
                 : "Мы поможем продолжить безопасно."}
           </p>
-          {emailVerified && (
-            <div className="notice success" role="status">
-              Email подтверждён. Теперь войди в аккаунт.
-            </div>
-          )}
           {message ? (
             <div className="notice success" role="status">
               {message}
               <Link
                 href={
                   mode === "register" &&
-                  config.data?.local_email_verification &&
-                  !emailVerified
+                  config.data?.local_email_verification
                     ? "/verify-email"
                     : "/login"
                 }
                 className="text-link"
               >
                 {mode === "register" &&
-                config.data?.local_email_verification &&
-                !emailVerified
+                config.data?.local_email_verification
                   ? "Подтвердить email кодом"
                   : "Перейти ко входу"} <ArrowRight size={16} />
               </Link>
@@ -282,6 +307,42 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                   placeholder="••••"
                 />
               </label>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "6px",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                }}
+              >
+                <span className="muted">Не пришёл код?</span>
+                {resendCountdown > 0 ? (
+                  <span className="muted">Отправить повторно ({resendCountdown} с)</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => resendVerificationCode(verificationEmail)}
+                    disabled={resendBusy}
+                    className="text-link"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {resendBusy ? "Отправляем…" : "Отправить код повторно"}
+                  </button>
+                )}
+              </div>
+              {resendNotice && (
+                <div className="notice success" role="status">
+                  {resendNotice}
+                </div>
+              )}
               {error && (
                 <div className="notice error" role="alert">
                   {error}
@@ -356,6 +417,42 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
                         </span>
                       )}
                     </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "6px",
+                        marginBottom: "12px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <span className="muted">Не пришёл код?</span>
+                      {resendCountdown > 0 ? (
+                        <span className="muted">Отправить повторно ({resendCountdown} с)</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => resendVerificationCode(form.getValues("email"))}
+                          disabled={resendBusy}
+                          className="text-link"
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            fontSize: "13px",
+                          }}
+                        >
+                          {resendBusy ? "Отправляем…" : "Отправить код повторно"}
+                        </button>
+                      )}
+                    </div>
+                    {resendNotice && (
+                      <div className="notice success" role="status">
+                        {resendNotice}
+                      </div>
+                    )}
                   </>
                 )}
               {["login", "register", "reset-password"].includes(mode) && (

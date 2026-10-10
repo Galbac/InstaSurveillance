@@ -1,7 +1,7 @@
 from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import Request, Response
+from fastapi import Body, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -95,6 +95,13 @@ def issue_email_token(db, user: User, purpose: str) -> None:
     route = "reset-password" if purpose == "reset" else "verify-email"
     # Fragment prevents email tokens appearing in HTTP access logs or referrers.
     url = get_settings().app_base_url + "/" + route + "#token=" + raw
+    code = "1234" if (get_settings().app_env == "local" and purpose == "verify") else None
+    subject = "Восстановление доступа" if purpose == "reset" else "Подтвердите email"
+    body = (
+        f"Код подтверждения: {code}\nОткройте ссылку: {url}\nЕсли вы не запрашивали это действие, проигнорируйте письмо."
+        if code
+        else f"Откройте ссылку: {url}\nЕсли вы не запрашивали это действие, проигнорируйте письмо."
+    )
     db.add(
         Outbox(
             kind="email",
@@ -105,10 +112,10 @@ def issue_email_token(db, user: User, purpose: str) -> None:
                     json_payload(
                         {
                             "to": user.email,
-                            "subject": "Восстановление доступа"
-                            if purpose == "reset"
-                            else "Подтвердите email",
-                            "body": f"Откройте ссылку: {url}\nЕсли вы не запрашивали это действие, проигнорируйте письмо.",
+                            "subject": subject,
+                            "body": body,
+                            "action_url": url,
+                            "code": code,
                         }
                     )
                 )
@@ -169,8 +176,7 @@ def register(body: Registration, request: Request, db: DB):
         ]
     )
     audit(db, user.id, "user.register", user.id, request.state.request_id)
-    if settings.app_env != "local":
-        issue_email_token(db, user, "verify")
+    issue_email_token(db, user, "verify")
     db.commit()
     return {"message": "Аккаунт создан. Проверь почту, чтобы подтвердить адрес."}
 
@@ -253,23 +259,44 @@ def verify_email(body: VerifyEmailInput, request: Request, db: DB):
     db.commit()
 
 
+class ResendVerificationInput(BaseModel):
+    email: str | None = None
+
+
 @router.post("/auth/forgot-password", status_code=202, response_model=MessageDTO)
 def forgot(body: EmailInput, request: Request, db: DB):
     email_limits(request, str(body.email), "reset", 3)
     user = db.scalar(select(User).where(User.email == str(body.email).lower()))
-    if user:
-        issue_email_token(db, user, "reset")
-        db.commit()
-    return {"message": "Если аккаунт существует, письмо отправлено"}
+    if not user:
+        raise AppError("user_not_found", "Аккаунт с таким email не найден", 404)
+    issue_email_token(db, user, "reset")
+    db.commit()
+    return {"message": "Письмо для сброса пароля отправлено на указанную почту"}
 
 
 @router.post("/auth/resend-verification", status_code=202, response_model=MessageDTO)
-def resend(user: UserDep, request: Request, db: DB):
-    email_limits(request, user.email, "verify", 3)
+def resend(request: Request, db: DB, body: ResendVerificationInput = Body(default_factory=ResendVerificationInput)):
+    user = None
+    if body.email:
+        user = db.scalar(select(User).where(User.email == str(body.email).strip().lower()))
+        if not user:
+            raise AppError("user_not_found", "Аккаунт с таким email не найден", 404)
+    else:
+        s = get_settings()
+        raw = request.cookies.get(s.session_cookie_name, "")
+        if raw:
+            session = db.scalar(
+                select(AuthSession).where(AuthSession.token_hash == digest(raw), AuthSession.expires_at > now())
+            )
+            if session:
+                user = db.get(User, session.user_id)
+    if not user:
+        raise AppError("unauthenticated", "Войдите в аккаунт или укажите email", 401)
+    email_limits(request, user.email, "verify", 5)
     if not user.verified:
         issue_email_token(db, user, "verify")
         db.commit()
-    return {"message": "Проверьте почту"}
+    return {"message": "Код подтверждения отправлен повторно"}
 
 
 @router.post("/auth/reset-password", status_code=204)

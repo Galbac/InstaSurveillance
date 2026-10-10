@@ -24,7 +24,7 @@ from app.integrations.instagram import (
     new_client,
     safe_settings,
 )
-from app.integrations.mail import send_email
+from app.integrations.mail import render_email_html, send_email
 from app.jobs.celery_app import celery
 from app.jobs.notifications import notify
 from app.jobs.runtime import TERMINAL, claim, finish, heartbeat
@@ -646,7 +646,13 @@ def _dispatch():
                     if "sealed" in payload
                     else payload
                 )
-                send_email(mail["to"], mail["subject"], mail["body"], message_id=identity)
+                html_content = mail.get("html") or render_email_html(
+                    mail["subject"],
+                    mail["body"],
+                    action_url=mail.get("action_url"),
+                    code=mail.get("code"),
+                )
+                send_email(mail["to"], mail["subject"], mail["body"], message_id=identity, html=html_content)
             elif kind == "revoke":
                 settings = get_settings()
                 with celery.connection_for_write(
