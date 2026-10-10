@@ -450,6 +450,18 @@
       },
       "ComparisonDTO": {
         "properties": {
+          "compared_relations": {
+            "default": [],
+            "items": {
+              "enum": [
+                "followers",
+                "following"
+              ],
+              "type": "string"
+            },
+            "title": "Compared Relations",
+            "type": "array"
+          },
           "counts": {
             "additionalProperties": {
               "type": "integer"
@@ -6041,6 +6053,64 @@
           }
         },
         "summary": "History",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/profiles/{profile_id}/snapshots/{snapshot_id}/people/{identity}/avatar": {
+      "get": {
+        "operationId": "member_avatar_api_v1_profiles__profile_id__snapshots__snapshot_id__people__identity__avatar_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Member Avatar",
         "tags": [
           "analytics"
         ]

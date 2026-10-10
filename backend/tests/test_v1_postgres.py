@@ -709,6 +709,37 @@ def test_cancel_generation_prevents_publication_and_preserves_history(context, s
         assert not list(db.scalars(select(Snapshot)))
 
 
+def test_partial_followers_do_not_block_complete_following_comparison(context):
+    c, f, uid, pid = context
+    from app.jobs.tasks import process
+
+    before = snapshot(f, pid, ["a", "missing"], ["keep", "gone"], -1)
+    after = snapshot(f, pid, ["a"], ["keep"], 0)
+    with f() as db:
+        for sid in (before, after):
+            row = db.get(Snapshot, sid)
+            row.completeness = "partial"
+            row.provenance = {
+                "following_completeness": "collection_validated",
+                "expected_following": row.counts["following"],
+            }
+        db.commit()
+    response = mutate(
+        c,
+        "POST",
+        f"/profiles/{pid}/comparisons",
+        json={"before_snapshot_id": before, "after_snapshot_id": after},
+    )
+    assert response.status_code == 202, response.text
+    cid = response.json()["id"]
+    process.run(c.get(f"/api/v1/comparisons/{cid}").json()["job"]["id"])
+    status = c.get(f"/api/v1/comparisons/{cid}").json()
+    assert status["compared_relations"] == ["following"]
+    assert status["counts"] == {"following_removed": 1}
+    events = c.get(f"/api/v1/comparisons/{cid}/events").json()["items"]
+    assert [(x["username"], x["relation"], x["type"]) for x in events] == [("gone", "following", "removed")]
+
+
 def test_unlimited_local_runs_skip_service_limits_but_keep_provider_cooldown(context, monkeypatch):
     c, f, uid, pid = context
     from app.models import SessionSecret
@@ -738,7 +769,7 @@ def test_unlimited_local_runs_skip_service_limits_but_keep_provider_cooldown(con
     assert mutate(c, "POST", f"/profiles/{pid}/syncs", json={}).status_code == 429
 
 
-def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(context):
+def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(context, monkeypatch):
     c, f, uid, pid = context
     from app.core.errors import AppError
     from app.domain.analytics import Relationships
@@ -782,7 +813,21 @@ def test_partial_snapshot_is_readable_but_never_generates_unfollow_events(contex
     assert people.status_code == 200
     assert people.json()["completeness"] == "partial"
     assert [x["username"] for x in people.json()["items"]] == ["a"]
-    assert people.json()["items"][0]["avatar_url"] == "https://cdn.example.fbcdn.net/avatar.jpg"
+    assert (
+        people.json()["items"][0]["avatar_url"] == f"/api/v1/profiles/{pid}/snapshots/{sid}/people/a/avatar"
+    )
+
+    from app.integrations import avatars
+
+    async def image(url):
+        assert url == "https://cdn.example.fbcdn.net/avatar.jpg"
+        return b"synthetic-jpeg", "image/jpeg"
+
+    monkeypatch.setattr(avatars, "fetch_avatar", image)
+    photo = c.get(people.json()["items"][0]["avatar_url"])
+    assert photo.status_code == 200 and photo.content == b"synthetic-jpeg"
+    assert photo.headers["cache-control"] == "no-store"
+    assert c.get(f"/api/v1/profiles/{pid}/snapshots/{uuid4()}/people/a/avatar").status_code == 404
 
 
 def test_deletion_waits_for_inflight_object_write(context):
@@ -989,7 +1034,8 @@ def test_export_event_filters_and_people_sort(context):
         download = c.get(f"/api/v1/exports/{eid}/download")
         assert download.status_code == 200, download.text
         assert [
-            row["username"] for row in csv.DictReader(io.StringIO(download.text.lstrip("\ufeff")))
+            row["Имя пользователя"]
+            for row in csv.DictReader(io.StringIO(download.text.lstrip("\ufeff")), delimiter=";")
         ] == expected
 
 

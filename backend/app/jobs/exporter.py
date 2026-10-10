@@ -323,7 +323,28 @@ def render(export_id: str, check) -> None:
                 else:
                     output.write(b"\xef\xbb\xbf")
                     line = io.StringIO()
-                    writer = csv.DictWriter(line, fieldnames=fields + ["generated_at"])
+                    labels = {
+                        "username": "Имя пользователя",
+                        "identity_key": "Идентификатор аккаунта",
+                        "category": "Категория",
+                        "note": "Заметка",
+                        "favorite": "Избранное",
+                        "relation": "Список",
+                        "type": "Изменение",
+                        "generated_at": "Дата выгрузки",
+                    }
+                    translations = {
+                        "followers": "Подписчики",
+                        "following": "Мои подписки",
+                        "mutual": "Взаимные подписки",
+                        "not_following_back": "Не найдены среди подписчиков",
+                        "fans": "Не найдены среди моих подписок",
+                        "added": "Добавлен",
+                        "removed": "Больше нет в списке",
+                    }
+                    writer = csv.DictWriter(
+                        line, fieldnames=[labels[key] for key in fields + ["generated_at"]], delimiter=";"
+                    )
                     writer.writeheader()
                     output.write(line.getvalue().encode())
                     line.seek(0)
@@ -332,8 +353,19 @@ def render(export_id: str, check) -> None:
                     for index, row in enumerate(rows):
                         if index % 500 == 0:
                             check()
-                        value = {key: safe_csv(str(item)) for key, item in serialize(row).items()}
-                        value["generated_at"] = generated
+                        value = {
+                            labels[key]: safe_csv(
+                                "Да"
+                                if item is True
+                                else "Нет"
+                                if item is False
+                                else translations.get(str(item), str(item))
+                                if key in {"category", "relation", "type"}
+                                else str(item)
+                            )
+                            for key, item in serialize(row).items()
+                        }
+                        value[labels["generated_at"]] = generated
                         writer.writerow(value)
                         output.write(line.getvalue().encode())
                         line.seek(0)

@@ -176,6 +176,7 @@ class ComparisonDTO(BaseModel):
     identity_mode: str
     interval: dict[str, datetime]
     job: JobDTO | None = None
+    compared_relations: list[Literal["followers", "following"]] = []
 
 
 class AnalyticsPoint(Counts):

@@ -1050,6 +1050,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profiles/{profile_id}/snapshots/{snapshot_id}/people/{identity}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Member Avatar */
+        get: operations["member_avatar_api_v1_profiles__profile_id__snapshots__snapshot_id__people__identity__avatar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profiles/{profile_id}/summary": {
         parameters: {
             query?: never;
@@ -1327,6 +1344,11 @@ export interface components {
         };
         /** ComparisonDTO */
         ComparisonDTO: {
+            /**
+             * Compared Relations
+             * @default []
+             */
+            compared_relations: ("followers" | "following")[];
             /** Counts */
             counts: {
                 [key: string]: number;
@@ -4355,6 +4377,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_SnapshotDTO_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    member_avatar_api_v1_profiles__profile_id__snapshots__snapshot_id__people__identity__avatar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+                snapshot_id: string;
+                identity: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
 from app.core.commands import begin_command, finish_command, heavy_limit
-from app.core.dependencies import DB, Verified
+from app.core.dependencies import DB, AsyncDB, Verified
 from app.core.errors import AppError, required
 from app.core.router import APIRouter
 from app.core.security import now
@@ -17,6 +17,7 @@ from app.models import (
     Comparison,
     ExportJob,
     Job,
+    Member,
     Notification,
     Snapshot,
     SupportTicket,
@@ -44,9 +45,45 @@ from app.modules.contracts import (
     TicketDTO,
 )
 from app.modules.data import enqueue, job_dict, profile_dict, profile_owned, snapshot_dict
-from app.modules.query_service import event_query, latest_snapshot, people_page, snapshot_counts
+from app.modules.query_service import (
+    comparable_relations,
+    event_query,
+    latest_snapshot,
+    people_page,
+    snapshot_counts,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["analytics"])
+
+
+@router.get("/profiles/{profile_id}/snapshots/{snapshot_id}/people/{identity}/avatar")
+async def member_avatar(profile_id: str, snapshot_id: str, identity: str, user: Verified, db: AsyncDB):
+    def resolve(session):
+        profile_owned(session, user, profile_id)
+        return required(
+            session.scalar(
+                select(Member.avatar_url)
+                .join(Snapshot, Snapshot.id == Member.snapshot_id)
+                .where(
+                    Snapshot.profile_id == profile_id,
+                    Snapshot.id == snapshot_id,
+                    Member.identity_key == identity,
+                    Member.avatar_url.is_not(None),
+                )
+                .limit(1)
+            ),
+            "not_found",
+        )
+
+    url = await db.run_sync(resolve)
+    from app.integrations.avatars import fetch_avatar
+
+    body, media = await fetch_avatar(url)
+    return Response(
+        body,
+        media_type=media,
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 def snapshot_dto(db, snapshot):
@@ -307,6 +344,7 @@ def comparison_status(comparison_id: str, user: Verified, db: DB):
         "counts": comparison.counts,
         "identity_mode": after.identity_mode,
         "interval": {"start": before.observed_at, "end": after.observed_at},
+        "compared_relations": comparable_relations(before, after),
         "job": job_dict(job) if job else None,
     }
 

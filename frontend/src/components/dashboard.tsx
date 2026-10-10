@@ -660,7 +660,7 @@ function Overview({
 }) {
   const c = summary.counts!;
   const removed =
-    summary.change_counts?.followers_removed ??
+    summary.snapshot?.completeness === "partial" ? undefined : summary.change_counts?.followers_removed ??
     summary.changes?.filter(
       (e) => e.type === "removed" && e.relation === "followers",
     ).length;

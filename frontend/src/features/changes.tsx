@@ -224,6 +224,8 @@ export default function ChangesPanel({
 
   // Counts calculations
   const followersAdded = demo ? 2 : q.data?.counts?.followers_added || 0;
+  const followersComparable = demo || !q.data || q.data.compared_relations.includes("followers");
+  const followingComparable = demo || !q.data || q.data.compared_relations.includes("following");
   const followersRemoved = demo ? 3 : q.data?.counts?.followers_removed || 0;
   const followingAdded = demo ? 3 : q.data?.counts?.following_added || 0;
   const followingRemoved = demo ? 3 : q.data?.counts?.following_removed || 0;
@@ -277,6 +279,12 @@ export default function ChangesPanel({
 
   return (
     <div className="changes-v2-container">
+      {q.data && q.data.compared_relations.length < 2 && (
+        <p className="notice" role="status">
+          Сравнение выполнено только для полных списков. Неполные списки
+          не используются для выводов о добавлениях и исчезновениях аккаунтов.
+        </p>
+      )}
       {/* 1. Comparison Picker Card */}
       <section className="changes-v2-picker-card">
         <header className="changes-v2-picker-header">
@@ -378,12 +386,12 @@ export default function ChangesPanel({
               <UserPlus size={20} />
             </div>
             <span className="changes-v2-stat-badge green">
-              +{followersAdded} ↑
+              {followersComparable ? `+${followersAdded} ↑` : "Не проверено"}
             </span>
           </div>
           <div>
             <h3 className="changes-v2-stat-label">Новые подписчики</h3>
-            <div className="changes-v2-stat-value">{followersAdded}</div>
+            <div className="changes-v2-stat-value">{followersComparable ? followersAdded : "—"}</div>
             <p className="changes-v2-stat-subtext">Появились в списке</p>
           </div>
         </div>
@@ -395,12 +403,12 @@ export default function ChangesPanel({
               <UserMinus size={20} />
             </div>
             <span className="changes-v2-stat-badge red">
-              -{followersRemoved} ↓
+              {followersComparable ? `-${followersRemoved} ↓` : "Не проверено"}
             </span>
           </div>
           <div>
             <h3 className="changes-v2-stat-label">Исчезли из подписчиков</h3>
-            <div className="changes-v2-stat-value">{followersRemoved}</div>
+            <div className="changes-v2-stat-value">{followersComparable ? followersRemoved : "—"}</div>
             <p className="changes-v2-stat-subtext">Больше не обнаружены</p>
           </div>
         </div>
@@ -412,12 +420,12 @@ export default function ChangesPanel({
               <UserCheck size={20} />
             </div>
             <span className="changes-v2-stat-badge green">
-              +{followingAdded} ↑
+              {followingComparable ? `+${followingAdded} ↑` : "Не проверено"}
             </span>
           </div>
           <div>
             <h3 className="changes-v2-stat-label">Новые подписки</h3>
-            <div className="changes-v2-stat-value">{followingAdded}</div>
+            <div className="changes-v2-stat-value">{followingComparable ? followingAdded : "—"}</div>
             <p className="changes-v2-stat-subtext">Новые в твоих подписках</p>
           </div>
         </div>
@@ -429,12 +437,12 @@ export default function ChangesPanel({
               <UserMinus size={20} />
             </div>
             <span className="changes-v2-stat-badge red">
-              -{followingRemoved} ↓
+              {followingComparable ? `-${followingRemoved} ↓` : "Не проверено"}
             </span>
           </div>
           <div>
             <h3 className="changes-v2-stat-label">Исчезли из подписок</h3>
-            <div className="changes-v2-stat-value">{followingRemoved}</div>
+            <div className="changes-v2-stat-value">{followingComparable ? followingRemoved : "—"}</div>
             <p className="changes-v2-stat-subtext">Больше нет в списке</p>
           </div>
         </div>

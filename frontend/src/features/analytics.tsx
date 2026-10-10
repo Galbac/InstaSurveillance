@@ -91,7 +91,7 @@ function ChartPointLabel(props: CustomPointLabelProps) {
     return (
       <g>
         <rect
-          x={numX - 24}
+          x={numX - 52}
           y={numY - 28}
           width={48}
           height={22}
@@ -99,7 +99,7 @@ function ChartPointLabel(props: CustomPointLabelProps) {
           fill="#7c3aed"
         />
         <text
-          x={numX}
+          x={numX - 28}
           y={numY - 13}
           textAnchor="middle"
           fill="#ffffff"

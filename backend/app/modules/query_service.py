@@ -1,6 +1,7 @@
 """Bounded SQL read models shared by HTTP lists and streaming exports."""
 
 from datetime import datetime
+from urllib.parse import quote
 
 from sqlalchemy import and_, exists, func, or_, select, union_all
 from sqlalchemy.orm import Session, aliased
@@ -173,7 +174,9 @@ def people_page(
         {
             "identity_key": row[0].identity_key,
             "username": row[0].username,
-            "avatar_url": row[0].avatar_url,
+            "avatar_url": f"/api/v1/profiles/{profile_id}/snapshots/{snapshot.id}/people/{quote(row[0].identity_key, safe='')}/avatar"
+            if row[0].avatar_url
+            else None,
             "favorite": bool(row[1] and row[1].favorite),
             "note": row[1].note if row[1] else "",
             "first_observed_at": row[2] if sort == "first_observed" else None,
@@ -198,6 +201,20 @@ def people_page(
     }
 
 
+def comparable_relations(before: Snapshot, after: Snapshot) -> list[str]:
+    def complete(snapshot: Snapshot, relation: str) -> bool:
+        return snapshot.completeness in {"user_confirmed", "collection_validated"} or (
+            snapshot.provenance.get(relation + "_completeness") == "collection_validated"
+            and snapshot.provenance.get("expected_" + relation) == snapshot.counts.get(relation)
+        )
+
+    return [
+        relation
+        for relation in ("followers", "following")
+        if complete(before, relation) and complete(after, relation)
+    ]
+
+
 def event_query(before: Snapshot, after: Snapshot):
     if (
         before.profile_id != after.profile_id
@@ -205,10 +222,8 @@ def event_query(before: Snapshot, after: Snapshot):
         or before.observed_at >= after.observed_at
     ):
         raise AppError("snapshot_not_comparable", "Выберите совместимые снимки в правильном порядке", 409)
-    if before.completeness not in ("user_confirmed", "collection_validated") or after.completeness not in (
-        "user_confirmed",
-        "collection_validated",
-    ):
+    relations = comparable_relations(before, after)
+    if not relations:
         raise AppError("snapshot_not_comparable", "Полнота списков не подтверждена", 409)
     from sqlalchemy import literal
 
@@ -218,6 +233,7 @@ def event_query(before: Snapshot, after: Snapshot):
         parts.append(
             select(Member.identity_key, Member.username, Member.relation, literal(kind).label("type")).where(
                 Member.snapshot_id == new.id,
+                Member.relation.in_(relations),
                 ~exists(
                     select(other.id).where(
                         other.snapshot_id == old.id,

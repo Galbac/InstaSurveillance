@@ -185,6 +185,7 @@ def publish(
 def enqueue_neighbors(db, snapshot):
 
     from app.models import Comparison
+    from app.modules.query_service import comparable_relations
 
     before = db.scalar(
         select(Snapshot)
@@ -199,13 +200,7 @@ def enqueue_neighbors(db, snapshot):
         .limit(1)
     )
     for left, right in ((before, snapshot), (snapshot, after)):
-        if (
-            left
-            and right
-            and left.identity_mode == right.identity_mode
-            and left.completeness in {"user_confirmed", "collection_validated"}
-            and right.completeness in {"user_confirmed", "collection_validated"}
-        ):
+        if left and right and left.identity_mode == right.identity_mode and comparable_relations(left, right):
             existing = db.scalar(
                 select(Comparison).where(
                     Comparison.before_id == left.id,
