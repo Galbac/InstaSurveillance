@@ -188,6 +188,8 @@ export const demoHistory: Snapshot[] = Array.from({ length: 7 }, (_, i) => ({
   checksum: "synthetic-demo",
   provenance: { demo: true, new_followers_count: historyCounts[i].newCount },
   storage_bytes: 0,
+  new_followers_preview: [],
+  previous_snapshot_id: i > 0 ? String(i - 1) : null,
   counts: {
     ...demoCounts,
     followers: historyCounts[i].followers,

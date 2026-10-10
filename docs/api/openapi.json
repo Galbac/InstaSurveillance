@@ -2174,6 +2174,35 @@
         "title": "ExportInput",
         "type": "object"
       },
+      "FollowerPreviewDTO": {
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "identity_key": {
+            "title": "Identity Key",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identity_key",
+          "username"
+        ],
+        "title": "FollowerPreviewDTO",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3633,10 +3662,29 @@
             "title": "Identity Mode",
             "type": "string"
           },
+          "new_followers_preview": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FollowerPreviewDTO"
+            },
+            "title": "New Followers Preview",
+            "type": "array"
+          },
           "observed_at": {
             "format": "date-time",
             "title": "Observed At",
             "type": "string"
+          },
+          "previous_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Snapshot Id"
           },
           "provenance": {
             "additionalProperties": true,

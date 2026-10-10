@@ -16,6 +16,12 @@ class Counts(BaseModel):
     mutual_rate: float | None
 
 
+class FollowerPreviewDTO(BaseModel):
+    identity_key: str
+    username: str
+    avatar_url: str | None = None
+
+
 class SnapshotDTO(BaseModel):
     id: str
     source: str
@@ -27,6 +33,8 @@ class SnapshotDTO(BaseModel):
     counts: Counts
     provenance: dict[str, Any]
     storage_bytes: int
+    new_followers_preview: list[FollowerPreviewDTO] = []
+    previous_snapshot_id: str | None = None
 
 
 class PersonDTO(BaseModel):

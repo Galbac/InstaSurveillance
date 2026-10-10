@@ -5,7 +5,8 @@ from urllib.parse import quote
 from fastapi import Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, exists, func, select
+from sqlalchemy.orm import Session, aliased
 
 from app.core.commands import begin_command, finish_command, heavy_limit
 from app.core.dependencies import DB, AsyncDB, Verified
@@ -15,6 +16,7 @@ from app.core.security import now
 from app.integrations import storage
 from app.models import (
     Annotation,
+    ChangeEvent,
     Comparison,
     ExportJob,
     Job,
@@ -61,6 +63,11 @@ router = APIRouter(prefix="/api/v1", tags=["analytics"])
 async def member_avatar(profile_id: str, snapshot_id: str, identity: str, user: Verified, db: AsyncDB):
     def resolve(session):
         profile_owned(session, user, profile_id)
+        snap = session.scalar(
+            select(Snapshot.id).where(Snapshot.profile_id == profile_id, Snapshot.id == snapshot_id).limit(1)
+        )
+        if not snap:
+            raise AppError("not_found", "Снимок не найден", 404)
         url = session.scalar(
             select(Member.avatar_url)
             .join(Snapshot, Snapshot.id == Member.snapshot_id)
@@ -97,13 +104,90 @@ async def member_avatar(profile_id: str, snapshot_id: str, identity: str, user: 
     )
 
 
-def snapshot_dto(db, snapshot):
+def get_snapshot_new_followers_preview(
+    db: Session, snapshot: Snapshot, prev_snapshot: Snapshot | None = None
+) -> list[dict]:
+    if not prev_snapshot:
+        return []
+    # 1. Try ChangeEvent from Comparison if already computed
+    events = list(
+        db.scalars(
+            select(ChangeEvent)
+            .join(Comparison, Comparison.id == ChangeEvent.comparison_id)
+            .where(
+                Comparison.before_id == prev_snapshot.id,
+                Comparison.after_id == snapshot.id,
+                ChangeEvent.relation == "followers",
+                ChangeEvent.type == "added",
+            )
+            .order_by(ChangeEvent.username)
+            .limit(5)
+        )
+    )
+    if events:
+        preview = []
+        for ev in events:
+            has_avatar = db.scalar(
+                select(Member.avatar_url.is_not(None))
+                .where(Member.snapshot_id == snapshot.id, Member.identity_key == ev.identity_key)
+                .limit(1)
+            )
+            preview.append(
+                {
+                    "identity_key": ev.identity_key,
+                    "username": ev.username,
+                    "avatar_url": (
+                        f"/api/v1/profiles/{snapshot.profile_id}/snapshots/{snapshot.id}/people/{quote(ev.identity_key, safe='')}/avatar"
+                        if has_avatar
+                        else None
+                    ),
+                }
+            )
+        return preview
+
+    # 2. Direct difference in snapshot_members (works even if comparison was not run or was partial)
+    prev_m = aliased(Member)
+    new_members = list(
+        db.execute(
+            select(Member.identity_key, Member.username, Member.avatar_url)
+            .where(
+                Member.snapshot_id == snapshot.id,
+                Member.relation == "followers",
+                ~exists(
+                    select(prev_m.id).where(
+                        prev_m.snapshot_id == prev_snapshot.id,
+                        prev_m.relation == "followers",
+                        prev_m.identity_key == Member.identity_key,
+                    )
+                ),
+            )
+            .order_by(Member.username)
+            .limit(5)
+        )
+    )
+    return [
+        {
+            "identity_key": row[0],
+            "username": row[1],
+            "avatar_url": (
+                f"/api/v1/profiles/{snapshot.profile_id}/snapshots/{snapshot.id}/people/{quote(row[0], safe='')}/avatar"
+                if row[2]
+                else None
+            ),
+        }
+        for row in new_members
+    ]
+
+
+def snapshot_dto(db, snapshot, preview_followers=None, prev_id=None):
     return {
         **snapshot_dict(snapshot),
         "checksum": snapshot.checksum,
         "counts": snapshot_counts(db, snapshot),
         "provenance": snapshot.provenance,
         "storage_bytes": snapshot.storage_bytes,
+        "new_followers_preview": preview_followers if preview_followers is not None else [],
+        "previous_snapshot_id": prev_id,
     }
 
 
@@ -152,8 +236,23 @@ def history(
             )
         )
     rows = list(db.scalars(query.order_by(Snapshot.observed_at.desc(), Snapshot.id.desc()).limit(limit + 1)))
+    active_rows = rows[:limit]
+    items = []
+    for i, x in enumerate(active_rows):
+        prev_s = (
+            active_rows[i + 1] if i + 1 < len(active_rows) else (rows[limit] if len(rows) > limit else None)
+        )
+        if not prev_s:
+            prev_s = db.scalar(
+                select(Snapshot)
+                .where(Snapshot.profile_id == profile_id, Snapshot.observed_at < x.observed_at)
+                .order_by(Snapshot.observed_at.desc(), Snapshot.id.desc())
+                .limit(1)
+            )
+        preview = get_snapshot_new_followers_preview(db, x, prev_s)
+        items.append(snapshot_dto(db, x, preview, prev_s.id if prev_s else None))
     return {
-        "items": [snapshot_dto(db, x) for x in rows[:limit]],
+        "items": items,
         "next_cursor": cursor_encode([rows[limit - 1].observed_at, rows[limit - 1].id], scope)
         if len(rows) > limit
         else None,
@@ -166,7 +265,14 @@ def snapshot_detail(snapshot_id: str, user: Verified, db: DB):
     if not snapshot:
         raise AppError("not_found", "Снимок не найден", 404)
     profile_owned(db, user, snapshot.profile_id)
-    return snapshot_dto(db, snapshot)
+    prev_s = db.scalar(
+        select(Snapshot)
+        .where(Snapshot.profile_id == snapshot.profile_id, Snapshot.observed_at < snapshot.observed_at)
+        .order_by(Snapshot.observed_at.desc(), Snapshot.id.desc())
+        .limit(1)
+    )
+    preview = get_snapshot_new_followers_preview(db, snapshot, prev_s)
+    return snapshot_dto(db, snapshot, preview, prev_s.id if prev_s else None)
 
 
 @router.get("/profiles/{profile_id}/summary", response_model=SummaryDTO)

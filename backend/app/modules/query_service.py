@@ -206,10 +206,23 @@ def people_page(
 
 def comparable_relations(before: Snapshot, after: Snapshot) -> list[str]:
     def complete(snapshot: Snapshot, relation: str) -> bool:
-        return snapshot.completeness in {"user_confirmed", "collection_validated"} or (
-            snapshot.provenance.get(relation + "_completeness") == "collection_validated"
-            and snapshot.provenance.get("expected_" + relation) == snapshot.counts.get(relation)
-        )
+        if snapshot.completeness in {"user_confirmed", "collection_validated"}:
+            return True
+        if snapshot.provenance.get(
+            relation + "_completeness"
+        ) == "collection_validated" and snapshot.provenance.get(
+            "expected_" + relation
+        ) == snapshot.counts.get(relation):
+            return True
+        if snapshot.provenance.get("pagination_reason") == "exhausted":
+            expected = snapshot.provenance.get("expected_" + relation)
+            count = snapshot.counts.get(relation)
+            if expected is not None and count is not None:
+                if expected == 0 or (count > 0 and count >= expected * 0.9):
+                    return True
+            elif count is not None and count > 0:
+                return True
+        return False
 
     return [
         relation

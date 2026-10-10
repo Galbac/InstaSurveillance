@@ -2061,6 +2061,15 @@ export interface components {
             /** Type */
             type?: ("added" | "removed") | null;
         };
+        /** FollowerPreviewDTO */
+        FollowerPreviewDTO: {
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Identity Key */
+            identity_key: string;
+            /** Username */
+            username: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2554,10 +2563,17 @@ export interface components {
             /** Identity Mode */
             identity_mode: string;
             /**
+             * New Followers Preview
+             * @default []
+             */
+            new_followers_preview: components["schemas"]["FollowerPreviewDTO"][];
+            /**
              * Observed At
              * Format: date-time
              */
             observed_at: string;
+            /** Previous Snapshot Id */
+            previous_snapshot_id?: string | null;
             /** Provenance */
             provenance: {
                 [key: string]: unknown;

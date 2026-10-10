@@ -326,18 +326,50 @@ export default function HistoryPanel({
                   stats?.deltaFollowers !== null && stats?.deltaFollowers !== undefined
                     ? stats.deltaFollowers
                     : snapshot.provenance?.new_followers_count !== undefined
-                      ? Number(snapshot.provenance.new_followers_count) + 3
+                      ? Number(snapshot.provenance.new_followers_count)
                       : null;
 
-                const hasNewFollowers = deltaFollowers !== null && deltaFollowers > 0;
-                // 3 photos are shown; the remaining count in the pill is deltaFollowers - 3
-                const remainingFollowers = hasNewFollowers
-                  ? Math.max(0, deltaFollowers - 3)
-                  : 0;
+                const previews = snapshot.new_followers_preview || [];
+                const hasNewFollowers = demo
+                  ? deltaFollowers !== null && deltaFollowers > 0
+                  : previews.length > 0 || (deltaFollowers !== null && deltaFollowers > 0);
 
-                const avatar1 = DEMO_AVATAR_POOL[(idx * 2) % DEMO_AVATAR_POOL.length];
-                const avatar2 = DEMO_AVATAR_POOL[(idx * 2 + 1) % DEMO_AVATAR_POOL.length];
-                const avatar3 = DEMO_AVATAR_POOL[(idx * 2 + 2) % DEMO_AVATAR_POOL.length];
+                const displayPreviews: {
+                  identity_key: string;
+                  username: string;
+                  avatar_url?: string | null;
+                }[] = demo
+                  ? hasNewFollowers
+                    ? [
+                        {
+                          identity_key: "demo-1",
+                          username: "Пользователь",
+                          avatar_url: DEMO_AVATAR_POOL[(idx * 2) % DEMO_AVATAR_POOL.length],
+                        },
+                        {
+                          identity_key: "demo-2",
+                          username: "Пользователь",
+                          avatar_url: DEMO_AVATAR_POOL[(idx * 2 + 1) % DEMO_AVATAR_POOL.length],
+                        },
+                        {
+                          identity_key: "demo-3",
+                          username: "Пользователь",
+                          avatar_url: DEMO_AVATAR_POOL[(idx * 2 + 2) % DEMO_AVATAR_POOL.length],
+                        },
+                      ]
+                    : []
+                  : previews.slice(0, 3);
+
+                const totalFollowersCount = demo
+                  ? (deltaFollowers || 0)
+                  : Math.max(
+                      previews.length,
+                      deltaFollowers && deltaFollowers > 0 ? deltaFollowers : previews.length,
+                    );
+                const remainingFollowers = Math.max(
+                  0,
+                  totalFollowersCount - displayPreviews.length,
+                );
 
                 return (
                   <div key={snapshot.id} className="history-timeline-group">
@@ -485,6 +517,12 @@ export default function HistoryPanel({
                             e.stopPropagation();
                             if (demo) {
                               router.push("/demo?category=fans");
+                            } else if (stats?.prevSnapshot) {
+                              router.push(
+                                `/app/changes?before=${stats.prevSnapshot.id}&after=${snapshot.id}`,
+                              );
+                            } else {
+                              router.push("/app/people?category=followers");
                             }
                           }}
                         >
@@ -493,24 +531,40 @@ export default function HistoryPanel({
                               Новые подписчики →
                             </span>
                           </div>
-                          {hasNewFollowers ? (
+                          {hasNewFollowers && displayPreviews.length > 0 ? (
                             <div className="metric-avatars-row">
                               <div className="avatar-stack">
-                                <img
-                                  src={avatar1}
-                                  alt="Пользователь"
-                                  className="avatar-overlap-img"
-                                />
-                                <img
-                                  src={avatar2}
-                                  alt="Пользователь"
-                                  className="avatar-overlap-img"
-                                />
-                                <img
-                                  src={avatar3}
-                                  alt="Пользователь"
-                                  className="avatar-overlap-img"
-                                />
+                                {displayPreviews.map((p) => (
+                                  <div
+                                    key={p.identity_key}
+                                    className="avatar-overlap-wrapper"
+                                    title={p.username}
+                                  >
+                                    {p.avatar_url ? (
+                                      <img
+                                        src={p.avatar_url}
+                                        alt={p.username}
+                                        className="avatar-overlap-img"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = "none";
+                                          const fallback =
+                                            e.currentTarget.parentElement?.querySelector(
+                                              ".avatar-overlap-fallback",
+                                            ) as HTMLElement | null;
+                                          if (fallback) fallback.style.display = "flex";
+                                        }}
+                                      />
+                                    ) : null}
+                                    <span
+                                      className="avatar-overlap-fallback"
+                                      style={{
+                                        display: p.avatar_url ? "none" : "flex",
+                                      }}
+                                    >
+                                      {p.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                               {remainingFollowers > 0 && (
                                 <span className="avatar-count-pill">
@@ -520,7 +574,9 @@ export default function HistoryPanel({
                             </div>
                           ) : (
                             <div className="metric-avatars-row">
-                              <span className="metric-empty-text">Базовый снимок</span>
+                              <span className="metric-empty-text">
+                                {!stats?.prevSnapshot ? "Базовый снимок" : "Нет новых"}
+                              </span>
                             </div>
                           )}
                         </div>

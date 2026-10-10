@@ -4866,17 +4866,53 @@ textarea[aria-invalid="true"]:focus {
   align-items: center;
 }
 
+.avatar-overlap-wrapper {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  margin-left: -7px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-overlap-wrapper:first-child {
+  margin-left: 0;
+}
+
 .avatar-overlap-img {
   width: 26px;
   height: 26px;
   border-radius: 50%;
   border: 2px solid #f8fafc;
-  margin-left: -7px;
   object-fit: cover;
+  display: block;
 }
 
-.avatar-overlap-img:first-child {
-  margin-left: 0;
+.avatar-overlap-fallback {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #f8fafc;
+  background: #ede9fe;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+:is(.dark, [data-theme="dark"]) .avatar-overlap-img {
+  border-color: #1e293b;
+}
+
+:is(.dark, [data-theme="dark"]) .avatar-overlap-fallback {
+  border-color: #1e293b;
+  background: #312e81;
+  color: #c4b5fd;
 }
 
 .avatar-count-pill {
