@@ -138,10 +138,22 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
         window.history.replaceState(null, "", window.location.pathname);
         setMessage("Пароль изменен. Войдите с новым паролем.");
       }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Не удалось выполнить действие",
-      );
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Не удалось выполнить действие";
+      if (
+        msg.toLowerCase().includes("парол") ||
+        msg.toLowerCase().includes("credentials") ||
+        msg.toLowerCase().includes("неверный")
+      ) {
+        form.setError("password", { message: msg });
+      } else if (
+        msg.toLowerCase().includes("email") ||
+        msg.toLowerCase().includes("почт")
+      ) {
+        form.setError("email", { message: msg });
+      }
+      setError(msg);
     } finally {
       setBusy(false);
     }

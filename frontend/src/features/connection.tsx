@@ -144,8 +144,15 @@ export default function ConnectionPanel({
         ),
       );
       qc.invalidateQueries({ queryKey: ["profiles"] });
-    } catch (e) {
-      setError(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e || "");
+      if (msg.toLowerCase().includes("парол") || msg.toLowerCase().includes("password")) {
+        setConnectErrors((prev) => ({ ...prev, password: msg }));
+      } else if (msg.toLowerCase().includes("пользовател") || msg.toLowerCase().includes("username")) {
+        setConnectErrors((prev) => ({ ...prev, username: msg }));
+      } else {
+        setError(e);
+      }
     } finally {
       setBusy(false);
     }
@@ -171,8 +178,13 @@ export default function ConnectionPanel({
         ),
       );
       q.refetch();
-    } catch (e) {
-      setError(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e || "");
+      if (msg.toLowerCase().includes("код") || msg.toLowerCase().includes("code")) {
+        setConnectErrors({ code: msg });
+      } else {
+        setError(e);
+      }
     } finally {
       setBusy(false);
     }

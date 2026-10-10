@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import {
   Globe,
   Lock,
-  Mail,
   Bell,
   Monitor,
   Smartphone,
@@ -26,7 +25,7 @@ import {
   Clock,
   Download,
 } from "lucide-react";
-import { api, post, User, Profile } from "@/lib/api";
+import { api, post, ApiError, User, Profile } from "@/lib/api";
 import type { components } from "@/lib/generated-api";
 import { useUrlValue, useVisible } from "@/lib/workflows";
 import { ErrorNotice, ExportButton, Modal } from "./common";
@@ -108,10 +107,6 @@ export default function SettingsPanel({
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
 
-  // Email form states
-  const [newEmail, setNewEmail] = useState("");
-  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
-  const [showEmailPass, setShowEmailPass] = useState(false);
 
   // Profile fields state
   const [profileLabel, setProfileLabel] = useState(profile?.label || "Демо");
@@ -222,9 +217,9 @@ export default function SettingsPanel({
     }
   };
 
-  // Password and Email validation error states
+  // Password validation error states
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string }>({});
-  const [emailErrors, setEmailErrors] = useState<{ email?: string; password?: string }>({});
+  const [modalErrors, setModalErrors] = useState<{ password?: string; confirmation?: string }>({});
 
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,42 +249,31 @@ export default function SettingsPanel({
       setNewPassword("");
       setSuccessMsg("Пароль успешно изменён.");
       setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      const msg = apiErr?.message || (err instanceof Error ? err.message : String(err || ""));
+      const code = apiErr?.code || "";
+      const isCurrentPasswordErr =
+        code === "invalid_credentials" ||
+        code === "invalid_password" ||
+        apiErr?.status === 401 ||
+        msg.toLowerCase().includes("текущ") ||
+        msg.toLowerCase().includes("неверный пароль") ||
+        msg === "Неверный текущий пароль";
 
-  const handleSaveEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccessMsg("");
-    const errs: { email?: string; password?: string } = {};
-    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      errs.email = "Укажи корректный email";
-    }
-    if (!emailCurrentPassword) {
-      errs.password = "Введи текущий пароль";
-    }
-    if (Object.keys(errs).length > 0) {
-      setEmailErrors(errs);
-      return;
-    }
-    setEmailErrors({});
-    try {
-      guard();
-      setBusy(true);
-      await post("/me/email-change", {
-        email: newEmail,
-        current_password: emailCurrentPassword,
-      });
-      setNewEmail("");
-      setEmailCurrentPassword("");
-      setSuccessMsg("Письмо с подтверждением отправлено на новый адрес.");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (err) {
-      setError(err);
+      if (isCurrentPasswordErr) {
+        setPasswordErrors({ current: msg || "Неверный текущий пароль" });
+        setError(null);
+      } else if (
+        code === "weak_password" ||
+        code === "invalid_new_password" ||
+        msg.toLowerCase().includes("новый пароль")
+      ) {
+        setPasswordErrors({ new: msg });
+        setError(null);
+      } else {
+        setError(err);
+      }
     } finally {
       setBusy(false);
     }
@@ -538,106 +522,6 @@ export default function SettingsPanel({
         </div>
       </section>
 
-      {/* 2. CARD 3: Смена email */}
-      <section className="settings-v2-card">
-        <header className="settings-v2-card-header">
-          <div className="settings-v2-header-left">
-            <div className="settings-v2-icon-box" aria-hidden="true">
-              <Mail size={20} />
-            </div>
-            <div>
-              <h2 className="settings-v2-card-title">Смена email</h2>
-              <p className="settings-v2-card-subtitle">
-                Сейчас: {user?.email || "demo@example.com"}. Новый адрес требуется
-                подтвердить. После подтверждения понадобится снова войти.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <form onSubmit={handleSaveEmail} className="settings-v2-form-body">
-          <div className="settings-v2-fields-row">
-            <div className="settings-v2-field">
-              <label className="settings-v2-label">Новый email</label>
-              <div
-                className={`settings-v2-input-wrap ${
-                  emailErrors.email ? "has-error" : ""
-                }`}
-              >
-                <Mail size={16} className="text-gray-400 shrink-0" />
-                <input
-                  type="email"
-                  className="settings-v2-input"
-                  placeholder="example@domain.com"
-                  value={newEmail}
-                  onChange={(e) => {
-                    setNewEmail(e.target.value);
-                    if (emailErrors.email) {
-                      setEmailErrors((prev) => ({ ...prev, email: undefined }));
-                    }
-                  }}
-                  aria-invalid={!!emailErrors.email}
-                  autoComplete="email"
-                />
-              </div>
-              {emailErrors.email && (
-                <span className="field-error" role="alert">
-                  {emailErrors.email}
-                </span>
-              )}
-            </div>
-
-            <div className="settings-v2-field">
-              <label className="settings-v2-label">Текущий пароль</label>
-              <div
-                className={`settings-v2-input-wrap ${
-                  emailErrors.password ? "has-error" : ""
-                }`}
-              >
-                <Lock size={16} className="text-gray-400 shrink-0" />
-                <input
-                  type={showEmailPass ? "text" : "password"}
-                  className="settings-v2-input"
-                  placeholder="Введите пароль"
-                  value={emailCurrentPassword}
-                  onChange={(e) => {
-                    setEmailCurrentPassword(e.target.value);
-                    if (emailErrors.password) {
-                      setEmailErrors((prev) => ({
-                        ...prev,
-                        password: undefined,
-                      }));
-                    }
-                  }}
-                  aria-invalid={!!emailErrors.password}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  className="settings-v2-eye-btn"
-                  title={showEmailPass ? "Скрыть пароль" : "Показать пароль"}
-                  onClick={() => setShowEmailPass(!showEmailPass)}
-                >
-                  {showEmailPass ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-              </div>
-              {emailErrors.password && (
-                <span className="field-error" role="alert">
-                  {emailErrors.password}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="settings-v2-btn-purple"
-            disabled={busy}
-          >
-            Сохранить
-          </button>
-        </form>
-      </section>
 
       {/* 3. CARD 4: Уведомления */}
       <section className="settings-v2-card">
@@ -1090,13 +974,17 @@ export default function SettingsPanel({
                 ? "Очистить историю?"
                 : "Удалить профиль?"
           }
-          onClose={() => setDeleting(null)}
+          onClose={() => {
+            setDeleting(null);
+            setModalErrors({});
+          }}
         >
           <form
             onSubmit={async (e) => {
               e.preventDefault();
               setBusy(true);
               setError(null);
+              setModalErrors({});
               const data = new FormData(e.currentTarget);
               try {
                 guard();
@@ -1128,8 +1016,28 @@ export default function SettingsPanel({
                     `/deleted#id=${encodeURIComponent(result.id)}&token=${encodeURIComponent(result.receipt_token)}`,
                   );
                 }
-              } catch (err) {
-                setError(err);
+              } catch (err: unknown) {
+                const apiErr = err as ApiError;
+                const msg = apiErr?.message || (err instanceof Error ? err.message : String(err || ""));
+                const code = apiErr?.code || "";
+                if (
+                  code === "invalid_credentials" ||
+                  code === "invalid_password" ||
+                  code === "confirmation_required" ||
+                  msg.toLowerCase().includes("парол")
+                ) {
+                  setModalErrors((prev) => ({
+                    ...prev,
+                    password: msg || "Неверный пароль сервиса",
+                  }));
+                } else if (msg.toLowerCase().includes("подтвержд")) {
+                  setModalErrors((prev) => ({
+                    ...prev,
+                    confirmation: msg || "Введите слово УДАЛИТЬ",
+                  }));
+                } else {
+                  setError(err);
+                }
               } finally {
                 setBusy(false);
               }
@@ -1148,26 +1056,56 @@ export default function SettingsPanel({
               <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0" }}>
                 <label className="settings-v2-field">
                   <span className="settings-v2-label">Пароль сервиса</span>
-                  <div className="settings-v2-input-wrap">
+                  <div
+                    className={`settings-v2-input-wrap ${
+                      modalErrors.password ? "has-error" : ""
+                    }`}
+                  >
                     <input
                       name="password"
                       type="password"
                       className="settings-v2-input"
                       autoComplete="current-password"
                       required
+                      aria-invalid={!!modalErrors.password}
+                      onChange={() => {
+                        if (modalErrors.password) {
+                          setModalErrors((prev) => ({ ...prev, password: undefined }));
+                        }
+                      }}
                     />
                   </div>
+                  {modalErrors.password && (
+                    <span className="field-error" role="alert">
+                      {modalErrors.password}
+                    </span>
+                  )}
                 </label>
                 <label className="settings-v2-field">
                   <span className="settings-v2-label">Напишите УДАЛИТЬ</span>
-                  <div className="settings-v2-input-wrap">
+                  <div
+                    className={`settings-v2-input-wrap ${
+                      modalErrors.confirmation ? "has-error" : ""
+                    }`}
+                  >
                     <input
                       name="confirmation"
                       className="settings-v2-input"
                       required
                       pattern="УДАЛИТЬ"
+                      aria-invalid={!!modalErrors.confirmation}
+                      onChange={() => {
+                        if (modalErrors.confirmation) {
+                          setModalErrors((prev) => ({ ...prev, confirmation: undefined }));
+                        }
+                      }}
                     />
                   </div>
+                  {modalErrors.confirmation && (
+                    <span className="field-error" role="alert">
+                      {modalErrors.confirmation}
+                    </span>
+                  )}
                 </label>
               </div>
             )}
