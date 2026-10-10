@@ -11,7 +11,18 @@ export default function InstallPWA() {
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
     if (standalone) return;
-    setIos(/iPhone|iPad|iPod/.test(navigator.userAgent));
+    const isIosDevice = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (isIosDevice) {
+      try {
+        const alreadyShown = localStorage.getItem("pwa_ios_prompt_shown");
+        if (!alreadyShown) {
+          setIos(true);
+          localStorage.setItem("pwa_ios_prompt_shown", "1");
+        }
+      } catch {
+        // LocalStorage disabled or unavailable
+      }
+    }
     const handler = (e: Event) => {
       e.preventDefault();
       setEvent(e as InstallEvent);
@@ -46,7 +57,12 @@ export default function InstallPWA() {
       <button
         className="icon-button"
         aria-label="Скрыть предложение установки"
-        onClick={() => setHidden(true)}
+        onClick={() => {
+          setHidden(true);
+          try {
+            localStorage.setItem("pwa_ios_prompt_shown", "1");
+          } catch {}
+        }}
       >
         ×
       </button>

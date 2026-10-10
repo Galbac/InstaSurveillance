@@ -61,20 +61,30 @@ router = APIRouter(prefix="/api/v1", tags=["analytics"])
 async def member_avatar(profile_id: str, snapshot_id: str, identity: str, user: Verified, db: AsyncDB):
     def resolve(session):
         profile_owned(session, user, profile_id)
-        return required(
-            session.scalar(
+        url = session.scalar(
+            select(Member.avatar_url)
+            .join(Snapshot, Snapshot.id == Member.snapshot_id)
+            .where(
+                Snapshot.profile_id == profile_id,
+                Snapshot.id == snapshot_id,
+                Member.identity_key == identity,
+                Member.avatar_url.is_not(None),
+            )
+            .limit(1)
+        )
+        if not url:
+            url = session.scalar(
                 select(Member.avatar_url)
                 .join(Snapshot, Snapshot.id == Member.snapshot_id)
                 .where(
                     Snapshot.profile_id == profile_id,
-                    Snapshot.id == snapshot_id,
                     Member.identity_key == identity,
                     Member.avatar_url.is_not(None),
                 )
+                .order_by(Snapshot.created_at.desc())
                 .limit(1)
-            ),
-            "not_found",
-        )
+            )
+        return required(url, "not_found")
 
     url = await db.run_sync(resolve)
     from app.integrations.avatars import fetch_avatar

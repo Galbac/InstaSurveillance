@@ -693,22 +693,6 @@ function Overview({
     ).length;
   return (
     <>
-      {summary.profile.status === "syncing" && (
-        <div className="active-sync-banner">
-          <div className="active-sync-banner-left">
-            <span className="live-dot" style={{ background: "#7c3aed" }} />
-            <div>
-              <strong>Идёт фоновый сбор данных Instagram</strong>
-              <p>Обновляем списки подписчиков и подписок. Свежий снимок появится здесь сразу по готовности.</p>
-            </div>
-          </div>
-          {onSync && (
-            <button className="button secondary small" onClick={onSync}>
-              Статус сбора
-            </button>
-          )}
-        </div>
-      )}
       {summary.snapshot?.completeness === "partial" && (
         <p className="notice" role="status">
           Данные неполные: получено {c.followers} из {Number(summary.snapshot.provenance.expected_followers ?? c.followers)} подписчиков

@@ -138,6 +138,8 @@ export default function ChangesPanel({
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [copiedUser, setCopiedUser] = useState<string | null>(null);
   const [menuEventKey, setMenuEventKey] = useState<string | null>(null);
+  const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
+  const [sheetEvent, setSheetEvent] = useState<{ event: Event; itemKey: string } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -243,6 +245,140 @@ export default function ChangesPanel({
     setCopiedUser(username);
     setTimeout(() => setCopiedUser(null), 2000);
   };
+
+  const toggleMenu = (event: Event, itemKey: string, e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setSheetEvent({ event, itemKey });
+      setMenuEventKey(null);
+      return;
+    }
+    if (menuEventKey === itemKey) {
+      setMenuEventKey(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setMenuPlacement(spaceBelow < 280 ? "top" : "bottom");
+      setMenuEventKey(itemKey);
+    }
+  };
+
+  function renderEventActionItems(event: Event, isMobileSheet: boolean, itemKey: string) {
+    const isFav = favorites.has(itemKey);
+    const itemClass = isMobileSheet ? "mobile-sheet-action-item" : "person-action-item";
+    const dividerClass = isMobileSheet ? "mobile-sheet-divider" : "person-action-divider";
+    const closeAll = () => {
+      setMenuEventKey(null);
+      setSheetEvent(null);
+    };
+
+    return (
+      <>
+        {event.relation === "followers" && event.type === "added" && (
+          <a
+            href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${itemClass} primary`}
+            onClick={closeAll}
+          >
+            <UserPlus size={isMobileSheet ? 18 : 16} />
+            <span>Подписаться в ответ</span>
+          </a>
+        )}
+        {event.relation === "followers" && event.type === "removed" && (
+          <a
+            href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={itemClass}
+            onClick={closeAll}
+          >
+            <ExternalLink size={isMobileSheet ? 18 : 16} />
+            <span>Проверить в Instagram</span>
+          </a>
+        )}
+        {event.relation === "following" && event.type === "removed" && (
+          <a
+            href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${itemClass} primary`}
+            onClick={closeAll}
+          >
+            <UserPlus size={isMobileSheet ? 18 : 16} />
+            <span>Подписаться снова</span>
+          </a>
+        )}
+        {event.relation === "following" && event.type === "added" && (
+          <a
+            href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${itemClass} danger`}
+            onClick={closeAll}
+          >
+            <UserMinus size={isMobileSheet ? 18 : 16} />
+            <span>Отписаться в Instagram</span>
+          </a>
+        )}
+        <a
+          href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={itemClass}
+          onClick={closeAll}
+        >
+          <ExternalLink size={isMobileSheet ? 18 : 16} />
+          <span>Открыть профиль</span>
+        </a>
+        <a
+          href={`/app/people?search=${encodeURIComponent(event.username)}`}
+          className={itemClass}
+          onClick={closeAll}
+        >
+          <Search size={isMobileSheet ? 18 : 16} />
+          <span>Найти в списках людей</span>
+        </a>
+        <div className={dividerClass} />
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            handleCopyUsername(event.username);
+            closeAll();
+          }}
+        >
+          {copiedUser === event.username ? (
+            <>
+              <Check size={isMobileSheet ? 18 : 16} color="#16a34a" />
+              <span style={{ color: "#16a34a" }}>Скопировано!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={isMobileSheet ? 18 : 16} />
+              <span>Скопировать @username</span>
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            toggleFavorite(itemKey);
+            closeAll();
+          }}
+        >
+          <Star
+            size={isMobileSheet ? 18 : 16}
+            fill={isFav ? "#f59e0b" : "none"}
+            color={isFav ? "#f59e0b" : "#94a3b8"}
+          />
+          <span>{isFav ? "Убрать из избранного" : "В избранное"}</span>
+        </button>
+      </>
+    );
+  }
 
   // Counts calculations
   const followersAdded = demo ? 2 : q.data?.counts?.followers_added || 0;
@@ -754,114 +890,18 @@ export default function ChangesPanel({
                                 type="button"
                                 className="changes-v2-action-btn"
                                 title="Дополнительные действия"
-                                onClick={() => setMenuEventKey(menuEventKey === itemKey ? null : itemKey)}
+                                onClick={(e) => toggleMenu(event, itemKey, e)}
                               >
                                 <MoreHorizontal size={15} />
                               </button>
                               {menuEventKey === itemKey && (
-                                <div className="person-action-menu" style={{ right: 0 }}>
-                                  {event.relation === "followers" && event.type === "added" && (
-                                    <a
-                                      href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="person-action-item primary"
-                                      onClick={() => setMenuEventKey(null)}
-                                    >
-                                      <UserPlus size={16} />
-                                      <span>Подписаться в ответ</span>
-                                    </a>
-                                  )}
-                                  {event.relation === "followers" && event.type === "removed" && (
-                                    <a
-                                      href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="person-action-item"
-                                      onClick={() => setMenuEventKey(null)}
-                                    >
-                                      <ExternalLink size={16} />
-                                      <span>Проверить в Instagram</span>
-                                    </a>
-                                  )}
-                                  {event.relation === "following" && event.type === "removed" && (
-                                    <a
-                                      href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="person-action-item primary"
-                                      onClick={() => setMenuEventKey(null)}
-                                    >
-                                      <UserPlus size={16} />
-                                      <span>Подписаться снова</span>
-                                    </a>
-                                  )}
-                                  {event.relation === "following" && event.type === "added" && (
-                                    <a
-                                      href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="person-action-item danger"
-                                      onClick={() => setMenuEventKey(null)}
-                                    >
-                                      <UserMinus size={16} />
-                                      <span>Отписаться в Instagram</span>
-                                    </a>
-                                  )}
-                                  <a
-                                    href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="person-action-item"
-                                    onClick={() => setMenuEventKey(null)}
-                                  >
-                                    <ExternalLink size={16} />
-                                    <span>Открыть профиль</span>
-                                  </a>
-                                  <a
-                                    href={`/app/people?search=${encodeURIComponent(event.username)}`}
-                                    className="person-action-item"
-                                    onClick={() => setMenuEventKey(null)}
-                                  >
-                                    <Search size={16} />
-                                    <span>Найти в списках людей</span>
-                                  </a>
-                                  <div className="person-action-divider" />
-                                  <button
-                                    type="button"
-                                    className="person-action-item"
-                                    onClick={() => {
-                                      handleCopyUsername(event.username);
-                                      setMenuEventKey(null);
-                                    }}
-                                  >
-                                    {copiedUser === event.username ? (
-                                      <>
-                                        <Check size={16} color="#16a34a" />
-                                        <span style={{ color: "#16a34a" }}>Скопировано!</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Copy size={16} />
-                                        <span>Скопировать @username</span>
-                                      </>
-                                    )}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="person-action-item"
-                                    onClick={() => {
-                                      toggleFavorite(itemKey);
-                                      setMenuEventKey(null);
-                                    }}
-                                  >
-                                    <Star
-                                      size={16}
-                                      fill={isFav ? "#f59e0b" : "none"}
-                                      color={isFav ? "#f59e0b" : "#94a3b8"}
-                                    />
-                                    <span>{isFav ? "Убрать из избранного" : "В избранное"}</span>
-                                  </button>
+                                <div
+                                  className={`person-action-menu ${
+                                    menuPlacement === "top" ? "placement-top" : ""
+                                  }`}
+                                  style={{ right: 0 }}
+                                >
+                                  {renderEventActionItems(event, false, itemKey)}
                                 </div>
                               )}
                             </div>
@@ -939,128 +979,15 @@ export default function ChangesPanel({
                         >
                           <ExternalLink size={15} />
                         </a>
-                        <div
-                          className="person-more-box"
-                          ref={menuEventKey === `m-${itemKey}` ? menuRef : undefined}
-                        >
+                        <div className="person-more-box">
                           <button
                             type="button"
                             className="changes-v2-action-btn"
                             title="Дополнительные действия"
-                            onClick={() =>
-                              setMenuEventKey(
-                                menuEventKey === `m-${itemKey}` ? null : `m-${itemKey}`
-                              )
-                            }
+                            onClick={(e) => toggleMenu(event, itemKey, e)}
                           >
                             <MoreHorizontal size={15} />
                           </button>
-                          {menuEventKey === `m-${itemKey}` && (
-                            <div className="person-action-menu" style={{ right: 0 }}>
-                              {event.relation === "followers" && event.type === "added" && (
-                                <a
-                                  href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="person-action-item primary"
-                                  onClick={() => setMenuEventKey(null)}
-                                >
-                                  <UserPlus size={16} />
-                                  <span>Подписаться в ответ</span>
-                                </a>
-                              )}
-                              {event.relation === "followers" && event.type === "removed" && (
-                                <a
-                                  href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="person-action-item"
-                                  onClick={() => setMenuEventKey(null)}
-                                >
-                                  <ExternalLink size={16} />
-                                  <span>Проверить в Instagram</span>
-                                </a>
-                              )}
-                              {event.relation === "following" && event.type === "removed" && (
-                                <a
-                                  href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="person-action-item primary"
-                                  onClick={() => setMenuEventKey(null)}
-                                >
-                                  <UserPlus size={16} />
-                                  <span>Подписаться снова</span>
-                                </a>
-                              )}
-                              {event.relation === "following" && event.type === "added" && (
-                                <a
-                                  href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="person-action-item danger"
-                                  onClick={() => setMenuEventKey(null)}
-                                >
-                                  <UserMinus size={16} />
-                                  <span>Отписаться в Instagram</span>
-                                </a>
-                              )}
-                              <a
-                                href={`https://www.instagram.com/${encodeURIComponent(event.username)}/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="person-action-item"
-                                onClick={() => setMenuEventKey(null)}
-                              >
-                                <ExternalLink size={16} />
-                                <span>Открыть профиль</span>
-                              </a>
-                              <a
-                                href={`/app/people?search=${encodeURIComponent(event.username)}`}
-                                className="person-action-item"
-                                onClick={() => setMenuEventKey(null)}
-                              >
-                                <Search size={16} />
-                                <span>Найти в списках людей</span>
-                              </a>
-                              <div className="person-action-divider" />
-                              <button
-                                type="button"
-                                className="person-action-item"
-                                onClick={() => {
-                                  handleCopyUsername(event.username);
-                                  setMenuEventKey(null);
-                                }}
-                              >
-                                {copiedUser === event.username ? (
-                                  <>
-                                    <Check size={16} color="#16a34a" />
-                                    <span style={{ color: "#16a34a" }}>Скопировано!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={16} />
-                                    <span>Скопировать @username</span>
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                className="person-action-item"
-                                onClick={() => {
-                                  toggleFavorite(itemKey);
-                                  setMenuEventKey(null);
-                                }}
-                              >
-                                <Star
-                                  size={16}
-                                  fill={isFav ? "#f59e0b" : "none"}
-                                  color={isFav ? "#f59e0b" : "#94a3b8"}
-                                />
-                                <span>{isFav ? "Убрать из избранного" : "В избранное"}</span>
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1142,6 +1069,52 @@ export default function ChangesPanel({
           </div>
         )}
       </section>
+
+      {sheetEvent && (
+        <div
+          className="mobile-action-sheet-overlay"
+          onClick={() => setSheetEvent(null)}
+        >
+          <div
+            className="mobile-action-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-sheet-drag-handle" />
+            <div className="mobile-sheet-header">
+              <div className="mobile-sheet-user">
+                {sheetEvent.event.avatar_url ? (
+                  <img
+                    src={sheetEvent.event.avatar_url}
+                    alt={sheetEvent.event.username}
+                    className="mobile-sheet-avatar"
+                  />
+                ) : (
+                  <span className="mobile-sheet-avatar-fallback">
+                    {(sheetEvent.event.full_name || sheetEvent.event.username)[0].toUpperCase()}
+                  </span>
+                )}
+                <div className="mobile-sheet-user-text">
+                  <span className="mobile-sheet-name">
+                    {sheetEvent.event.full_name || sheetEvent.event.username}
+                  </span>
+                  <span className="mobile-sheet-username">@{sheetEvent.event.username}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="mobile-sheet-close-btn"
+                onClick={() => setSheetEvent(null)}
+                aria-label="Закрыть"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="mobile-sheet-actions">
+              {renderEventActionItems(sheetEvent.event, true, sheetEvent.itemKey)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

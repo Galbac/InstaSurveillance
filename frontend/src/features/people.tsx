@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  X,
 } from "lucide-react";
 import { api, post, Profile, Person, date, number } from "@/lib/api";
 import { demoPeople } from "@/lib/demo";
@@ -87,7 +88,23 @@ export default function PeoplePanel({
     [menuPerson, setMenuPerson] = useState<Person | null>(null),
     [copiedUser, setCopiedUser] = useState<string | null>(null);
 
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuRef] = [useRef<HTMLDivElement>(null)];
+  const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const el = activeTabRef.current;
+    if (el) {
+      const timer = setTimeout(() => {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [category]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -234,6 +251,250 @@ export default function PeoplePanel({
       setError(e);
     }
   }
+
+  const toggleMenu = (person: Person, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (menuPerson?.identity_key === person.identity_key) {
+      setMenuPerson(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const openUp = window.innerHeight - rect.bottom < 280;
+    setMenuPlacement(openUp ? "top" : "bottom");
+    setMenuPerson(person);
+  };
+
+  function renderPersonActionItems(person: Person, isMobileSheet = false) {
+    const itemClass = isMobileSheet ? "mobile-sheet-action-item" : "person-action-item";
+    const dividerClass = isMobileSheet ? "mobile-sheet-divider" : "person-action-divider";
+
+    return (
+      <>
+        {category === "fans" && (
+          <>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} primary`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserPlus size={isMobileSheet ? 18 : 16} />
+              <span>Подписаться в ответ</span>
+            </a>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} danger`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserX size={isMobileSheet ? 18 : 16} />
+              <span>Удалить из подписчиков</span>
+            </a>
+          </>
+        )}
+        {category === "not_following_back" && (
+          <>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} danger`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserMinus size={isMobileSheet ? 18 : 16} />
+              <span>Отписаться в Instagram</span>
+            </a>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setMenuPerson(null)}
+            >
+              <ExternalLink size={isMobileSheet ? 18 : 16} />
+              <span>Открыть профиль</span>
+            </a>
+          </>
+        )}
+        {category === "mutual" && (
+          <>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setMenuPerson(null)}
+            >
+              <ExternalLink size={isMobileSheet ? 18 : 16} />
+              <span>Открыть в Instagram</span>
+            </a>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} danger`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserMinus size={isMobileSheet ? 18 : 16} />
+              <span>Отписаться в Instagram</span>
+            </a>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} danger`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserX size={isMobileSheet ? 18 : 16} />
+              <span>Удалить из подписчиков</span>
+            </a>
+          </>
+        )}
+        {category === "followers" && (
+          <>
+            {person.is_following ? (
+              <>
+                <a
+                  href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${itemClass} danger`}
+                  onClick={() => setMenuPerson(null)}
+                >
+                  <UserMinus size={isMobileSheet ? 18 : 16} />
+                  <span>Отписаться в Instagram</span>
+                </a>
+                <a
+                  href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${itemClass} danger`}
+                  onClick={() => setMenuPerson(null)}
+                >
+                  <UserX size={isMobileSheet ? 18 : 16} />
+                  <span>Удалить из подписчиков</span>
+                </a>
+              </>
+            ) : (
+              <>
+                <a
+                  href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${itemClass} primary`}
+                  onClick={() => setMenuPerson(null)}
+                >
+                  <UserPlus size={isMobileSheet ? 18 : 16} />
+                  <span>Подписаться в ответ</span>
+                </a>
+                <a
+                  href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${itemClass} danger`}
+                  onClick={() => setMenuPerson(null)}
+                >
+                  <UserX size={isMobileSheet ? 18 : 16} />
+                  <span>Удалить из подписчиков</span>
+                </a>
+              </>
+            )}
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setMenuPerson(null)}
+            >
+              <ExternalLink size={isMobileSheet ? 18 : 16} />
+              <span>Открыть профиль</span>
+            </a>
+          </>
+        )}
+        {category === "following" && (
+          <>
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${itemClass} danger`}
+              onClick={() => setMenuPerson(null)}
+            >
+              <UserMinus size={isMobileSheet ? 18 : 16} />
+              <span>Отписаться в Instagram</span>
+            </a>
+            {person.is_mutual && (
+              <a
+                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${itemClass} danger`}
+                onClick={() => setMenuPerson(null)}
+              >
+                <UserX size={isMobileSheet ? 18 : 16} />
+                <span>Удалить из подписчиков</span>
+              </a>
+            )}
+            <a
+              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setMenuPerson(null)}
+            >
+              <ExternalLink size={isMobileSheet ? 18 : 16} />
+              <span>Открыть профиль</span>
+            </a>
+          </>
+        )}
+        <div className={dividerClass} />
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => handleCopyUsername(person.username)}
+        >
+          {copiedUser === person.username ? (
+            <>
+              <Check size={isMobileSheet ? 18 : 16} color="#16a34a" />
+              <span style={{ color: "#16a34a" }}>Скопировано!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={isMobileSheet ? 18 : 16} />
+              <span>Скопировать @username</span>
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            setNote(person);
+            setMenuPerson(null);
+          }}
+        >
+          <FileText size={isMobileSheet ? 18 : 16} />
+          <span>{person.note ? "Изменить заметку" : "Добавить заметку"}</span>
+        </button>
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            star(person);
+            setMenuPerson(null);
+          }}
+        >
+          <Star
+            size={isMobileSheet ? 18 : 16}
+            fill={person.favorite ? "#f59e0b" : "none"}
+            color={person.favorite ? "#f59e0b" : "#94a3b8"}
+          />
+          <span>{person.favorite ? "Убрать из избранного" : "В избранное"}</span>
+        </button>
+      </>
+    );
+  }
   if (!profile && !demo)
     return (
       <section className="empty-card">
@@ -327,6 +588,7 @@ export default function PeoplePanel({
       >
         {categories.map(([key, label]) => (
           <button
+            ref={category === key ? activeTabRef : undefined}
             role="tab"
             aria-selected={category === key}
             className={`category-tab-btn ${category === key ? "active" : ""}`}
@@ -471,25 +733,6 @@ export default function PeoplePanel({
                 {person.note && <p className="person-note">{person.note}</p>}
               </div>
               <div className="person-actions-col">
-                <button
-                  className={`icon-action-btn ${person.favorite ? "active-favorite" : ""}`}
-                  aria-label={`${person.favorite ? "Убрать из" : "Добавить в"} избранное ${person.username}`}
-                  aria-pressed={person.favorite}
-                  onClick={() => star(person)}
-                >
-                  <Star
-                    size={17}
-                    fill={person.favorite ? "#f59e0b" : "none"}
-                    color={person.favorite ? "#f59e0b" : "#94a3b8"}
-                  />
-                </button>
-                <button
-                  className={`icon-action-btn ${person.note ? "active-note" : ""}`}
-                  aria-label={`Заметка для ${person.username}`}
-                  onClick={() => setNote(person)}
-                >
-                  <FileText size={17} color={person.note ? "#7c3aed" : "#94a3b8"} />
-                </button>
                 <div
                   className="person-more-box"
                   ref={menuPerson?.identity_key === person.identity_key ? menuRef : undefined}
@@ -497,14 +740,10 @@ export default function PeoplePanel({
                   <button
                     className="icon-action-btn"
                     aria-label={`Дополнительно для ${person.username}`}
-                    onClick={() =>
-                      setMenuPerson(
-                        menuPerson?.identity_key === person.identity_key ? null : person
-                      )
-                    }
+                    onClick={(e) => toggleMenu(person, e)}
                   >
                     <MoreHorizontal
-                      size={17}
+                      size={18}
                       color={
                         menuPerson?.identity_key === person.identity_key
                           ? "#7c3aed"
@@ -513,230 +752,8 @@ export default function PeoplePanel({
                     />
                   </button>
                   {menuPerson?.identity_key === person.identity_key && (
-                    <div className="person-action-menu">
-                      {category === "fans" && (
-                        <>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item primary"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserPlus size={16} />
-                            <span>Подписаться в ответ</span>
-                          </a>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserX size={16} />
-                            <span>Удалить из подписчиков</span>
-                          </a>
-                        </>
-                      )}
-                      {category === "not_following_back" && (
-                        <>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserMinus size={16} />
-                            <span>Отписаться в Instagram</span>
-                          </a>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <ExternalLink size={16} />
-                            <span>Открыть профиль</span>
-                          </a>
-                        </>
-                      )}
-                      {category === "mutual" && (
-                        <>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <ExternalLink size={16} />
-                            <span>Открыть в Instagram</span>
-                          </a>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserMinus size={16} />
-                            <span>Отписаться в Instagram</span>
-                          </a>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserX size={16} />
-                            <span>Удалить из подписчиков</span>
-                          </a>
-                        </>
-                      )}
-                      {category === "followers" && (
-                        <>
-                          {person.is_following ? (
-                            <>
-                              <a
-                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="person-action-item danger"
-                                onClick={() => setMenuPerson(null)}
-                              >
-                                <UserMinus size={16} />
-                                <span>Отписаться в Instagram</span>
-                              </a>
-                              <a
-                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="person-action-item danger"
-                                onClick={() => setMenuPerson(null)}
-                              >
-                                <UserX size={16} />
-                                <span>Удалить из подписчиков</span>
-                              </a>
-                            </>
-                          ) : (
-                            <>
-                              <a
-                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="person-action-item primary"
-                                onClick={() => setMenuPerson(null)}
-                              >
-                                <UserPlus size={16} />
-                                <span>Подписаться в ответ</span>
-                              </a>
-                              <a
-                                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="person-action-item danger"
-                                onClick={() => setMenuPerson(null)}
-                              >
-                                <UserX size={16} />
-                                <span>Удалить из подписчиков</span>
-                              </a>
-                            </>
-                          )}
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <ExternalLink size={16} />
-                            <span>Открыть профиль</span>
-                          </a>
-                        </>
-                      )}
-                      {category === "following" && (
-                        <>
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item danger"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <UserMinus size={16} />
-                            <span>Отписаться в Instagram</span>
-                          </a>
-                          {person.is_mutual && (
-                            <a
-                              href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="person-action-item danger"
-                              onClick={() => setMenuPerson(null)}
-                            >
-                              <UserX size={16} />
-                              <span>Удалить из подписчиков</span>
-                            </a>
-                          )}
-                          <a
-                            href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="person-action-item"
-                            onClick={() => setMenuPerson(null)}
-                          >
-                            <ExternalLink size={16} />
-                            <span>Открыть профиль</span>
-                          </a>
-                        </>
-                      )}
-                      <div className="person-action-divider" />
-                      <button
-                        type="button"
-                        className="person-action-item"
-                        onClick={() => handleCopyUsername(person.username)}
-                      >
-                        {copiedUser === person.username ? (
-                          <>
-                            <Check size={16} color="#16a34a" />
-                            <span style={{ color: "#16a34a" }}>Скопировано!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={16} />
-                            <span>Скопировать @username</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className="person-action-item"
-                        onClick={() => {
-                          setNote(person);
-                          setMenuPerson(null);
-                        }}
-                      >
-                        <FileText size={16} />
-                        <span>{person.note ? "Изменить заметку" : "Добавить заметку"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="person-action-item"
-                        onClick={() => {
-                          star(person);
-                          setMenuPerson(null);
-                        }}
-                      >
-                        <Star
-                          size={16}
-                          fill={person.favorite ? "#f59e0b" : "none"}
-                          color={person.favorite ? "#f59e0b" : "#94a3b8"}
-                        />
-                        <span>{person.favorite ? "Убрать из избранного" : "В избранное"}</span>
-                      </button>
+                    <div className={`person-action-menu ${menuPlacement === "top" ? "placement-top" : ""}`}>
+                      {renderPersonActionItems(person, false)}
                     </div>
                   )}
                 </div>
@@ -828,6 +845,51 @@ export default function PeoplePanel({
             </div>
           </form>
         </Modal>
+      )}
+      {menuPerson && (
+        <div
+          className="mobile-action-sheet-overlay"
+          onClick={() => setMenuPerson(null)}
+        >
+          <div
+            className="mobile-action-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-sheet-drag-handle" />
+            <div className="mobile-sheet-header">
+              <div className="mobile-sheet-user">
+                {menuPerson.avatar_url ? (
+                  <img
+                    src={menuPerson.avatar_url}
+                    alt={menuPerson.username}
+                    className="mobile-sheet-avatar"
+                  />
+                ) : (
+                  <span className="mobile-sheet-avatar-fallback">
+                    {menuPerson.username[0]?.toUpperCase()}
+                  </span>
+                )}
+                <div className="mobile-sheet-user-text">
+                  <span className="mobile-sheet-name">
+                    {menuPerson.full_name || `@${menuPerson.username}`}
+                  </span>
+                  <span className="mobile-sheet-username">@{menuPerson.username}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="mobile-sheet-close-btn"
+                onClick={() => setMenuPerson(null)}
+                aria-label="Закрыть"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="mobile-sheet-actions">
+              {renderPersonActionItems(menuPerson, true)}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
