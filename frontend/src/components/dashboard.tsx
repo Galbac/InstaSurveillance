@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bell,
+  Check,
   CircleHelp,
   Clock3,
   HeartHandshake,
@@ -182,6 +183,15 @@ function Workspace({
     [notice, setNotice] = useState(""),
     [confirmLogout, setConfirmLogout] = useState(false);
   const view = demo ? demoView : initialView;
+  interface SyncCompletedNotice {
+    followers: number;
+    following: number;
+    followersAdded?: number;
+    followersRemoved?: number;
+  }
+  const [syncCompletedNotice, setSyncCompletedNotice] = useState<SyncCompletedNotice | null>(null);
+  const prevSyncStatusRef = useRef<string | null>(null);
+
   const me = useQuery({
     queryKey: ["me"],
     queryFn: ({ signal }) => api<User>("/me", { signal }),
@@ -191,16 +201,57 @@ function Workspace({
     queryKey: ["profiles"],
     queryFn: ({ signal }) => api<Profile[]>("/profiles", { signal }),
     enabled: !demo && !!me.data?.verified,
-    refetchInterval: 10000,
+    refetchInterval: (q) => {
+      const first = q.state.data?.[0];
+      return first?.status === "syncing" || first?.status === "connecting" ? 3000 : 10000;
+    },
   });
   const p = demo ? demoProfile : profileQuery.data?.[0];
+
+  useEffect(() => {
+    if (!p || demo) return;
+    const currentStatus = p.status;
+    const prevStatus = prevSyncStatusRef.current;
+    prevSyncStatusRef.current = currentStatus;
+
+    if (prevStatus === "syncing" && currentStatus !== "syncing") {
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      qc.invalidateQueries({ queryKey: ["snapshots"] });
+      qc.invalidateQueries({ queryKey: ["comparison"] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["people"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+
+      api<Summary>(`/profiles/${p.id}/summary`)
+        .then((fresh) => {
+          const followers = fresh.counts?.followers ?? 0;
+          const following = fresh.counts?.following ?? 0;
+          const followersAdded = fresh.change_counts?.followers_added;
+          const followersRemoved = fresh.change_counts?.followers_removed;
+          setSyncCompletedNotice({
+            followers,
+            following,
+            followersAdded,
+            followersRemoved,
+          });
+        })
+        .catch(() => {});
+    }
+  }, [p?.status, p?.id, demo, qc]);
+
+  useEffect(() => {
+    if (!syncCompletedNotice) return;
+    const t = setTimeout(() => setSyncCompletedNotice(null), 15000);
+    return () => clearTimeout(t);
+  }, [syncCompletedNotice]);
+
   const summaryQuery = useQuery({
     queryKey: ["summary", p?.id, p?.last_sync],
     queryFn: ({ signal }) =>
       api<Summary>(`/profiles/${p!.id}/summary`, { signal }),
     enabled: !demo && !!p,
     refetchInterval:
-      p?.status === "syncing" || p?.status === "connecting" ? 10000 : false,
+      p?.status === "syncing" || p?.status === "connecting" ? 3000 : false,
   });
   const summary = demo ? demoSummary : summaryQuery.data;
   const notificationsQuery = useQuery({
@@ -349,6 +400,51 @@ function Workspace({
         </div>
       </aside>
       <div className="workspace-main">
+        {syncCompletedNotice && (
+          <aside className="sync-completion-toast" role="status" aria-live="polite">
+            <div className="sync-toast-left">
+              <div className="sync-toast-badge">
+                <Check size={18} strokeWidth={2.5} />
+              </div>
+              <div className="sync-toast-body">
+                <strong className="sync-toast-title">Сбор данных завершён</strong>
+                <p className="sync-toast-desc">
+                  Свежий снимок готов: <b>{number(syncCompletedNotice.followers)}</b> подписчиков, <b>{number(syncCompletedNotice.following)}</b> подписок.
+                  {typeof syncCompletedNotice.followersAdded === "number" && (syncCompletedNotice.followersAdded > 0 || (syncCompletedNotice.followersRemoved ?? 0) > 0) ? (
+                    <span>
+                      {" "}Изменения:{" "}
+                      {syncCompletedNotice.followersAdded > 0 && <span className="sync-toast-add">+{syncCompletedNotice.followersAdded} новых</span>}
+                      {syncCompletedNotice.followersAdded > 0 && (syncCompletedNotice.followersRemoved ?? 0) > 0 && ", "}
+                      {(syncCompletedNotice.followersRemoved ?? 0) > 0 && <span className="sync-toast-rem">−{syncCompletedNotice.followersRemoved} ушло</span>}
+                    </span>
+                  ) : (
+                    <span> Без новых изменений относительно прошлого снимка.</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="sync-toast-actions">
+              <button
+                type="button"
+                className="button small"
+                onClick={() => {
+                  setSyncCompletedNotice(null);
+                  go("changes");
+                }}
+              >
+                Смотреть изменения
+              </button>
+              <button
+                type="button"
+                className="sync-toast-close"
+                aria-label="Закрыть уведомление"
+                onClick={() => setSyncCompletedNotice(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </aside>
+        )}
         <header className="topbar">
           <div className="topbar-left" />
           <div className="topbar-right">
@@ -471,7 +567,7 @@ function Workspace({
             <>
               {view === "overview" &&
                 (summary?.counts ? (
-                  <Overview summary={summary} go={go} demo={demo} onSync={sync} />
+                  <Overview summary={summary} go={go} demo={demo} />
                 ) : (
                   <Empty
                     go={go}
@@ -678,12 +774,10 @@ function Overview({
   summary,
   go,
   demo,
-  onSync,
 }: {
   summary: Summary;
   go: (v: string) => void;
   demo: boolean;
-  onSync?: () => void;
 }) {
   const c = summary.counts!;
   const removed =

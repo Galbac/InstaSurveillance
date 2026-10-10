@@ -6,7 +6,7 @@ import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Brand from "./brand";
 import { useQuery } from "@tanstack/react-query";
 import { PublicConfig } from "@/lib/workflows";
-import { api, post } from "@/lib/api";
+import { api, post, User } from "@/lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authSchema, type AuthMode as Mode } from "@/lib/form-schemas";
@@ -47,7 +47,19 @@ export default function AuthPanel({ mode }: { mode: Mode }) {
     if (mode === "login" && new URLSearchParams(window.location.search).get("verified") === "1") {
       setEmailVerified(true);
     }
-  }, [mode]);
+    if (mode === "login" || mode === "register") {
+      api<User>("/me")
+        .then((user) => {
+          if (user?.id) {
+            const returnTo = new URLSearchParams(window.location.search).get("return_to");
+            router.replace(returnTo || "/app");
+          }
+        })
+        .catch(() => {
+          // Not logged in, stay on auth page
+        });
+    }
+  }, [mode, router]);
   const titles = {
     login: "С возвращением",
     register: "Твой круг начинается здесь",

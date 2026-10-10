@@ -18,7 +18,7 @@ import {
   ExternalLink,
   Layers,
 } from "lucide-react";
-import { api, post, Profile, Snapshot, date, number } from "@/lib/api";
+import { api, post, Profile, Snapshot, date, number, getDateParts } from "@/lib/api";
 import { Page } from "@/lib/workflows";
 import { demoHistory } from "@/lib/demo";
 import { ErrorNotice, Loader, Modal } from "./common";
@@ -67,27 +67,15 @@ const MONTHS_NOMINATIVE = [
   "ДЕКАБРЬ",
 ];
 
-const WEEKDAYS = [
-  "Воскресенье",
-  "Понедельник",
-  "Вторник",
-  "Среда",
-  "Четверг",
-  "Пятница",
-  "Суббота",
-];
-
 function parseSnapshotDate(isoString: string) {
-  const d = new Date(isoString);
-  const day = d.getUTCDate();
-  const monthIdx = d.getUTCMonth();
+  const parts = getDateParts(isoString);
+  const day = parts.day;
+  const monthIdx = parts.monthIdx;
   const monthGen = MONTHS_GENITIVE[monthIdx] || "";
   const monthNom = MONTHS_NOMINATIVE[monthIdx] || "";
-  const weekday = WEEKDAYS[d.getUTCDay()] || "";
-  const hours = String(d.getUTCHours()).padStart(2, "0");
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  const time = `${hours}:${minutes}`;
-  const year = d.getUTCFullYear();
+  const weekday = parts.weekday;
+  const time = parts.time;
+  const year = parts.year;
 
   return {
     day,
@@ -97,7 +85,7 @@ function parseSnapshotDate(isoString: string) {
     monthYearHeading: `${monthNom} ${year}`,
     shortCompare: `${day} ${monthGen} ${time}`,
     time,
-    timestamp: d.getTime(),
+    timestamp: parts.timestamp,
   };
 }
 

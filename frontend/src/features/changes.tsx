@@ -23,7 +23,7 @@ import {
   Check,
   Copy,
 } from "lucide-react";
-import { api, post, Profile, Event } from "@/lib/api";
+import { api, post, Profile, Event, getDateParts } from "@/lib/api";
 import { Page, polling, useVisible, useUrlValue } from "@/lib/workflows";
 import { demoEvents, demoHistory } from "@/lib/demo";
 import { ErrorNotice, ExportButton, JobProgress, Loader } from "./common";
@@ -47,28 +47,20 @@ const MONTHS_GENITIVE = [
 ];
 
 function formatSnapshotOption(isoString: string) {
-  const d = new Date(isoString);
-  const day = d.getUTCDate();
-  const month = MONTHS_GENITIVE[d.getUTCMonth()] || "";
-  const year = d.getUTCFullYear();
-  const hours = String(d.getUTCHours()).padStart(2, "0");
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${day} ${month} ${year}, ${hours}:${minutes}`;
+  const parts = getDateParts(isoString);
+  const month = MONTHS_GENITIVE[parts.monthIdx] || "";
+  return `${parts.day} ${month} ${parts.year}, ${parts.time}`;
 }
 
 function formatRowDate(isoString?: string) {
   if (!isoString) {
     return { dateStr: "7 октября 2024", timeStr: "13:00" };
   }
-  const d = new Date(isoString);
-  const day = d.getUTCDate();
-  const month = MONTHS_GENITIVE[d.getUTCMonth()] || "";
-  const year = d.getUTCFullYear();
-  const hours = String(d.getUTCHours()).padStart(2, "0");
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  const parts = getDateParts(isoString);
+  const month = MONTHS_GENITIVE[parts.monthIdx] || "";
   return {
-    dateStr: `${day} ${month} ${year}`,
-    timeStr: `${hours}:${minutes}`,
+    dateStr: `${parts.day} ${month} ${parts.year}`,
+    timeStr: parts.time,
   };
 }
 

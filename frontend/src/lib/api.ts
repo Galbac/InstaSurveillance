@@ -99,6 +99,16 @@ export type Person = components["schemas"]["PersonDTO"] & {
 };
 export type Job = components["schemas"]["JobDTO"];
 let displayTimezone: string | undefined;
+
+export function getDisplayTimezone(): string {
+  if (displayTimezone) return displayTimezone;
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Moscow";
+  } catch {
+    return "Europe/Moscow";
+  }
+}
+
 export function setDisplayTimezone(value?: string) {
   try {
     if (value) new Intl.DateTimeFormat("ru", { timeZone: value });
@@ -107,18 +117,83 @@ export function setDisplayTimezone(value?: string) {
     displayTimezone = undefined;
   }
 }
+
+export interface DateParts {
+  d: Date;
+  day: number;
+  monthIdx: number;
+  year: number;
+  hours: string;
+  minutes: string;
+  weekday: string;
+  time: string;
+  timestamp: number;
+}
+
+export function getDateParts(isoString?: string | null): DateParts {
+  const d = isoString ? new Date(isoString) : new Date();
+  const tz = getDisplayTimezone();
+  try {
+    const formatter = new Intl.DateTimeFormat("ru-RU", {
+      timeZone: tz,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      weekday: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const map: Record<string, string> = {};
+    for (const p of parts) map[p.type] = p.value;
+    const day = parseInt(map.day || "1", 10);
+    const monthIdx = parseInt(map.month || "1", 10) - 1;
+    const year = parseInt(map.year || "2026", 10);
+    const hours = (map.hour || "00").padStart(2, "0");
+    const minutes = (map.minute || "00").padStart(2, "0");
+    const rawWd = map.weekday || "";
+    const weekday = rawWd ? rawWd.charAt(0).toUpperCase() + rawWd.slice(1) : "";
+    return {
+      d,
+      day,
+      monthIdx,
+      year,
+      hours,
+      minutes,
+      weekday,
+      time: `${hours}:${minutes}`,
+      timestamp: d.getTime(),
+    };
+  } catch {
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return {
+      d,
+      day: d.getDate(),
+      monthIdx: d.getMonth(),
+      year: d.getFullYear(),
+      hours,
+      minutes,
+      weekday: "",
+      time: `${hours}:${minutes}`,
+      timestamp: d.getTime(),
+    };
+  }
+}
+
 export const date = (value: string | null, short = false) =>
   value
     ? new Intl.DateTimeFormat(
         "ru-RU",
         short
-          ? { day: "numeric", month: "short", timeZone: displayTimezone }
+          ? { day: "numeric", month: "short", timeZone: getDisplayTimezone() }
           : {
               day: "numeric",
               month: "long",
               hour: "2-digit",
               minute: "2-digit",
-              timeZone: displayTimezone,
+              timeZone: getDisplayTimezone(),
             },
       ).format(new Date(value))
     : "Нет данных";

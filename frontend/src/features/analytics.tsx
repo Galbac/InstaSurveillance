@@ -25,7 +25,7 @@ import {
   ArrowDown,
   ArrowUpRight,
 } from "lucide-react";
-import { api, Profile, number } from "@/lib/api";
+import { api, Profile, number, getDateParts } from "@/lib/api";
 import { demoHistory } from "@/lib/demo";
 import { ErrorNotice } from "./common";
 
@@ -62,27 +62,21 @@ const FULL_MONTHS = [
 ];
 
 function formatShortDate(isoString: string) {
-  const d = new Date(isoString);
-  return `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]}`;
+  const parts = getDateParts(isoString);
+  return `${parts.day} ${SHORT_MONTHS[parts.monthIdx]}`;
 }
 
 function formatTableDate(isoString: string) {
-  const d = new Date(isoString);
-  const day = d.getUTCDate();
-  const month = FULL_MONTHS[d.getUTCMonth()];
-  const hours = String(d.getUTCHours()).padStart(2, "0");
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${day} ${month}, ${hours}:${minutes}`;
+  const parts = getDateParts(isoString);
+  const month = FULL_MONTHS[parts.monthIdx];
+  return `${parts.day} ${month}, ${parts.time}`;
 }
 
 function formatBadgeDate(isoString?: string) {
   if (!isoString) return "Нет данных";
-  const d = new Date(isoString);
-  const day = d.getUTCDate();
-  const month = SHORT_MONTHS[d.getUTCMonth()];
-  const hours = String(d.getUTCHours()).padStart(2, "0");
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${day} ${month}, ${hours}:${minutes}`;
+  const parts = getDateParts(isoString);
+  const month = SHORT_MONTHS[parts.monthIdx];
+  return `${parts.day} ${month}, ${parts.time}`;
 }
 
 function getSnapshotsWord(count: number) {
@@ -228,12 +222,10 @@ export default function AnalyticsPanel({
 
     return rawPoints.map((p, index) => {
       const prev = index > 0 ? rawPoints[index - 1] : null;
-      const d = new Date(p.date);
-      const dayShort = `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]}`;
-      const hours = String(d.getUTCHours()).padStart(2, "0");
-      const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+      const parts = getDateParts(p.date);
+      const dayShort = `${parts.day} ${SHORT_MONTHS[parts.monthIdx]}`;
       const label = showTimeOnTicks
-        ? `${dayShort}, ${hours}:${minutes}`
+        ? `${dayShort}, ${parts.time}`
         : dayShort;
 
       return {
