@@ -12,6 +12,7 @@ import { AdminFilterBar } from "@/features/admin/components/filters";
 import {
   CopyableId,
   TicketStatusBadge,
+  TicketCategoryBadge,
   formatDateTime,
 } from "@/features/admin/components/badges";
 import { ArrowRight, MessageSquare } from "lucide-react";
@@ -54,11 +55,7 @@ export default function AdminSupportPage() {
   const columns = [
     {
       header: "Категория",
-      accessor: (t: AdminTicket) => (
-        <span className="font-semibold text-xs text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md">
-          {t.category}
-        </span>
-      ),
+      accessor: (t: AdminTicket) => <TicketCategoryBadge category={t.category} />,
     },
     {
       header: "Пользователь",
@@ -151,9 +148,10 @@ export default function AdminSupportPage() {
             onChange: setCategory,
             options: [
               { value: "", label: "Все категории" },
-              { value: "access", label: "Доступ / Вход" },
-              { value: "sync", label: "Сбор данных" },
-              { value: "billing", label: "Оплата / Лимиты" },
+              { value: "connection", label: "Подключение" },
+              { value: "import", label: "Импорт" },
+              { value: "analytics", label: "Аналитика" },
+              { value: "privacy", label: "Данные и приватность" },
               { value: "other", label: "Другое" },
             ],
           },

@@ -45,7 +45,7 @@ export function SnapshotQualityDiagnosticsCard({
         {/* Followers Diagnostics */}
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600 uppercase">
-            <span>Подписчики (Followers)</span>
+            <span>Подписчики</span>
             <Layers className="w-4 h-4 text-purple-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">
@@ -68,7 +68,7 @@ export function SnapshotQualityDiagnosticsCard({
         {/* Following Diagnostics */}
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600 uppercase">
-            <span>Подписки (Following)</span>
+            <span>Подписки</span>
             <Layers className="w-4 h-4 text-purple-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">

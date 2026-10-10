@@ -2,11 +2,10 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Globe,
   Lock,
-  Bell,
   Database,
   Trash2,
   UserX,
@@ -27,7 +26,6 @@ import type { components } from "@/lib/generated-api";
 import { useUrlValue, useVisible } from "@/lib/workflows";
 import { ErrorNotice, ExportButton, Modal } from "./common";
 
-type NotificationSettings = components["schemas"]["NotificationPreferences"];
 
 function InstagramIcon({ size = 20 }: { size?: number }) {
   return (
@@ -102,54 +100,6 @@ export default function SettingsPanel({
       visible && query.state.data?.status !== "completed" ? 5000 : false,
   });
 
-  const preferences = useQuery({
-    queryKey: ["notification-settings"],
-    queryFn: ({ signal }) =>
-      api<NotificationSettings>("/me/notification-settings", { signal }),
-    enabled: !demo,
-  });
-
-  // Local notification toggles state (initialized with user preferences or backend defaults)
-  const [toggles, setToggles] = useState<Record<string, boolean>>(() => ({
-    email_results: user?.email_notifications ?? false,
-    email_connection: false,
-    email_support: false,
-    in_app_results: true,
-    in_app_connection: true,
-  }));
-
-  useEffect(() => {
-    if (preferences.data) {
-      setToggles({
-        email_results: preferences.data.email_results,
-        email_connection: preferences.data.email_connection,
-        email_support: preferences.data.email_support,
-        in_app_results: preferences.data.in_app_results,
-        in_app_connection: preferences.data.in_app_connection,
-      });
-    }
-  }, [preferences.data]);
-
-  const handleToggle = async (key: string) => {
-    const updated = !toggles[key];
-    const nextSettings = { ...toggles, [key]: updated };
-    setToggles(nextSettings);
-
-    if (!demo) {
-      try {
-        await api("/me/notification-settings", {
-          method: "PATCH",
-          body: JSON.stringify(nextSettings),
-        });
-        qc.invalidateQueries({ queryKey: ["notification-settings"] });
-        qc.invalidateQueries({ queryKey: ["me"] });
-      } catch (err) {
-        setError(err);
-        setToggles((prev) => ({ ...prev, [key]: !updated }));
-      }
-    }
-  };
-
   const guard = () => {
     if (demo) {
       onNotice("В демо-режиме настройки не изменяются. Создайте свой аккаунт.");
@@ -169,7 +119,7 @@ export default function SettingsPanel({
         body: JSON.stringify({
           theme: "light",
           timezone,
-          email_notifications: user?.email_notifications || false,
+          email_notifications: true,
         }),
       });
       qc.invalidateQueries({ queryKey: ["me"] });
@@ -474,78 +424,6 @@ export default function SettingsPanel({
       </section>
 
 
-      {/* 3. CARD 4: Уведомления */}
-      <section className="settings-v2-card">
-        <header className="settings-v2-card-header">
-          <div className="settings-v2-header-left">
-            <div className="settings-v2-icon-box" aria-hidden="true">
-              <Bell size={20} />
-            </div>
-            <div>
-              <h2 className="settings-v2-card-title">Уведомления</h2>
-              <p className="settings-v2-card-subtitle">
-                Выберите, какие события присылать на email.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <div className="settings-v2-toggles-list">
-          {[
-            {
-              key: "email_results",
-              title: "Email о готовом результате",
-              desc: "Уведомлять, когда отчёт по профилю готов.",
-            },
-            {
-              key: "email_connection",
-              title: "Email об остановке подключения",
-              desc: "Уведомлять, если подключение было остановлено.",
-            },
-            {
-              key: "email_support",
-              title: "Email об ответе поддержки",
-              desc: "Уведомлять о новых сообщениях от поддержки.",
-            },
-            {
-              key: "in_app_results",
-              title: "Результаты внутри кабинета",
-              desc: "Показывать готовые результаты в кабинете сервиса.",
-            },
-            {
-              key: "in_app_connection",
-              title: "Ошибка подключения внутри кабинета",
-              desc: "Показывать уведомления об ошибках подключения в кабинете.",
-            },
-          ].map((item) => {
-            const isOn = !!toggles[item.key];
-            return (
-              <div
-                key={item.key}
-                className="settings-v2-toggle-row"
-                onClick={() => handleToggle(item.key)}
-                role="switch"
-                aria-checked={isOn}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleToggle(item.key);
-                  }
-                }}
-              >
-                <div className={`settings-v2-switch ${isOn ? "on" : ""}`}>
-                  <div className="settings-v2-switch-knob" />
-                </div>
-                <div className="settings-v2-toggle-text">
-                  <div className="settings-v2-toggle-title">{item.title}</div>
-                  <div className="settings-v2-toggle-desc">{item.desc}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* 4. CARD: Instagram Profile Settings */}
       <section className="settings-v2-card">

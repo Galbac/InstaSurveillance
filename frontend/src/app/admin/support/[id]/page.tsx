@@ -10,6 +10,7 @@ import type { AdminTicket } from "@/features/admin/types";
 import {
   CopyableId,
   TicketStatusBadge,
+  TICKET_CATEGORY_LABELS,
   formatDateTime,
 } from "@/features/admin/components/badges";
 import { ErrorNotice } from "@/features/common";
@@ -107,7 +108,9 @@ export default function AdminTicketDetailPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-slate-900">Обращение: {ticket.category}</span>
+              <span className="font-bold text-lg text-slate-900">
+                Обращение: {TICKET_CATEGORY_LABELS[ticket.category] || ticket.category}
+              </span>
               <TicketStatusBadge status={ticket.status} />
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
@@ -116,12 +119,16 @@ export default function AdminTicketDetailPage() {
               {ticket.owner_email && (
                 <>
                   <span>· От:</span>
-                  <Link
-                    href={`/admin/users/${ticket.id}`}
-                    className="text-purple-700 hover:underline font-semibold"
-                  >
-                    {ticket.owner_email}
-                  </Link>
+                  {ticket.user_id ? (
+                    <Link
+                      href={`/admin/users/${ticket.user_id}`}
+                      className="text-purple-700 hover:underline font-semibold"
+                    >
+                      {ticket.owner_email}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-slate-700">{ticket.owner_email}</span>
+                  )}
                 </>
               )}
               <span>· Создано: {formatDateTime(ticket.created_at)}</span>
@@ -202,9 +209,9 @@ export default function AdminTicketDetailPage() {
                 }
                 className="py-2 px-3 text-sm bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 cursor-pointer"
               >
-                <option value="open">Открыто (open)</option>
-                <option value="in_progress">В работе (in_progress)</option>
-                <option value="resolved">Решено (resolved)</option>
+                <option value="open">Открыто</option>
+                <option value="in_progress">В работе</option>
+                <option value="resolved">Решено</option>
               </select>
             </div>
 

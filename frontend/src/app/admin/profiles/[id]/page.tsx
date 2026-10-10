@@ -14,6 +14,8 @@ import {
   ProfileStatusBadge,
   JobStatusBadge,
   JobKindBadge,
+  formatStage,
+  formatErrorCode,
   formatDateTime,
   InstagramIcon,
 } from "@/features/admin/components/badges";
@@ -150,12 +152,12 @@ export default function AdminProfileDetailPage() {
             {profile.paused ? (
               <>
                 <PlayCircle className="w-4 h-4" />
-                Возобновить сбор (Resume)
+                Возобновить сбор
               </>
             ) : (
               <>
                 <PauseCircle className="w-4 h-4" />
-                Приостановить сбор (Pause)
+                Приостановить сбор
               </>
             )}
           </button>
@@ -181,7 +183,7 @@ export default function AdminProfileDetailPage() {
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase">Поколение (Generation)</span>
+          <span className="text-[11px] font-semibold text-slate-500 uppercase">Версия состояния</span>
           <div className="text-xl font-bold text-slate-900 pt-0.5">{profile.generation}</div>
           <p className="text-xs text-slate-500">Увеличивается при смене состояния для отмены воркеров</p>
         </div>
@@ -193,7 +195,7 @@ export default function AdminProfileDetailPage() {
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase">Защитная пауза (Cooldown)</span>
+          <span className="text-[11px] font-semibold text-slate-500 uppercase">Защитная пауза</span>
           <div className="text-sm font-bold text-slate-900 pt-1">
             {hasCooldown ? formatDateTime(profile.cooldown_until) : "Не активна"}
           </div>
@@ -239,8 +241,8 @@ export default function AdminProfileDetailPage() {
                     <td className="py-2.5 px-3">
                       <JobStatusBadge status={j.status} />
                     </td>
-                    <td className="py-2.5 px-3 font-mono">{j.stage}</td>
-                    <td className="py-2.5 px-3 text-rose-600 font-mono">{j.error_code || "—"}</td>
+                    <td className="py-2.5 px-3 font-medium text-slate-700">{formatStage(j.stage)}</td>
+                    <td className="py-2.5 px-3 text-rose-600 font-medium">{formatErrorCode(j.error_code)}</td>
                     <td className="py-2.5 px-3 text-slate-500">{formatDateTime(j.created_at)}</td>
                     <td className="py-2.5 px-3 text-right">
                       <Link

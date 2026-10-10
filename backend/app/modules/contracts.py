@@ -459,6 +459,7 @@ class AdminJobDetailDTO(BaseModel):
 
 class AdminTicketDTO(TicketDTO):
     request_id: str | None
+    user_id: str | None = None
     owner_email: str | None = None
     owner_status: str | None = None
 

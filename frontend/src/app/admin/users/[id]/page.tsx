@@ -14,7 +14,9 @@ import {
   UserStatusBadge,
   ProfileStatusBadge,
   TicketStatusBadge,
+  TicketCategoryBadge,
   JobStatusBadge,
+  formatAuditAction,
   formatBytes,
   formatDateTime,
   InstagramIcon,
@@ -144,12 +146,12 @@ export default function AdminUserDetailPage() {
             {isSuspended ? (
               <>
                 <UserCheck className="w-4 h-4" />
-                Вернуть доступ (Restore)
+                Вернуть доступ
               </>
             ) : (
               <>
                 <UserX className="w-4 h-4" />
-                Приостановить доступ (Suspend)
+                Приостановить доступ
               </>
             )}
           </button>
@@ -325,7 +327,7 @@ export default function AdminUserDetailPage() {
                       href={`/admin/support/${t.id}`}
                       className="text-xs font-semibold text-slate-800 hover:text-purple-700"
                     >
-                      Категория: {t.category}
+                      <TicketCategoryBadge category={t.category} />
                     </Link>
                     <TicketStatusBadge status={t.status} />
                   </div>
@@ -358,7 +360,7 @@ export default function AdminUserDetailPage() {
                   return (
                     <div key={a.id} className="py-2.5 flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-semibold text-slate-800">{a.action}</span>
+                        <span className="font-semibold text-slate-800">{formatAuditAction(a.action)}</span>
                         <p className="text-slate-400 mt-0.5">{formatDateTime(a.created_at)}</p>
                       </div>
                       <CopyableId id={a.id} length={4} />
@@ -381,7 +383,7 @@ export default function AdminUserDetailPage() {
             <p className="text-xs text-slate-600 leading-relaxed">
               {isSuspended
                 ? "Пользователь снова сможет входить в систему. Обратите внимание: связанные Instagram-профили останутся на паузе, чтобы избежать неконтролируемых запросов к Instagram."
-                : "Все активные сессии пользователя будут немедленно аннулированы. Все профили Instagram будут переведены на паузу с изменением поколения (generation), отменяя фоновые задачи."}
+                : "Все активные сессии пользователя будут немедленно аннулированы. Все профили Instagram будут переведены на паузу со сменой версии состояния, отменяя фоновые задачи."}
             </p>
 
             <ErrorNotice error={actionError} />

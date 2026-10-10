@@ -8,7 +8,7 @@ import { useAdminAuth } from "@/features/admin/auth-context";
 import type { AuditEventDTO } from "@/features/admin/types";
 import { AdminTable } from "@/features/admin/components/tables";
 import { AdminFilterBar } from "@/features/admin/components/filters";
-import { CopyableId, formatDateTime } from "@/features/admin/components/badges";
+import { CopyableId, formatAuditAction, formatDateTime } from "@/features/admin/components/badges";
 import { Modal } from "@/features/common";
 import { Eye, ShieldAlert } from "lucide-react";
 
@@ -65,21 +65,21 @@ export default function AdminAuditPage() {
       header: "Действие",
       accessor: (a: AuditEventDTO) => (
         <span className="font-semibold text-xs text-purple-900 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100">
-          {a.action}
+          {formatAuditAction(a.action)}
         </span>
       ),
     },
     {
-      header: "Инициатор (Actor)",
+      header: "Инициатор",
       accessor: (a: AuditEventDTO) =>
         a.actor_id ? <CopyableId id={a.actor_id} length={6} /> : <span className="text-xs text-slate-400">система</span>,
     },
     {
-      header: "Цель (Target)",
+      header: "Целевой объект",
       accessor: (a: AuditEventDTO) => <CopyableId id={a.target} length={6} />,
     },
     {
-      header: "Request ID",
+      header: "Номер запроса (Request ID)",
       accessor: (a: AuditEventDTO) =>
         a.request_id ? <CopyableId id={a.request_id} length={6} /> : <span className="text-xs text-slate-400">—</span>,
     },
@@ -97,7 +97,7 @@ export default function AdminAuditPage() {
       ),
     },
     {
-      header: "Время (UTC)",
+      header: "Время",
       accessor: (a: AuditEventDTO) => (
         <span className="text-xs text-slate-500">{formatDateTime(a.created_at)}</span>
       ),
@@ -128,15 +128,22 @@ export default function AdminAuditPage() {
             onChange: setAction,
             options: [
               { value: "", label: "Все действия" },
-              { value: "admin.mfa_confirmed", label: "admin.mfa_confirmed" },
-              { value: "admin.mfa_failed", label: "admin.mfa_failed" },
-              { value: "user.suspend", label: "user.suspend" },
-              { value: "user.restore", label: "user.restore" },
-              { value: "profile.pause", label: "profile.pause" },
-              { value: "profile.resume", label: "profile.resume" },
-              { value: "job.retry", label: "job.retry" },
-              { value: "support.reply", label: "support.reply" },
-              { value: "limits.update", label: "limits.update" },
+              { value: "admin.mfa_confirmed", label: "Подтверждение MFA" },
+              { value: "admin.mfa_failed", label: "Ошибка MFA" },
+              { value: "user.register", label: "Регистрация пользователя" },
+              { value: "user.login", label: "Авторизация в системе" },
+              { value: "user.suspend", label: "Блокировка пользователя" },
+              { value: "user.restore", label: "Разблокировка пользователя" },
+              { value: "user.local_password_reset", label: "Сброс пароля" },
+              { value: "privacy.delete_account", label: "Запрос удаления аккаунта" },
+              { value: "profile.pause", label: "Приостановка профиля" },
+              { value: "profile.resume", label: "Возобновление профиля" },
+              { value: "instagram.connect_requested", label: "Запрос подключения Instagram" },
+              { value: "job.cancel", label: "Отмена задания" },
+              { value: "job.retry", label: "Повтор задания" },
+              { value: "support.reply", label: "Ответ поддержки" },
+              { value: "limits.update", label: "Изменение лимитов" },
+              { value: "session.revoke_others", label: "Отзыв активных сессий" },
             ],
           },
         ]}

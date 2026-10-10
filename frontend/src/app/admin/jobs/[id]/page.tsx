@@ -11,6 +11,8 @@ import {
   CopyableId,
   JobStatusBadge,
   JobKindBadge,
+  formatStage,
+  formatErrorCode,
   formatDateTime,
 } from "@/features/admin/components/badges";
 import { ErrorNotice, Modal } from "@/features/common";
@@ -149,14 +151,14 @@ export default function AdminJobDetailPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold text-slate-500 uppercase">Этап исполнения</span>
-          <div className="font-mono text-sm font-bold text-slate-900 pt-0.5">{job.stage}</div>
+          <div className="text-sm font-bold text-slate-900 pt-0.5">{formatStage(job.stage)}</div>
           <p className="text-xs text-slate-500">Попыток: {job.attempts} из 3</p>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold text-slate-500 uppercase">Код ошибки</span>
-          <div className="font-mono text-sm font-bold text-rose-600 pt-0.5">
-            {job.error_code || "—"}
+          <div className="text-sm font-bold text-rose-600 pt-0.5">
+            {formatErrorCode(job.error_code)}
           </div>
           <p className="text-xs text-slate-500">
             {job.error_code ? "Зафиксирован сбой воркера" : "Ошибок не зафиксировано"}
@@ -187,7 +189,7 @@ export default function AdminJobDetailPage() {
           <div className="flex flex-wrap items-center gap-4 text-xs">
             {job.snapshot_id && (
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-500">Снимок (Snapshot):</span>
+                <span className="text-slate-500">Снимок:</span>
                 <CopyableId id={job.snapshot_id} />
               </div>
             )}
@@ -209,7 +211,7 @@ export default function AdminJobDetailPage() {
 
       {/* Details JSON */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-        <h2 className="text-sm font-bold text-slate-900">Технические детали (Details)</h2>
+        <h2 className="text-sm font-bold text-slate-900">Технические детали</h2>
         <p className="text-xs text-slate-500">
           Сведения об обработке, логах этапов и параметрах. Чувствительные токены исключены.
         </p>
@@ -223,7 +225,7 @@ export default function AdminJobDetailPage() {
         <Modal title="Повторить выполнение задания?" onClose={() => setRetryModalOpen(false)}>
           <div className="space-y-4 pt-2">
             <p className="text-xs text-slate-600 leading-relaxed">
-              Задание будет переведено в статус <code>queued</code> и отправлено в очередь воркеров через
+              Задание будет переведено в статус «В очереди» (queued) и отправлено в очередь воркеров через
               outbox-событие. Повтор разрешён только для технических сбоев (хранилище, таймаут) уже
               сохранённых данных.
             </p>

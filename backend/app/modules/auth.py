@@ -160,7 +160,19 @@ def register(body: Registration, request: Request, db: DB):
             "email_registered", "Аккаунт с таким email уже существует. Войди или укажи другой адрес.", 409
         )
     validate_timezone(body.timezone)
-    user = User(timezone=body.timezone, email=email, password_hash=blocking_call(hasher.hash, body.password))
+    user = User(
+        timezone=body.timezone,
+        email=email,
+        password_hash=blocking_call(hasher.hash, body.password),
+        email_notifications=True,
+        notification_settings={
+            "email_results": True,
+            "email_connection": True,
+            "email_support": True,
+            "in_app_results": True,
+            "in_app_connection": True,
+        },
+    )
     db.add(user)
     try:
         db.flush()
@@ -489,9 +501,9 @@ def revoke_others(request: Request, user: UserDep, db: DB):
 
 
 class NotificationPreferences(BaseModel):
-    email_results: bool = False
-    email_connection: bool = False
-    email_support: bool = False
+    email_results: bool = True
+    email_connection: bool = True
+    email_support: bool = True
     in_app_results: bool = True
     in_app_connection: bool = True
 
@@ -499,8 +511,9 @@ class NotificationPreferences(BaseModel):
 @router.get("/me/notification-settings", response_model=NotificationPreferences)
 def notification_settings(user: UserDep):
     settings = dict(user.notification_settings or {})
-    if "email_results" not in settings:
-        settings["email_results"] = user.email_notifications
+    for field in ("email_results", "email_connection", "email_support", "in_app_results", "in_app_connection"):
+        if field not in settings:
+            settings[field] = True
     return NotificationPreferences(**settings)
 
 

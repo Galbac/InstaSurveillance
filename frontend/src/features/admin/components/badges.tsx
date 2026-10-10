@@ -175,10 +175,77 @@ export function JobStatusBadge({ status }: { status: string }) {
           Выполняется
         </span>
       );
+    case "connecting":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
+          Подключение…
+        </span>
+      );
+    case "syncing":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 animate-pulse">
+          Сбор данных…
+        </span>
+      );
+    case "parsing":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200 animate-pulse">
+          Обработка…
+        </span>
+      );
+    case "uploading":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+          Загрузка…
+        </span>
+      );
     case "queued":
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
           В очереди
+        </span>
+      );
+    case "cooldown":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+          Защитная пауза
+        </span>
+      );
+    case "partial":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          Частичный
+        </span>
+      );
+    case "awaiting_2fa":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          Ожидает 2FA
+        </span>
+      );
+    case "stopped":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          Остановлено
+        </span>
+      );
+    case "cancelled":
+    case "canceled":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          Отменено
+        </span>
+      );
+    case "timeout":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+          Таймаут
+        </span>
+      );
+    case "expired":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          Истекло
         </span>
       );
     default:
@@ -193,11 +260,13 @@ export function JobStatusBadge({ status }: { status: string }) {
 export function JobKindBadge({ kind }: { kind: string }) {
   const map: Record<string, string> = {
     import: "Импорт архива",
-    comparison: "Сравнение",
-    export: "Экспорт",
+    comparison: "Сравнение снимков",
+    export: "Экспорт данных",
+    connect: "Подключение",
     connection: "Подключение",
     sync: "Сбор данных",
-    delete: "Удаление",
+    delete: "Удаление данных",
+    parsing: "Обработка архива",
   };
   return (
     <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
@@ -211,7 +280,7 @@ export function TicketStatusBadge({ status }: { status: string }) {
     case "open":
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-          Новое
+          Открыто
         </span>
       );
     case "in_progress":
@@ -226,6 +295,12 @@ export function TicketStatusBadge({ status }: { status: string }) {
           Решено
         </span>
       );
+    case "closed":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          Закрыто
+        </span>
+      );
     default:
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
@@ -233,6 +308,96 @@ export function TicketStatusBadge({ status }: { status: string }) {
         </span>
       );
   }
+}
+
+export const TICKET_CATEGORY_LABELS: Record<string, string> = {
+  connection: "Подключение",
+  import: "Импорт",
+  analytics: "Аналитика",
+  privacy: "Данные и приватность",
+  other: "Другое",
+};
+
+export function TicketCategoryBadge({ category }: { category: string }) {
+  const label = TICKET_CATEGORY_LABELS[category] || category;
+  return (
+    <span className="font-semibold text-xs text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md">
+      {label}
+    </span>
+  );
+}
+
+export const STAGE_LABELS: Record<string, string> = {
+  validating_session: "Проверка сессии",
+  prepare: "Подготовка",
+  fetching_followers: "Сбор подписчиков",
+  fetching_following: "Сбор подписок",
+  validating_snapshot: "Проверка снимка",
+  committing: "Сохранение снимка",
+  stopped: "Остановлено",
+  cancelled: "Отменено",
+  connected: "Подключено",
+  verification_required: "Ожидание кода 2FA",
+  comparing: "Сравнение снимков",
+  exporting: "Формирование архива",
+  unpacking: "Распаковка архива",
+  parsing: "Парсинг файлов",
+  completed: "Завершено",
+};
+
+export function formatStage(stage: string): string {
+  return STAGE_LABELS[stage] || stage;
+}
+
+export const ERROR_CODE_LABELS: Record<string, string> = {
+  reconnect_required: "Требуется переподключение",
+  identity_mismatch: "Несоответствие сессии и аккаунта",
+  cooldown: "Защитная пауза (cooldown)",
+  challenge_required: "Требуется подтверждение в Instagram",
+  request_budget_exhausted: "Исчерпан бюджет запросов",
+  inconsistent_snapshot: "Списки изменились во время сбора",
+  expired: "Время ожидания истекло",
+  cancelled: "Отменено оператором",
+  worker_lost: "Процесс воркера остановлен",
+  storage_quota: "Превышена квота диска",
+  storage_unavailable: "Хранилище недоступно",
+  temporary_unavailable: "Временно недоступно",
+  timeout: "Превышено время ожидания",
+  rate_limit: "Превышен лимит запросов",
+  invalid_credentials: "Неверные учетные данные",
+  account_in_use: "Аккаунт уже подключен",
+  provider_unavailable: "Instagram временно недоступен",
+};
+
+export function formatErrorCode(code?: string | null): string {
+  if (!code) return "—";
+  return ERROR_CODE_LABELS[code] || code;
+}
+
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "admin.mfa_confirmed": "Подтверждение MFA",
+  "admin.mfa_failed": "Ошибка MFA",
+  "user.suspend": "Блокировка пользователя",
+  "user.restore": "Разблокировка пользователя",
+  "user.role_change": "Изменение роли",
+  "user.register": "Регистрация пользователя",
+  "user.login": "Авторизация в системе",
+  "user.delete": "Удаление пользователя",
+  "user.local_password_reset": "Сброс пароля",
+  "privacy.delete_account": "Запрос удаления аккаунта",
+  "profile.pause": "Приостановка сбора профиля",
+  "profile.resume": "Возобновление сбора профиля",
+  "instagram.connect_requested": "Запрос подключения Instagram",
+  "job.cancel": "Отмена задания",
+  "job.retry": "Повторный запуск задания",
+  "limits.update": "Изменение глобальных лимитов",
+  "support.reply": "Ответ на обращение",
+  "ticket.reply": "Ответ на обращение",
+  "session.revoke_others": "Отзыв активных сессий",
+};
+
+export function formatAuditAction(action: string): string {
+  return AUDIT_ACTION_LABELS[action] || action;
 }
 
 export function CompletenessBadge({ completeness }: { completeness: string }) {

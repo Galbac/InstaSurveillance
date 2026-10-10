@@ -126,7 +126,7 @@ export default function AdminOverviewPage() {
         />
 
         <KPICard
-          title="Ожидание лимитов (cooldown)"
+          title="Ожидание лимитов"
           value={overview.profiles_cooldown}
           subtitle="Защитная пауза запросов Instagram"
           icon={<Clock className="w-4 h-4" />}

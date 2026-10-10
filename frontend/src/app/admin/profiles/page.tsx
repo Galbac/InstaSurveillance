@@ -12,6 +12,7 @@ import { AdminFilterBar } from "@/features/admin/components/filters";
 import {
   ProfileStatusBadge,
   JobStatusBadge,
+  JobKindBadge,
   formatDateTime,
   InstagramIcon,
 } from "@/features/admin/components/badges";
@@ -121,7 +122,7 @@ export default function AdminProfilesPage() {
             className="inline-flex items-center gap-1.5 hover:opacity-80"
           >
             <JobStatusBadge status={p.last_job.status} />
-            <span className="text-xs text-slate-500">{p.last_job.kind}</span>
+            <JobKindBadge kind={p.last_job.kind} />
           </Link>
         ) : (
           <span className="text-xs text-slate-400">—</span>
@@ -186,9 +187,9 @@ export default function AdminProfilesPage() {
             value: hasCooldown,
             onChange: setHasCooldown,
             options: [
-              { value: "", label: "Cooldown: все" },
-              { value: "true", label: "В режиме cooldown" },
-              { value: "false", label: "Без cooldown" },
+              { value: "", label: "Защитная пауза: все" },
+              { value: "true", label: "С защитной паузой" },
+              { value: "false", label: "Без защитной паузы" },
             ],
           },
         ]}

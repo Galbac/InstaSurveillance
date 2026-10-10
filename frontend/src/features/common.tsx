@@ -173,6 +173,8 @@ export const errorCodes: Record<string, string> = {
   unsupported_format: "Структура файла пока не поддерживается.",
   invalid_credentials: "Не удалось войти. Проверьте учётные данные.",
   account_in_use: "Этот аккаунт уже подключён. Обратитесь в поддержку.",
+  identity_mismatch:
+    "Сессия принадлежит другому аккаунту Instagram. Укажите username аккаунта, от которого взят sessionid.",
   provider_disabled:
     "Автоматическое подключение отключено оператором. История и архив доступны.",
   provider_unavailable:

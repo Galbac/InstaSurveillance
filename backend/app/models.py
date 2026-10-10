@@ -41,7 +41,7 @@ class User(Identified, Base):
     password_hash: Mapped[str] = mapped_column(Text)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     theme: Mapped[str] = mapped_column(String(10), default="light")
-    email_notifications: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(20), default="active", server_default="active")
     role: Mapped[str] = mapped_column(String(20), server_default="user")
     timezone: Mapped[str] = mapped_column(String(80), default="UTC", server_default="UTC")

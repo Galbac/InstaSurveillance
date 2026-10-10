@@ -13,6 +13,8 @@ import {
   CopyableId,
   JobStatusBadge,
   JobKindBadge,
+  formatStage,
+  formatErrorCode,
   formatDateTime,
 } from "@/features/admin/components/badges";
 import { ArrowRight } from "lucide-react";
@@ -66,15 +68,15 @@ export default function AdminJobsPage() {
       accessor: (j: AdminJob) => <JobStatusBadge status={j.status} />,
     },
     {
-      header: "Этап (Stage)",
-      accessor: (j: AdminJob) => <span className="font-mono text-xs text-slate-700">{j.stage}</span>,
+      header: "Этап",
+      accessor: (j: AdminJob) => <span className="text-xs font-medium text-slate-700">{formatStage(j.stage)}</span>,
     },
     {
       header: "Код ошибки",
       accessor: (j: AdminJob) =>
         j.error_code ? (
-          <span className="font-mono text-xs text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
-            {j.error_code}
+          <span className="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+            {formatErrorCode(j.error_code)}
           </span>
         ) : (
           <span className="text-xs text-slate-400">—</span>
@@ -126,10 +128,10 @@ export default function AdminJobsPage() {
             onChange: setStatus,
             options: [
               { value: "", label: "Все статусы" },
-              { value: "queued", label: "В очереди (Queued)" },
-              { value: "running", label: "Выполняется (Running)" },
-              { value: "completed", label: "Завершено (Completed)" },
-              { value: "failed", label: "Сбой (Failed)" },
+              { value: "queued", label: "В очереди" },
+              { value: "running", label: "Выполняется" },
+              { value: "completed", label: "Завершено" },
+              { value: "failed", label: "Сбой" },
             ],
           },
           {
@@ -151,11 +153,13 @@ export default function AdminJobsPage() {
             onChange: setErrorCode,
             options: [
               { value: "", label: "Все ошибки" },
-              { value: "storage_unavailable", label: "storage_unavailable" },
-              { value: "temporary_unavailable", label: "temporary_unavailable" },
-              { value: "timeout", label: "timeout" },
-              { value: "cooldown", label: "cooldown" },
-              { value: "challenge_required", label: "challenge_required" },
+              { value: "storage_unavailable", label: "Хранилище недоступно" },
+              { value: "temporary_unavailable", label: "Временно недоступно" },
+              { value: "timeout", label: "Таймаут" },
+              { value: "cooldown", label: "Защитная пауза" },
+              { value: "challenge_required", label: "Требуется проверка 2FA" },
+              { value: "reconnect_required", label: "Требуется переподключение" },
+              { value: "identity_mismatch", label: "Несоответствие аккаунта" },
             ],
           },
         ]}

@@ -558,7 +558,12 @@ def profile_detail(profile_id: str, user: Operator, db: DB):
     if not profile:
         raise AppError("not_found", "Профиль не найден", 404)
     owner = db.get(User, profile.user_id)
-    secret = db.get(SessionSecret, profile.id)
+    has_connection = (
+        db.scalar(
+            select(SessionSecret.profile_id).where(SessionSecret.profile_id == profile.id)
+        )
+        is not None
+    )
     snapshot = db.scalar(
         select(Snapshot)
         .where(Snapshot.profile_id == profile.id)
@@ -618,8 +623,8 @@ def profile_detail(profile_id: str, user: Operator, db: DB):
         "last_sync": profile.last_sync,
         "next_sync": profile.next_sync,
         "cooldown_until": profile.cooldown_until,
-        "has_connection": secret is not None,
-        "key_version": secret.key_version if secret else None,
+        "has_connection": has_connection,
+        "key_version": None,
         "created_at": profile.created_at,
         "latest_snapshot": latest_snapshot,
         "recent_jobs": recent_jobs,
@@ -834,6 +839,7 @@ def tickets(
     items = [
         {
             "id": x.id,
+            "user_id": x.user_id,
             "category": x.category,
             "body": x.body,
             "request_id": x.request_id,
@@ -862,6 +868,7 @@ def ticket_detail(ticket_id: str, user: Operator, db: DB):
     owner = db.get(User, ticket.user_id)
     return {
         "id": ticket.id,
+        "user_id": ticket.user_id,
         "category": ticket.category,
         "body": ticket.body,
         "request_id": ticket.request_id,
