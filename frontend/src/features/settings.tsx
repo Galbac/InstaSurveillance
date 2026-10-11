@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Globe,
   Lock,
@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { api, post, ApiError, User, Profile } from "@/lib/api";
 import type { components } from "@/lib/generated-api";
-import { useUrlValue, useVisible } from "@/lib/workflows";
+import { PublicConfig, useUrlValue, useVisible } from "@/lib/workflows";
 import { ErrorNotice, ExportButton, Modal } from "./common";
 
 
@@ -81,6 +81,38 @@ export default function SettingsPanel({
     String(profile?.interval_hours || 24),
   );
   const [isPaused, setIsPaused] = useState(profile?.paused || false);
+  useEffect(() => {
+    setIsPaused(profile?.paused || false);
+    if (profile) {
+      setProfileLabel(profile.label || "Демо");
+      setProfileInterval(String(profile.interval_hours));
+    }
+  }, [profile?.id, profile?.paused, profile?.label, profile?.interval_hours]);
+  const publicConfig = useQuery({
+    queryKey: ["config"],
+    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
+    enabled: !!profile && !demo,
+  });
+  const minSyncInterval = publicConfig.data?.sync_interval_hours ?? 24;
+  const intervalOptions = [...new Set([12, 24, 48, 72, Number(profileInterval)])]
+    .filter((hours) => Number.isFinite(hours) && hours >= minSyncInterval)
+    .sort((a, b) => a - b);
+  const profileStatus = ({
+        active: { label: "Активно", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+        syncing: { label: "Идёт сбор", color: "bg-blue-50 text-blue-700 border-blue-200" },
+        cooldown: { label: "Ожидание после ограничения", color: "bg-amber-50 text-amber-700 border-amber-200" },
+        reconnect_required: { label: "Требуется переподключение", color: "bg-rose-50 text-rose-700 border-rose-200" },
+        disconnected: { label: "Отключено", color: "bg-slate-100 text-slate-600 border-slate-200" },
+        deleting: { label: "Удаляется", color: "bg-slate-100 text-slate-600 border-slate-200" },
+      } as Record<string, { label: string; color: string }>)[profile?.status || ""] || {
+        label: "Статус неизвестен",
+        color: "bg-slate-100 text-slate-600 border-slate-200",
+      };
+  const displayedProfileStatus =
+    profile?.status === "active" && profile.paused
+      ? { label: "На паузе", color: "bg-amber-50 text-amber-700 border-amber-200" }
+      : profileStatus;
+  const canTogglePause = ["active", "syncing"].includes(profile?.status || "");
 
   // Deletion modal state
   const [deleting, setDeleting] = useState<
@@ -228,8 +260,9 @@ export default function SettingsPanel({
         method: "PATCH",
         body: JSON.stringify({ paused: nextPaused }),
       });
-      qc.invalidateQueries({ queryKey: ["profiles"] });
+      await qc.invalidateQueries({ queryKey: ["profiles"] });
     } catch (err) {
+      setIsPaused(!isPaused);
       setError(err);
     }
   };
@@ -241,10 +274,15 @@ export default function SettingsPanel({
       await api(`/profiles/${profile.id}/connection`, {
         method: "DELETE",
       });
-      qc.invalidateQueries();
-      onNotice(
-        "Подключение отключено. Завершите ненужные сеансы также в официальном Instagram.",
+      qc.setQueryData<Profile[]>(["profiles"], (current) =>
+        current?.map((item) =>
+          item.id === profile.id
+            ? { ...item, status: "disconnected", paused: true, next_sync: null, cooldown_until: null }
+            : item,
+        ),
       );
+      await qc.invalidateQueries({ queryKey: ["profiles"] });
+      onNotice("Подключение отключено. История профиля сохранена.");
     } catch (err) {
       setError(err);
     }
@@ -441,9 +479,9 @@ export default function SettingsPanel({
               </p>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            {isPaused ? "На паузе" : "Активно"}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${displayedProfileStatus.color}`} role="status">
+            <span className="w-2 h-2 rounded-full bg-current inline-block" />
+            {displayedProfileStatus.label}
           </span>
         </header>
 
@@ -479,33 +517,34 @@ export default function SettingsPanel({
                   value={profileInterval}
                   onChange={(e) => setProfileInterval(e.target.value)}
                 >
-                  <option value="12">12</option>
-                  <option value="24">24</option>
-                  <option value="48">48</option>
-                  <option value="72">72</option>
+                  {intervalOptions.map((hours) => (
+                    <option key={hours} value={hours}>{hours}</option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
 
           <div className="settings-v2-actions-row">
-            <button
-              type="button"
-              className="settings-v2-btn-purple"
-              onClick={handleTogglePause}
-            >
-              {isPaused ? (
-                <>
-                  <Play size={15} />
-                  <span>Возобновить сбор</span>
-                </>
-              ) : (
-                <>
-                  <Pause size={15} />
-                  <span>Поставить на паузу</span>
-                </>
-              )}
-            </button>
+            {canTogglePause && (
+              <button
+                type="button"
+                className="settings-v2-btn-purple"
+                onClick={handleTogglePause}
+              >
+                {profile?.paused || isPaused ? (
+                  <>
+                    <Play size={15} />
+                    <span>Возобновить сбор</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause size={15} />
+                    <span>Поставить на паузу</span>
+                  </>
+                )}
+              </button>
+            )}
             <button
               type="button"
               className="settings-v2-btn-secondary"
@@ -514,14 +553,16 @@ export default function SettingsPanel({
               <RefreshCw size={15} />
               <span>Переподключить</span>
             </button>
-            <button
-              type="button"
-              className="settings-v2-btn-outline"
-              onClick={handleDisconnect}
-            >
-              <Unlink size={15} />
-              <span>Отключить</span>
-            </button>
+            {profile?.status !== "disconnected" && (
+              <button
+                type="button"
+                className="settings-v2-btn-outline"
+                onClick={handleDisconnect}
+              >
+                <Unlink size={15} />
+                <span>Отключить</span>
+              </button>
+            )}
           </div>
 
           <p className="settings-v2-hint">
