@@ -147,11 +147,16 @@ def parse_archive(
                 if not isinstance(record, dict) or len(record.get("string_list_data", [])) > 10:
                     raise ValueError("Invalid record")
                 for item in record["string_list_data"]:
-                    if not isinstance(item["value"], str) or len(item["value"]) > 128:
+                    # Meta's current following.json stores the username in the
+                    # record's title and leaves string_list_data with href/time only.
+                    value = item.get("value")
+                    if value is None and relation == "following":
+                        value = record.get("title")
+                    if not isinstance(value, str) or len(value) > 128:
                         raise ValueError("Invalid username")
-                    username = normalize_username(item["value"])
+                    username = normalize_username(value)
                     (following if relation == "following" else followers)[username] = (
-                        item["value"].strip().removeprefix("@")
+                        value.strip().removeprefix("@")
                     )
                     if isinstance(item.get("timestamp"), (int, float)) and not isinstance(
                         item["timestamp"], bool

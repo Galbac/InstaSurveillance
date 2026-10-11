@@ -64,6 +64,32 @@ def test_multifile_export_and_normalization():
     assert set(result.following) == {"anna"}
 
 
+def test_current_meta_following_export_uses_title_for_username():
+    result = parse(
+        archive(
+            {
+                "followers_1.json": [record("anna")],
+                "following.json": {
+                    "relationships_following": [
+                        {
+                            "title": "Boris.Example",
+                            "string_list_data": [
+                                {
+                                    "href": "https://www.instagram.com/boris.example/",
+                                    "timestamp": 1700000000,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            }
+        )
+    )
+    assert set(result.followers) == {"anna"}
+    assert set(result.following) == {"boris.example"}
+    assert "following:boris.example" in result.timestamps
+
+
 @pytest.mark.parametrize(
     "files,code",
     [
