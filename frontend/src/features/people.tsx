@@ -35,7 +35,7 @@ function PeopleSkeleton({ count = 6 }: { count?: number }) {
     <div className="people-skeleton-list" aria-busy="true" aria-label="Загрузка списка">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="person-row-skeleton">
-          <div className="skeleton-shimmer" style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0 }} />
+          <div className="skeleton-shimmer" style={{ width: 18, height: 14, borderRadius: 4, flexShrink: 0 }} />
           <div className="skeleton-shimmer" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0 }} />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 7 }}>
             <div className="skeleton-shimmer" style={{ width: `${30 + (i % 3) * 12}%`, height: 14 }} />
@@ -90,7 +90,6 @@ export default function PeoplePanel({
   const [input, setInput] = useState(params.get("search") || ""),
     [note, setNote] = useState<Person | null>(null),
     [error, setError] = useState<unknown>(null),
-    [selected, setSelected] = useState<string[]>([]),
     [filterSheet, setFilterSheet] = useState(false),
     [menuPerson, setMenuPerson] = useState<Person | null>(null),
     [menuCoords, setMenuCoords] = useState<{
@@ -103,6 +102,7 @@ export default function PeoplePanel({
 
   const menuRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const isTypingRef = useRef<boolean>(false);
 
   useEffect(() => {
     const el = activeTabRef.current;
@@ -175,7 +175,6 @@ export default function PeoplePanel({
     const next = new URLSearchParams(params.toString());
     next.set("category", key);
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-    setSelected([]);
   }
 
   function update(values: Record<string, string>) {
@@ -185,17 +184,23 @@ export default function PeoplePanel({
       else next.delete(key);
     }
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-    setSelected([]);
   }
+
   useEffect(() => {
-    setInput(params.get("search") || "");
+    if (!isTypingRef.current) {
+      setInput(params.get("search") || "");
+    }
   }, [params]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (input !== (params.get("search") || "")) update({ search: input });
+      if (input !== (params.get("search") || "")) {
+        update({ search: input });
+      }
+      isTypingRef.current = false;
     }, 300);
     return () => clearTimeout(timer);
-  }, [input, params]);
+  }, [input]);
   const queryParams = new URLSearchParams({
     category: category as components["schemas"]["ExportInput"]["category"],
     search: params.get("search") || "",
@@ -613,16 +618,32 @@ export default function PeoplePanel({
   const filters = (
     <div className="people-toolbar-row">
       <div className="people-toolbar-left">
-        <label className="people-search-box">
+        <div className="people-search-box">
           <Search size={16} className="search-icon" />
           <input
             aria-label="Поиск username"
             placeholder="Найти username..."
             maxLength={100}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              isTypingRef.current = true;
+              setInput(e.target.value);
+            }}
           />
-        </label>
+          {input && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              aria-label="Очистить поиск"
+              onClick={() => {
+                setInput("");
+                update({ search: "" });
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
         <label className="filter-chip-checkbox">
           <input
             type="checkbox"
@@ -692,14 +713,46 @@ export default function PeoplePanel({
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className="mobile-filters-trigger"
-        onClick={() => setFilterSheet(true)}
-      >
-        <SlidersHorizontal size={15} />
-        <span>Фильтры и сортировка</span>
-      </button>
+      {/* Mobile Controls: Inline Search + Filter Button */}
+      <div className="mobile-people-controls">
+        <div className="people-search-box mobile-inline-search">
+          <Search size={16} className="search-icon" />
+          <input
+            aria-label="Поиск username"
+            placeholder="Найти username..."
+            maxLength={100}
+            value={input}
+            onChange={(e) => {
+              isTypingRef.current = true;
+              setInput(e.target.value);
+            }}
+          />
+          {input && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              aria-label="Очистить поиск"
+              onClick={() => {
+                setInput("");
+                update({ search: "" });
+              }}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`mobile-filters-btn ${favorite || hasNote || sort !== "username" ? "has-active" : ""}`}
+          onClick={() => setFilterSheet(true)}
+          aria-label="Фильтры и сортировка"
+        >
+          <SlidersHorizontal size={17} />
+          {(favorite || hasNote || sort !== "username") && (
+            <span className="filters-active-dot" />
+          )}
+        </button>
+      </div>
       <div className="desktop-filters">{filters}</div>
       {filterSheet && (
         <Modal
@@ -709,15 +762,31 @@ export default function PeoplePanel({
           <div className="mobile-filter-modal-content">
             <div className="mobile-filter-group">
               <span className="mobile-filter-heading">Поиск по никнейму</span>
-              <div className="people-search-box" style={{ width: "100%", maxWidth: "none" }}>
+              <div className="people-search-box modal-search-box">
                 <Search size={16} className="search-icon" />
                 <input
                   aria-label="Поиск username"
                   placeholder="Найти username..."
                   maxLength={100}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    isTypingRef.current = true;
+                    setInput(e.target.value);
+                  }}
                 />
+                {input && (
+                  <button
+                    type="button"
+                    className="search-clear-btn"
+                    aria-label="Очистить поиск"
+                    onClick={() => {
+                      setInput("");
+                      update({ search: "" });
+                    }}
+                  >
+                    <X size={15} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -797,54 +866,12 @@ export default function PeoplePanel({
         </p>
       )}
       <ErrorNotice error={error || q.error} />
-      {selected.length > 0 && (
-        <div className="notice">
-          <span>Выбрано: {selected.length}</span>
-          <button
-            className="button secondary small"
-            onClick={async () => {
-              try {
-                await post(`/profiles/${profile!.id}/annotations/bulk`, {
-                  identity_keys: selected,
-                  favorite: true,
-                });
-                setSelected([]);
-                qc.invalidateQueries({ queryKey: ["people"] });
-              } catch (error) {
-                setError(error);
-              }
-            }}
-          >
-            В избранное
-          </button>
-          <button
-            className="button secondary small"
-            onClick={() => setSelected([])}
-          >
-            Снять выбор
-          </button>
-        </div>
-      )}
       <div className={`people-list-wrapper ${q.isFetching && q.isPlaceholderData ? "people-list-loading" : ""}`}>
         {q.isPending && !demo && !rows.length ? (
           <PeopleSkeleton />
         ) : rows.length ? (
           rows.map((person, index) => (
             <article className="person-row-card" key={person.identity_key}>
-              {!demo && (
-                <input
-                  type="checkbox"
-                  aria-label={`Выбрать ${person.username}`}
-                  checked={selected.includes(person.identity_key)}
-                  onChange={(e) =>
-                    setSelected(
-                      e.target.checked
-                        ? [...selected, person.identity_key].slice(0, 100)
-                        : selected.filter((x) => x !== person.identity_key),
-                    )
-                  }
-                />
-              )}
               <span className="person-order-num">{index + 1}</span>
               <div className="person-avatar-box">
                 {person.avatar_url ? (

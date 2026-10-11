@@ -3614,36 +3614,86 @@ textarea[aria-invalid="true"]:focus {
   gap: 16px;
 }
 
+.mobile-people-controls {
+  display: none;
+}
+
 .people-search-box {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: #f6f7fb;
-  border: 1px solid #eef0f8;
-  border-radius: 13px;
-  padding: 0 14px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 0 12px 0 14px !important;
   width: 270px;
-  height: 40px;
-  transition: all 0.18s ease;
+  height: 42px !important;
+  transition: all 0.18s ease !important;
+  box-sizing: border-box !important;
+  position: relative !important;
 }
 
 .people-search-box:focus-within {
-  background: #ffffff;
-  border-color: #c4b5fd;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08);
+  background: #ffffff !important;
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1) !important;
 }
 
-.people-search-box input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 13px;
-  color: #0f172a;
-  width: 100%;
+.people-search-box .search-icon {
+  color: #94a3b8 !important;
+  flex-shrink: 0 !important;
+  transition: color 0.18s ease !important;
 }
 
-.people-search-box input::placeholder {
-  color: #94a3b8;
+.people-search-box:focus-within .search-icon {
+  color: #7c3aed !important;
+}
+
+.people-search-box input,
+.panel .people-search-box input,
+.modal-panel .people-search-box input,
+.filter-sheet .people-search-box input,
+.mobile-filter-modal-content .people-search-box input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  font-size: 13.5px !important;
+  line-height: normal !important;
+  color: #0f172a !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.people-search-box input::placeholder,
+.panel .people-search-box input::placeholder,
+.modal-panel .people-search-box input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.search-clear-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px !important;
+  margin: 0 !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.search-clear-btn:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
 }
 
 .filter-chip-checkbox {
@@ -4280,29 +4330,64 @@ textarea[aria-invalid="true"]:focus {
     display: none;
   }
 
-  .mobile-filters-trigger {
+  .mobile-people-controls {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
     width: 100%;
-    min-height: 42px;
-    padding: 10px 14px;
-    background: #f8f9fd;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #334155;
     margin-bottom: 14px;
-    cursor: pointer;
-    transition: all 0.15s ease;
   }
 
-  .mobile-filters-trigger:hover,
-  .mobile-filters-trigger:active {
+  .mobile-inline-search {
+    flex: 1;
+    width: auto !important;
+    max-width: none !important;
+    height: 42px !important;
+  }
+
+  .modal-search-box {
+    width: 100% !important;
+    max-width: none !important;
+    height: 44px !important;
+  }
+
+  .mobile-filters-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .mobile-filters-btn:hover,
+  .mobile-filters-btn:active {
     background: #f1f5f9;
     border-color: #cbd5e1;
+  }
+
+  .mobile-filters-btn.has-active {
+    background: #ede9fe;
+    border-color: #a78bfa;
+    color: #6d28d9;
+  }
+
+  .filters-active-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7c3aed;
+    border: 1.5px solid #ffffff;
   }
 
   .people-panel-card {
