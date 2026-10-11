@@ -761,36 +761,6 @@ export default function PeoplePanel({
         >
           <div className="mobile-filter-modal-content">
             <div className="mobile-filter-group">
-              <span className="mobile-filter-heading">Поиск по никнейму</span>
-              <div className="people-search-box modal-search-box">
-                <Search size={16} className="search-icon" />
-                <input
-                  aria-label="Поиск username"
-                  placeholder="Найти username..."
-                  maxLength={100}
-                  value={input}
-                  onChange={(e) => {
-                    isTypingRef.current = true;
-                    setInput(e.target.value);
-                  }}
-                />
-                {input && (
-                  <button
-                    type="button"
-                    className="search-clear-btn"
-                    aria-label="Очистить поиск"
-                    onClick={() => {
-                      setInput("");
-                      update({ search: "" });
-                    }}
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mobile-filter-group">
               <span className="mobile-filter-heading">Быстрые фильтры</span>
               <div className="mobile-filter-chips-row">
                 <button
@@ -823,13 +793,12 @@ export default function PeoplePanel({
             </div>
 
             <div className="mobile-filter-footer-actions">
-              {(input || favorite || hasNote || sort !== "username") && (
+              {(favorite || hasNote || sort !== "username") && (
                 <button
                   type="button"
                   className="button secondary"
                   onClick={() => {
-                    setInput("");
-                    update({ search: "", favorite: "", has_note: "", sort: "username" });
+                    update({ favorite: "", has_note: "", sort: "username" });
                   }}
                 >
                   Сбросить
