@@ -69,12 +69,12 @@ export default function PeoplePanel({
     return categories.some(([key]) => key === fromUrl) ? fromUrl! : "followers";
   });
 
+  const urlCategory = params.get("category");
   useEffect(() => {
-    const fromUrl = params.get("category");
-    if (fromUrl && categories.some(([key]) => key === fromUrl) && fromUrl !== category) {
-      setCategory(fromUrl);
+    if (urlCategory && categories.some(([key]) => key === urlCategory)) {
+      setCategory(urlCategory);
     }
-  }, [params, category]);
+  }, [urlCategory]);
 
   const favorite = params.get("favorite") === "true",
     hasNote = params.get("has_note") === "true",
@@ -86,10 +86,15 @@ export default function PeoplePanel({
     [selected, setSelected] = useState<string[]>([]),
     [filterSheet, setFilterSheet] = useState(false),
     [menuPerson, setMenuPerson] = useState<Person | null>(null),
+    [menuCoords, setMenuCoords] = useState<{
+      top?: number;
+      bottom?: number;
+      right: number;
+    } | null>(null),
+    [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom"),
     [copiedUser, setCopiedUser] = useState<string | null>(null);
 
-  const [menuRef] = [useRef<HTMLDivElement>(null)];
-  const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
+  const menuRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -110,19 +115,27 @@ export default function PeoplePanel({
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuPerson(null);
+        setMenuCoords(null);
       }
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setMenuPerson(null);
+        setMenuCoords(null);
       }
+    }
+    function handleScroll() {
+      setMenuPerson(null);
+      setMenuCoords(null);
     }
     if (menuPerson) {
       document.addEventListener("mousedown", handleClickOutside);
       window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("scroll", handleScroll, true);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
         window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("scroll", handleScroll, true);
       };
     }
   }, [menuPerson]);
@@ -133,16 +146,28 @@ export default function PeoplePanel({
       setCopiedUser(username);
       setTimeout(() => setCopiedUser(null), 2000);
       setMenuPerson(null);
+      setMenuCoords(null);
     } catch {}
+  }
+
+  function handleOpenInstagram(username: string) {
+    window.open(
+      `https://www.instagram.com/${encodeURIComponent(username)}/`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    setMenuPerson(null);
+    setMenuCoords(null);
   }
 
   function handleCategoryChange(key: string) {
     if (key === category) return;
     setCategory(key);
     setMenuPerson(null);
+    setMenuCoords(null);
     const next = new URLSearchParams(params.toString());
     next.set("category", key);
-    window.history.replaceState(null, "", pathname + "?" + next.toString());
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     setSelected([]);
   }
 
@@ -152,7 +177,7 @@ export default function PeoplePanel({
       if (value) next.set(key, value);
       else next.delete(key);
     }
-    window.history.replaceState(null, "", pathname + "?" + next.toString());
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     setSelected([]);
   }
   useEffect(() => {
@@ -262,15 +287,29 @@ export default function PeoplePanel({
     }
   }
 
-  const toggleMenu = (person: Person, e: React.MouseEvent<HTMLButtonElement>) => {
-    if (menuPerson?.identity_key === person.identity_key) {
-      setMenuPerson(null);
+  const toggleMenu = (person: Person, e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setMenuPerson(person);
+      setMenuCoords(null);
       return;
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const openUp = window.innerHeight - rect.bottom < 280;
-    setMenuPlacement(openUp ? "top" : "bottom");
-    setMenuPerson(person);
+    if (menuPerson?.identity_key === person.identity_key) {
+      setMenuPerson(null);
+      setMenuCoords(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuHeight = 280;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < menuHeight && rect.top > menuHeight;
+      setMenuPlacement(openUp ? "top" : "bottom");
+      setMenuCoords({
+        top: openUp ? undefined : rect.bottom + 6,
+        bottom: openUp ? window.innerHeight - rect.top + 6 : undefined,
+        right: Math.max(16, window.innerWidth - rect.right),
+      });
+      setMenuPerson(person);
+    }
   };
 
   function renderPersonActionItems(person: Person, isMobileSheet = false) {
@@ -286,7 +325,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} primary`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserPlus size={isMobileSheet ? 18 : 16} />
               <span>Подписаться в ответ</span>
@@ -296,7 +338,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} danger`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserX size={isMobileSheet ? 18 : 16} />
               <span>Удалить из подписчиков</span>
@@ -310,7 +355,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} danger`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserMinus size={isMobileSheet ? 18 : 16} />
               <span>Отписаться в Instagram</span>
@@ -320,7 +368,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <ExternalLink size={isMobileSheet ? 18 : 16} />
               <span>Открыть профиль</span>
@@ -334,7 +385,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <ExternalLink size={isMobileSheet ? 18 : 16} />
               <span>Открыть в Instagram</span>
@@ -344,7 +398,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} danger`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserMinus size={isMobileSheet ? 18 : 16} />
               <span>Отписаться в Instagram</span>
@@ -354,7 +411,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} danger`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserX size={isMobileSheet ? 18 : 16} />
               <span>Удалить из подписчиков</span>
@@ -370,7 +430,10 @@ export default function PeoplePanel({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`${itemClass} danger`}
-                  onClick={() => setMenuPerson(null)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleOpenInstagram(person.username);
+                  }}
                 >
                   <UserMinus size={isMobileSheet ? 18 : 16} />
                   <span>Отписаться в Instagram</span>
@@ -380,7 +443,10 @@ export default function PeoplePanel({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`${itemClass} danger`}
-                  onClick={() => setMenuPerson(null)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleOpenInstagram(person.username);
+                  }}
                 >
                   <UserX size={isMobileSheet ? 18 : 16} />
                   <span>Удалить из подписчиков</span>
@@ -393,7 +459,10 @@ export default function PeoplePanel({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`${itemClass} primary`}
-                  onClick={() => setMenuPerson(null)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleOpenInstagram(person.username);
+                  }}
                 >
                   <UserPlus size={isMobileSheet ? 18 : 16} />
                   <span>Подписаться в ответ</span>
@@ -403,7 +472,10 @@ export default function PeoplePanel({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`${itemClass} danger`}
-                  onClick={() => setMenuPerson(null)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleOpenInstagram(person.username);
+                  }}
                 >
                   <UserX size={isMobileSheet ? 18 : 16} />
                   <span>Удалить из подписчиков</span>
@@ -415,7 +487,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <ExternalLink size={isMobileSheet ? 18 : 16} />
               <span>Открыть профиль</span>
@@ -429,7 +504,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={`${itemClass} danger`}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <UserMinus size={isMobileSheet ? 18 : 16} />
               <span>Отписаться в Instagram</span>
@@ -440,7 +518,10 @@ export default function PeoplePanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${itemClass} danger`}
-                onClick={() => setMenuPerson(null)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleOpenInstagram(person.username);
+                }}
               >
                 <UserX size={isMobileSheet ? 18 : 16} />
                 <span>Удалить из подписчиков</span>
@@ -451,7 +532,10 @@ export default function PeoplePanel({
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              onClick={() => setMenuPerson(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleOpenInstagram(person.username);
+              }}
             >
               <ExternalLink size={isMobileSheet ? 18 : 16} />
               <span>Открыть профиль</span>
@@ -482,6 +566,7 @@ export default function PeoplePanel({
           onClick={() => {
             setNote(person);
             setMenuPerson(null);
+            setMenuCoords(null);
           }}
         >
           <FileText size={isMobileSheet ? 18 : 16} />
@@ -493,6 +578,7 @@ export default function PeoplePanel({
           onClick={() => {
             star(person);
             setMenuPerson(null);
+            setMenuCoords(null);
           }}
         >
           <Star
@@ -747,7 +833,6 @@ export default function PeoplePanel({
                   className={`person-more-box ${
                     menuPerson?.identity_key === person.identity_key ? "is-active" : ""
                   }`}
-                  ref={menuPerson?.identity_key === person.identity_key ? menuRef : undefined}
                 >
                   <button
                     className="icon-action-btn"
@@ -763,11 +848,6 @@ export default function PeoplePanel({
                       }
                     />
                   </button>
-                  {menuPerson?.identity_key === person.identity_key && (
-                    <div className={`person-action-menu ${menuPlacement === "top" ? "placement-top" : ""}`}>
-                      {renderPersonActionItems(person, false)}
-                    </div>
-                  )}
                 </div>
               </div>
             </article>
@@ -858,17 +938,41 @@ export default function PeoplePanel({
           </form>
         </Modal>
       )}
-      {menuPerson && (
+      {menuPerson && menuCoords && (
         <div
-          className="person-desktop-backdrop"
-          onClick={() => setMenuPerson(null)}
-          aria-hidden="true"
-        />
+          ref={menuRef}
+          className={`person-action-menu ${
+            menuPlacement === "top" ? "placement-top" : ""
+          }`}
+          style={{
+            position: "fixed",
+            top: menuCoords.top !== undefined ? `${menuCoords.top}px` : "auto",
+            bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : "auto",
+            right: `${menuCoords.right}px`,
+            zIndex: 1000,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {renderPersonActionItems(menuPerson, false)}
+        </div>
       )}
       {menuPerson && (
         <div
+          className="person-desktop-backdrop"
+          onClick={() => {
+            setMenuPerson(null);
+            setMenuCoords(null);
+          }}
+          aria-hidden="true"
+        />
+      )}
+      {menuPerson && !menuCoords && (
+        <div
           className="mobile-action-sheet-overlay"
-          onClick={() => setMenuPerson(null)}
+          onClick={() => {
+            setMenuPerson(null);
+            setMenuCoords(null);
+          }}
         >
           <div
             className="mobile-action-sheet"
@@ -898,7 +1002,10 @@ export default function PeoplePanel({
               <button
                 type="button"
                 className="mobile-sheet-close-btn"
-                onClick={() => setMenuPerson(null)}
+                onClick={() => {
+                  setMenuPerson(null);
+                  setMenuCoords(null);
+                }}
                 aria-label="Закрыть"
               >
                 <X size={18} />

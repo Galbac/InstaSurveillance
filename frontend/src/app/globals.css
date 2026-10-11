@@ -5548,7 +5548,7 @@ textarea[aria-invalid="true"]:focus {
 /* 2. Metric Cards Grid */
 .changes-v2-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   width: 100%;
 }

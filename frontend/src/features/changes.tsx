@@ -569,51 +569,9 @@ export default function ChangesPanel({
         {q.data?.job && <JobProgress job={q.data.job} />}
       </section>
 
-      {/* 2. Four Metric Cards */}
+      {/* 2. Following Metric Cards */}
       <section className="changes-v2-stat-grid">
-        {/* Card 1: New followers */}
-        <div className="changes-v2-stat-card">
-          <div className="changes-v2-stat-card-top">
-            <div className="changes-v2-stat-icon green">
-              <UserPlus size={20} />
-            </div>
-            <span className="changes-v2-stat-badge green">
-              {followersComparable ? `+${followersAdded} ↑` : "Не проверено"}
-            </span>
-          </div>
-          <div>
-            <h3 className="changes-v2-stat-label">Новые подписчики</h3>
-            <div className="changes-v2-stat-value">{followersComparable ? followersAdded : "—"}</div>
-            <p className="changes-v2-stat-subtext">
-              {followersComparable
-                ? "Появились в списке"
-                : "Список в снимке неполный (защита от ложных отписок)"}
-            </p>
-          </div>
-        </div>
-
-        {/* Card 2: Lost followers */}
-        <div className="changes-v2-stat-card">
-          <div className="changes-v2-stat-card-top">
-            <div className="changes-v2-stat-icon red">
-              <UserMinus size={20} />
-            </div>
-            <span className="changes-v2-stat-badge red">
-              {followersComparable ? `-${followersRemoved} ↓` : "Не проверено"}
-            </span>
-          </div>
-          <div>
-            <h3 className="changes-v2-stat-label">Исчезли из подписчиков</h3>
-            <div className="changes-v2-stat-value">{followersComparable ? followersRemoved : "—"}</div>
-            <p className="changes-v2-stat-subtext">
-              {followersComparable
-                ? "Больше не обнаружены"
-                : "Список в снимке неполный (защита от ложных отписок)"}
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: New following */}
+        {/* Card 1: New following */}
         <div className="changes-v2-stat-card">
           <div className="changes-v2-stat-card-top">
             <div className="changes-v2-stat-icon green">
@@ -630,7 +588,7 @@ export default function ChangesPanel({
           </div>
         </div>
 
-        {/* Card 4: Lost following */}
+        {/* Card 2: Lost following */}
         <div className="changes-v2-stat-card">
           <div className="changes-v2-stat-card-top">
             <div className="changes-v2-stat-icon red">

@@ -531,7 +531,8 @@ export default function SettingsPanel({
         </form>
       </section>
 
-      {/* 6. CARD 7: Данные и приватность */}
+      {/* 6. CARD 7: Данные и приватность (скрыто) */}
+      {false && (
       <section className="settings-v2-card">
         <header className="settings-v2-card-header">
           <div className="settings-v2-header-left">
@@ -648,11 +649,11 @@ export default function SettingsPanel({
                 ? "Очистка файлов завершена"
                 : "История скрыта, файлы очищаются"}
             </b>
-            {historyCleanup.data && (
+            {historyCleanup.data?.cleanup_deadline && (
               <p>
                 Срок очистки:{" "}
                 {new Date(
-                  historyCleanup.data.cleanup_deadline,
+                  historyCleanup.data!.cleanup_deadline,
                 ).toLocaleDateString("ru-RU")}
               </p>
             )}
@@ -660,6 +661,7 @@ export default function SettingsPanel({
           </div>
         )}
       </section>
+      )}
 
       {/* Deletion confirmation modal */}
       {deleting && (
