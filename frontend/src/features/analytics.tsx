@@ -272,6 +272,63 @@ export default function AnalyticsPanel({
     return [...chartData].reverse();
   }, [chartData]);
 
+  const followersValues = useMemo(() => chartData.map((d) => d.followers), [chartData]);
+  const followingValues = useMemo(() => chartData.map((d) => d.following), [chartData]);
+
+  const followersDomain = useMemo(() => {
+    if (!followersValues.length) return [0, 10];
+    const minVal = Math.min(...followersValues);
+    const maxVal = Math.max(...followersValues);
+    if (minVal === maxVal) {
+      return [Math.max(0, minVal - 2), maxVal + 2];
+    }
+    const padding = Math.max(1, Math.ceil((maxVal - minVal) * 0.15));
+    return [Math.max(0, minVal - padding), maxVal + padding];
+  }, [followersValues]);
+
+  const followingDomain = useMemo(() => {
+    if (!followingValues.length) return [0, 10];
+    const minVal = Math.min(...followingValues);
+    const maxVal = Math.max(...followingValues);
+    if (minVal === maxVal) {
+      return [Math.max(0, minVal - 2), maxVal + 2];
+    }
+    const padding = Math.max(1, Math.ceil((maxVal - minVal) * 0.15));
+    return [Math.max(0, minVal - padding), maxVal + padding];
+  }, [followingValues]);
+
+  const followersTicks = useMemo(() => {
+    if (!followersValues.length) return undefined;
+    const minVal = Math.min(...followersValues);
+    const maxVal = Math.max(...followersValues);
+    if (minVal === maxVal && minVal > 0) {
+      return [
+        Math.max(0, minVal - 2),
+        Math.max(0, minVal - 1),
+        minVal,
+        minVal + 1,
+        minVal + 2,
+      ];
+    }
+    return undefined;
+  }, [followersValues]);
+
+  const followingTicks = useMemo(() => {
+    if (!followingValues.length) return undefined;
+    const minVal = Math.min(...followingValues);
+    const maxVal = Math.max(...followingValues);
+    if (minVal === maxVal && minVal > 0) {
+      return [
+        Math.max(0, minVal - 2),
+        Math.max(0, minVal - 1),
+        minVal,
+        minVal + 1,
+        minVal + 2,
+      ];
+    }
+    return undefined;
+  }, [followingValues]);
+
   const currentMetricValues = useMemo(() => {
     return chartData.map((d) =>
       metricView === "following" ? d.following : d.followers
@@ -284,36 +341,17 @@ export default function AnalyticsPanel({
   const maxMetricVal = currentMetricValues.length
     ? Math.max(...currentMetricValues)
     : 0;
+
   const currentVal = latestPoint
     ? metricView === "following"
       ? latestPoint.following
       : latestPoint.followers
     : 0;
 
-  const yDomain = useMemo(() => {
-    if (!currentMetricValues.length) return [0, 10];
-    if (minMetricVal === maxMetricVal) {
-      return [minMetricVal - 2, maxMetricVal + 2];
-    }
-    const padding = Math.max(1, Math.ceil((maxMetricVal - minMetricVal) * 0.15));
-    return [minMetricVal - padding, maxMetricVal + padding];
-  }, [currentMetricValues, minMetricVal, maxMetricVal]);
-
-  const yTicks = useMemo(() => {
-    if (minMetricVal === maxMetricVal && minMetricVal > 0) {
-      return [
-        minMetricVal - 2,
-        minMetricVal - 1,
-        minMetricVal,
-        minMetricVal + 1,
-        minMetricVal + 2,
-      ];
-    }
-    return undefined;
-  }, [minMetricVal, maxMetricVal]);
-
   const selectedGrowth = metricView === "following" ? followingGrowth : followersGrowth;
-  const isStable = selectedGrowth === 0;
+  const isStable = metricView === "both" 
+    ? followersGrowth === 0 && followingGrowth === 0 
+    : selectedGrowth === 0;
 
   // Period comparison calculations
   const comparison = useMemo(() => {
@@ -569,18 +607,35 @@ export default function AnalyticsPanel({
 
         {/* Big metric highlight */}
         <div className="analytics-v2-highlight">
-          <span className="analytics-v2-highlight-num">
-            {number(currentVal)}
-          </span>
+          {metricView === "both" ? (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 14 }}>
+              <span className="analytics-v2-highlight-num" style={{ color: "#7c3aed" }}>
+                <span style={{ fontSize: "1.1rem", verticalAlign: "middle", marginRight: 4 }}>●</span>
+                {number(latestPoint?.followers ?? 0)}
+                <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>подписчиков</span>
+              </span>
+              <span className="analytics-v2-highlight-num" style={{ color: "#3b82f6" }}>
+                <span style={{ fontSize: "1.1rem", verticalAlign: "middle", marginRight: 4 }}>●</span>
+                {number(latestPoint?.following ?? 0)}
+                <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--muted)", marginLeft: 6 }}>подписок</span>
+              </span>
+            </div>
+          ) : (
+            <span className="analytics-v2-highlight-num">
+              {number(currentVal)}
+            </span>
+          )}
           <span className="analytics-v2-highlight-status">
             <span
               className={`analytics-v2-badge-dot ${
-                isStable ? "green" : selectedGrowth > 0 ? "green" : "red"
+                isStable ? "green" : (metricView === "both" ? (followersGrowth > 0 || followingGrowth > 0) : selectedGrowth > 0) ? "green" : "red"
               }`}
             />
             <span>
               {isStable
                 ? "Стабильно за выбранный период"
+                : metricView === "both"
+                ? `${followersGrowth > 0 ? `+${followersGrowth}` : followersGrowth} подписчиков · ${followingGrowth > 0 ? `+${followingGrowth}` : followingGrowth} подписок`
                 : selectedGrowth > 0
                 ? `+${selectedGrowth} за выбранный период`
                 : `${selectedGrowth} за выбранный период`}
@@ -599,7 +654,7 @@ export default function AnalyticsPanel({
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart
                 data={chartData}
-                margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
+                margin={{ top: 16, right: metricView === "both" ? 4 : 16, left: -10, bottom: 8 }}
               >
                 <defs>
                   <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
@@ -622,22 +677,51 @@ export default function AnalyticsPanel({
                   axisLine={{ stroke: "#e2e8f0" }}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickMargin={10}
-                  padding={{ left: 24, right: 24 }}
+                  padding={{ left: 16, right: 16 }}
                   minTickGap={20}
                   interval="preserveStartEnd"
                 />
-                <YAxis
-                  domain={yDomain}
-                  ticks={yTicks}
-                  tickLine={false}
-                  axisLine={false}
-                  width={36}
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  tickFormatter={(val) => String(Math.round(val))}
-                />
+                {(metricView === "followers" || metricView === "both") && (
+                  <YAxis
+                    yAxisId="followers"
+                    domain={followersDomain}
+                    ticks={followersTicks}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                    tick={{ fontSize: 10, fill: metricView === "both" ? "#7c3aed" : "#94a3b8" }}
+                    tickFormatter={(val) => String(Math.round(val))}
+                  />
+                )}
+                {metricView === "following" && (
+                  <YAxis
+                    yAxisId="following"
+                    domain={followingDomain}
+                    ticks={followingTicks}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                    tickFormatter={(val) => String(Math.round(val))}
+                  />
+                )}
+                {metricView === "both" && (
+                  <YAxis
+                    yAxisId="following"
+                    orientation="right"
+                    domain={followingDomain}
+                    ticks={followingTicks}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                    tick={{ fontSize: 10, fill: "#3b82f6" }}
+                    tickFormatter={(val) => String(Math.round(val))}
+                  />
+                )}
                 <Tooltip content={<CustomChartTooltip />} />
                 {(metricView === "followers" || metricView === "both") && (
                   <Area
+                    yAxisId="followers"
                     type="monotone"
                     dataKey="followers"
                     name="Подписчики"
@@ -655,6 +739,7 @@ export default function AnalyticsPanel({
                 )}
                 {(metricView === "following" || metricView === "both") && (
                   <Area
+                    yAxisId="following"
                     type="monotone"
                     dataKey="following"
                     name="Подписки"

@@ -29,8 +29,17 @@ import { Page, polling, useVisible, useUrlValue } from "@/lib/workflows";
 import { demoEvents, demoHistory } from "@/lib/demo";
 import { ErrorNotice, ExportButton, JobProgress, Loader } from "./common";
 import { useSnapshots } from "./history";
+import { CustomSelect } from "@/components/custom-select";
 
 type Comparison = components["schemas"]["ComparisonDTO"];
+
+const EVENT_FILTER_OPTIONS = [
+  { value: "all", label: "Все события" },
+  { value: "followers_added", label: "Новые подписчики" },
+  { value: "followers_removed", label: "Исчезли из подписчиков" },
+  { value: "following_added", label: "Новые подписки" },
+  { value: "following_removed", label: "Исчезли из подписок" },
+];
 
 const MONTHS_GENITIVE = [
   "января",
@@ -469,6 +478,17 @@ export default function ChangesPanel({
     ? formatSnapshotOption(afterSnapshot.observed_at)
     : "Выберите снимок";
 
+  const snapshotOptions = useMemo(
+    () => [
+      { value: "", label: "Выберите снимок" },
+      ...snapshots.map((s) => ({
+        value: s.id,
+        label: formatSnapshotOption(s.observed_at),
+      })),
+    ],
+    [snapshots],
+  );
+
   return (
     <div className="changes-v2-container">
       {q.data && q.data.compared_relations.length < 2 && (
@@ -495,26 +515,13 @@ export default function ChangesPanel({
           {/* Earlier Snapshot Selector */}
           <div className="changes-v2-picker-field">
             <span className="changes-v2-picker-label">Более ранний снимок</span>
-            <div className="changes-v2-picker-select-box">
-              <div className="changes-v2-select-content">
-                <Calendar size={18} className="text-violet-500" />
-                <span className="changes-v2-select-text">{beforeLabel}</span>
-              </div>
-              <ChevronDown size={18} className="text-gray-400" />
-              <select
-                className="changes-v2-picker-select-native"
-                aria-label="Более ранний снимок"
-                value={selectedBefore}
-                onChange={(e) => setBefore(e.target.value)}
-              >
-                <option value="">Выберите снимок</option>
-                {snapshots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {formatSnapshotOption(s.observed_at)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              value={selectedBefore}
+              options={snapshotOptions}
+              onChange={(val) => setBefore(val)}
+              icon={<Calendar size={18} color="#7c3aed" />}
+              fullWidth
+            />
           </div>
 
           {/* Swap Button */}
@@ -531,26 +538,13 @@ export default function ChangesPanel({
           {/* Later Snapshot Selector */}
           <div className="changes-v2-picker-field">
             <span className="changes-v2-picker-label">Более поздний снимок</span>
-            <div className="changes-v2-picker-select-box">
-              <div className="changes-v2-select-content">
-                <Calendar size={18} className="text-violet-500" />
-                <span className="changes-v2-select-text">{afterLabel}</span>
-              </div>
-              <ChevronDown size={18} className="text-gray-400" />
-              <select
-                className="changes-v2-picker-select-native"
-                aria-label="Более поздний снимок"
-                value={selectedAfter}
-                onChange={(e) => setAfter(e.target.value)}
-              >
-                <option value="">Выберите снимок</option>
-                {snapshots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {formatSnapshotOption(s.observed_at)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              value={selectedAfter}
+              options={snapshotOptions}
+              onChange={(val) => setAfter(val)}
+              icon={<Calendar size={18} color="#7c3aed" />}
+              fullWidth
+            />
           </div>
 
           {/* Action Button */}
@@ -653,29 +647,12 @@ export default function ChangesPanel({
               )}
             </div>
 
-            <div className="changes-v2-filter-dropdown">
-              <SlidersHorizontal size={15} className="text-gray-500" />
-              <span>
-                {eventTypeFilter === "all" && "Все события"}
-                {eventTypeFilter === "followers_added" && "Новые подписчики"}
-                {eventTypeFilter === "followers_removed" && "Исчезли из подписчиков"}
-                {eventTypeFilter === "following_added" && "Новые подписки"}
-                {eventTypeFilter === "following_removed" && "Исчезли из подписок"}
-              </span>
-              <ChevronDown size={15} className="text-gray-400" />
-              <select
-                className="changes-v2-filter-select-native"
-                aria-label="Фильтр по типу события"
-                value={eventTypeFilter}
-                onChange={(e) => setEventTypeFilter(e.target.value)}
-              >
-                <option value="all">Все события</option>
-                <option value="followers_added">Новые подписчики</option>
-                <option value="followers_removed">Исчезли из подписчиков</option>
-                <option value="following_added">Новые подписки</option>
-                <option value="following_removed">Исчезли из подписок</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={eventTypeFilter}
+              options={EVENT_FILTER_OPTIONS}
+              onChange={(val) => setEventTypeFilter(val)}
+              icon={<SlidersHorizontal size={15} />}
+            />
           </div>
 
           {/* Filter Pills Bar */}

@@ -22,6 +22,13 @@ import {
 import { api, post, Profile, Person, date, number } from "@/lib/api";
 import { demoPeople } from "@/lib/demo";
 import { ErrorNotice, ExportButton, Modal } from "./common";
+import { CustomSelect } from "@/components/custom-select";
+
+const SORT_OPTIONS = [
+  { value: "username", label: "Имя пользователя (А–Я)" },
+  { value: "username_desc", label: "Имя пользователя (Я–А)" },
+  { value: "first_observed", label: "Сначала новые (по дате)" },
+];
 
 function PeopleSkeleton({ count = 6 }: { count?: number }) {
   return (
@@ -639,22 +646,11 @@ export default function PeoplePanel({
       </div>
       <div className="people-toolbar-right">
         <span className="sort-caption">Сортировка</span>
-        <div
-          className="sort-dropdown-pill"
-          onClick={(e) => {
-            const s = e.currentTarget.querySelector("select") as (HTMLSelectElement & { showPicker?: () => void }) | null;
-            try {
-              s?.showPicker?.();
-            } catch {}
-          }}
-        >
-          <select value={sort} onChange={(e) => update({ sort: e.target.value })}>
-            <option value="username">Имя пользователя (А–Я)</option>
-            <option value="username_desc">Имя пользователя (Я–А)</option>
-            <option value="first_observed">Сначала новые (по дате)</option>
-          </select>
-          <ChevronDown size={14} className="sort-chevron-icon" />
-        </div>
+        <CustomSelect
+          value={sort}
+          options={SORT_OPTIONS}
+          onChange={(val) => update({ sort: val })}
+        />
         {!demo && profile && (
           <ExportButton
             label="CSV"
@@ -710,11 +706,75 @@ export default function PeoplePanel({
           title="Фильтры и сортировка"
           onClose={() => setFilterSheet(false)}
         >
-          <div className="filter-sheet">
-            {filters}
-            <button className="button" onClick={() => setFilterSheet(false)}>
-              Показать результаты
-            </button>
+          <div className="mobile-filter-modal-content">
+            <div className="mobile-filter-group">
+              <span className="mobile-filter-heading">Поиск по никнейму</span>
+              <div className="people-search-box" style={{ width: "100%", maxWidth: "none" }}>
+                <Search size={16} className="search-icon" />
+                <input
+                  aria-label="Поиск username"
+                  placeholder="Найти username..."
+                  maxLength={100}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mobile-filter-group">
+              <span className="mobile-filter-heading">Быстрые фильтры</span>
+              <div className="mobile-filter-chips-row">
+                <button
+                  type="button"
+                  className={`mobile-chip-btn ${favorite ? "active" : ""}`}
+                  onClick={() => update({ favorite: favorite ? "" : "true" })}
+                >
+                  <span className="chip-star">⭐</span>
+                  <span>Избранное</span>
+                </button>
+                <button
+                  type="button"
+                  className={`mobile-chip-btn ${hasNote ? "active" : ""}`}
+                  onClick={() => update({ has_note: hasNote ? "" : "true" })}
+                >
+                  <FileText size={15} />
+                  <span>С заметкой</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mobile-filter-group">
+              <span className="mobile-filter-heading">Сортировка</span>
+              <CustomSelect
+                value={sort}
+                options={SORT_OPTIONS}
+                onChange={(val) => update({ sort: val })}
+                fullWidth
+              />
+            </div>
+
+            <div className="mobile-filter-footer-actions">
+              {(input || favorite || hasNote || sort !== "username") && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => {
+                    setInput("");
+                    update({ search: "", favorite: "", has_note: "", sort: "username" });
+                  }}
+                >
+                  Сбросить
+                </button>
+              )}
+              <button
+                type="button"
+                className="button primary"
+                style={{ flex: 1 }}
+                onClick={() => setFilterSheet(false)}
+              >
+                Показать результаты
+              </button>
+            </div>
           </div>
         </Modal>
       )}

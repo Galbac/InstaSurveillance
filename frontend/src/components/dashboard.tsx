@@ -642,7 +642,9 @@ function Workspace({
           >
             <X size={21} />
           </button>
-          {[...nav, ...extra].map(({ view: v, label, icon: Icon }) => (
+          {[...nav, ...extra]
+            .filter((x) => !["overview", "people", "history"].includes(x.view))
+            .map(({ view: v, label, icon: Icon }) => (
             <button className="nav-item" key={v} onClick={() => go(v)}>
               <Icon size={19} />
               {label}

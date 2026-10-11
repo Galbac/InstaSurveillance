@@ -22,6 +22,7 @@ import { api, post, Profile, Snapshot, date, number, getDateParts } from "@/lib/
 import { Page } from "@/lib/workflows";
 import { demoHistory } from "@/lib/demo";
 import { ErrorNotice, Loader, Modal } from "./common";
+import { CustomSelect } from "@/components/custom-select";
 
 export function useSnapshots(profile?: Profile, enabled = true) {
   return useInfiniteQuery({
@@ -248,52 +249,24 @@ export default function HistoryPanel({
           </div>
 
           <div className="history-controls-group">
-            <div
-              className="history-select-wrapper"
-              onClick={(e) => {
-                const s = e.currentTarget.querySelector("select") as (HTMLSelectElement & { showPicker?: () => void }) | null;
-                try {
-                  s?.showPicker?.();
-                } catch {}
-              }}
-            >
-              <Calendar size={14} className="control-icon" />
-              <select
-                className="history-select"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                aria-label="Фильтр по датам"
-              >
-                {dateOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="chevron-icon" />
-            </div>
+            <CustomSelect
+              value={dateFilter}
+              onChange={setDateFilter}
+              options={dateOptions}
+              icon={Calendar}
+              ariaLabel="Фильтр по датам"
+            />
 
-            <div
-              className="history-select-wrapper"
-              onClick={(e) => {
-                const s = e.currentTarget.querySelector("select") as (HTMLSelectElement & { showPicker?: () => void }) | null;
-                try {
-                  s?.showPicker?.();
-                } catch {}
-              }}
-            >
-              <ArrowUpDown size={14} className="control-icon" />
-              <select
-                className="history-select"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
-                aria-label="Сортировка снимков"
-              >
-                <option value="desc">Новые сначала</option>
-                <option value="asc">Старые сначала</option>
-              </select>
-              <ChevronDown size={14} className="chevron-icon" />
-            </div>
+            <CustomSelect
+              value={sortOrder}
+              onChange={(v) => setSortOrder(v as "desc" | "asc")}
+              options={[
+                { value: "desc", label: "Новые сначала" },
+                { value: "asc", label: "Старые сначала" },
+              ]}
+              icon={ArrowUpDown}
+              ariaLabel="Сортировка снимков"
+            />
           </div>
         </div>
 
