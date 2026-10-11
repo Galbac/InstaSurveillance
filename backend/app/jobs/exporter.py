@@ -125,9 +125,7 @@ def render(export_id: str, check) -> None:
                         output.write(b",")
                     output.write(
                         (
-                            encode({"id": profile.id, "username": profile.username, "label": profile.label})[
-                                :-1
-                            ]
+                            encode({"id": profile.id, "username": profile.username})[:-1]
                             + ',"snapshots":['
                         ).encode()
                     )

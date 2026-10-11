@@ -49,7 +49,7 @@
 
 Повтор допускается только для failed import/comparison/export, ошибок storage_unavailable/temporary_unavailable/timeout, attempts < 3 и активного владельца. Connect/sync нельзя запускать этой кнопкой. Backend остаётся источником истины, UI не гарантирует разрешение по устаревшим данным.
 
-PATCH /limits принимает instagram_sync_interval_hours, instagram_request_budget, user_storage_quota_bytes и reason. Ограничения могут только ужесточать политику окружения: интервал увеличить, бюджет и квоту уменьшить. Не превращай эту форму в способ обхода ограничений Instagram.
+PATCH /limits принимает instagram_request_budget, user_storage_quota_bytes и reason. Ограничения могут только ужесточать политику окружения: бюджет и квоту уменьшить. Сбор Instagram запускается только явным действием владельца профиля; автоматического расписания нет. Не превращай административные настройки в способ обхода ограничений Instagram.
 
 ## 3. Структура интерфейса
 

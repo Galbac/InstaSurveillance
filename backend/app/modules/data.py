@@ -30,7 +30,6 @@ router = APIRouter(prefix="/api/v1")
 
 class ProfileInput(BaseModel):
     username: str = Field(min_length=1, max_length=30, pattern=r"^[a-zA-Z0-9._]{1,30}$")
-    label: str = Field(default="", max_length=80)
 
 
 class ConnectInput(ProfileInput):
@@ -107,7 +106,6 @@ def profile_dict(x: Profile) -> dict:
     return {
         "id": x.id,
         "username": x.username,
-        "label": x.label,
         "status": x.status,
         "paused": x.paused,
         "last_sync": x.last_sync,
@@ -226,7 +224,6 @@ def profiles(user: Verified, db: DB):
 @router.post("/profiles", status_code=201, response_model=ProfileDTO)
 def add_profile(body: ProfileInput, user: Verified, db: DB):
     profile = create_profile(db, user, body.username)
-    profile.label = body.label
     db.commit()
     return profile_dict(profile)
 

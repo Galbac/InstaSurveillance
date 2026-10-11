@@ -71,7 +71,6 @@ class Profile(Identified, Base):
     __tablename__ = "instagram_profiles"
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     username: Mapped[str] = mapped_column(String(30))
-    label: Mapped[str] = mapped_column(String(80), default="", server_default="")
     external_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="disconnected")
     paused: Mapped[bool] = mapped_column(Boolean, default=False)

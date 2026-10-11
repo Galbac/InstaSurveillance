@@ -17,7 +17,6 @@ import {
   Play,
   RefreshCw,
   Unlink,
-  User as UserIcon,
   Download,
 } from "lucide-react";
 import { api, post, ApiError, User, Profile } from "@/lib/api";
@@ -74,13 +73,10 @@ export default function SettingsPanel({
   const [showNewPass, setShowNewPass] = useState(false);
 
 
-  // Profile fields state
-  const [profileLabel, setProfileLabel] = useState(profile?.label || "Демо");
   const [isPaused, setIsPaused] = useState(profile?.paused || false);
   useEffect(() => {
     setIsPaused(profile?.paused || false);
-    setProfileLabel(profile?.label || "Демо");
-  }, [profile?.id, profile?.paused, profile?.label]);
+  }, [profile?.id, profile?.paused]);
   const profileStatus = ({
         active: { label: "Активно", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
         syncing: { label: "Идёт сбор", color: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -207,27 +203,6 @@ export default function SettingsPanel({
       }
     } finally {
       setBusy(false);
-    }
-  };
-
-  const handleSaveProfileConnection = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    try {
-      guard();
-      if (!profile) return;
-      await api(`/profiles/${profile.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ label: profileLabel }),
-      });
-      await api(`/profiles/${profile.id}/connection`, {
-        method: "PATCH",
-        body: JSON.stringify({ paused: isPaused }),
-      });
-      qc.invalidateQueries({ queryKey: ["profiles"] });
-      onNotice("Настройки подключения сохранены.");
-    } catch (err) {
-      setError(err);
     }
   };
 
@@ -466,24 +441,7 @@ export default function SettingsPanel({
           </span>
         </header>
 
-        <form onSubmit={handleSaveProfileConnection} className="settings-v2-form-body">
-          <div className="settings-v2-fields-row">
-            <div className="settings-v2-field">
-              <label className="settings-v2-label">Название профиля</label>
-              <div className="settings-v2-input-wrap">
-                <UserIcon size={16} className="text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  className="settings-v2-input font-semibold"
-                  value={profileLabel}
-                  onChange={(e) => setProfileLabel(e.target.value)}
-                  maxLength={80}
-                />
-              </div>
-            </div>
-
-          </div>
-
+        <div className="settings-v2-form-body">
           <div className="settings-v2-actions-row">
             {canTogglePause && (
               <button
@@ -528,7 +486,7 @@ export default function SettingsPanel({
             Пауза не снимает ограничений или проверку безопасности Instagram.
             История остаётся доступной.
           </p>
-        </form>
+        </div>
       </section>
 
       {/* 6. CARD 7: Данные и приватность (скрыто) */}

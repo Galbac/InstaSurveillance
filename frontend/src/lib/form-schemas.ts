@@ -93,7 +93,6 @@ export const settingsSchema = z
       .max(256, "Не более 256 символов")
       .optional(),
     email: z.email("Укажи корректный email").optional(),
-    label: z.string().max(80, "Не более 80 символов").optional(),
     interval: z.coerce
       .number()
       .int("Укажи целое число часов")

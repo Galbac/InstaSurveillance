@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from fastapi import Request, Response
-from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.commands import audit
@@ -11,22 +10,10 @@ from app.core.limits import runtime_settings as get_settings
 from app.core.router import APIRouter
 from app.core.security import now
 from app.models import Job, User
-from app.modules.contracts import ConnectionDTO, JobDTO, ProfileDTO
+from app.modules.contracts import ConnectionDTO, JobDTO
 from app.modules.data import ConnectInput, connect, job_dict, job_owned, profile_dict, profile_owned
 
 router = APIRouter(prefix="/api/v1", tags=["connections"])
-
-
-class ProfileMetadata(BaseModel):
-    label: str = Field(max_length=80)
-
-
-@router.patch("/profiles/{profile_id}", response_model=ProfileDTO)
-def metadata(profile_id: str, body: ProfileMetadata, user: Verified, db: DB):
-    profile = profile_owned(db, user, profile_id, True)
-    profile.label = body.label
-    db.commit()
-    return profile_dict(profile)
 
 
 @router.get("/profiles/{profile_id}/connection", response_model=ConnectionDTO)

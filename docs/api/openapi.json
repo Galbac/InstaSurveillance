@@ -1509,12 +1509,6 @@
             "title": "Connection Terms Version",
             "type": "string"
           },
-          "label": {
-            "default": "",
-            "maxLength": 80,
-            "title": "Label",
-            "type": "string"
-          },
           "password": {
             "anyOf": [
               {
@@ -1593,10 +1587,6 @@
               }
             ]
           },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
           "last_sync": {
             "anyOf": [
               {
@@ -1641,7 +1631,6 @@
         "required": [
           "id",
           "username",
-          "label",
           "status",
           "paused",
           "last_sync",
@@ -3184,10 +3173,6 @@
             "title": "Id",
             "type": "string"
           },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
           "last_sync": {
             "anyOf": [
               {
@@ -3216,7 +3201,6 @@
         "required": [
           "id",
           "username",
-          "label",
           "status",
           "paused",
           "last_sync",
@@ -3227,12 +3211,6 @@
       },
       "ProfileInput": {
         "properties": {
-          "label": {
-            "default": "",
-            "maxLength": 80,
-            "title": "Label",
-            "type": "string"
-          },
           "username": {
             "maxLength": 30,
             "minLength": 1,
@@ -3245,20 +3223,6 @@
           "username"
         ],
         "title": "ProfileInput",
-        "type": "object"
-      },
-      "ProfileMetadata": {
-        "properties": {
-          "label": {
-            "maxLength": 80,
-            "title": "Label",
-            "type": "string"
-          }
-        },
-        "required": [
-          "label"
-        ],
-        "title": "ProfileMetadata",
         "type": "object"
       },
       "ProviderResponseDTO": {
@@ -6945,56 +6909,6 @@
         "summary": "Delete Profile",
         "tags": [
           "privacy"
-        ]
-      },
-      "patch": {
-        "operationId": "metadata_api_v1_profiles__profile_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "profile_id",
-            "required": true,
-            "schema": {
-              "title": "Profile Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProfileMetadata"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProfileDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Metadata",
-        "tags": [
-          "connections"
         ]
       }
     },

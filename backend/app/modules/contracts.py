@@ -153,7 +153,6 @@ class UserDTO(BaseModel):
 class ProfileDTO(BaseModel):
     id: str
     username: str
-    label: str
     status: str
     paused: bool
     last_sync: datetime | None

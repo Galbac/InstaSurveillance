@@ -2,12 +2,9 @@ import type { Counts, Profile, Summary, Person, Snapshot, Event } from "./api";
 export const demoProfile: Profile = {
   id: "demo",
   username: "your.circle",
-  label: "Демо",
-  interval_hours: 24,
   status: "active",
   paused: false,
   last_sync: "2026-10-07T10:00:00Z",
-  next_sync: "2026-10-08T10:00:00Z",
   cooldown_until: null,
 };
 export const demoCounts: Counts = {

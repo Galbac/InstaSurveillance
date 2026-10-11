@@ -976,8 +976,7 @@ export interface paths {
         delete: operations["delete_profile_api_v1_profiles__profile_id__delete"];
         options?: never;
         head?: never;
-        /** Metadata */
-        patch: operations["metadata_api_v1_profiles__profile_id__patch"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/profiles/{profile_id}/analytics": {
@@ -1816,11 +1815,6 @@ export interface components {
              * @default 2026-10-07
              */
             connection_terms_version: string;
-            /**
-             * Label
-             * @default
-             */
-            label: string;
             /** Password */
             password?: string | null;
             /** Session Json */
@@ -1839,8 +1833,6 @@ export interface components {
             /** Id */
             id: string;
             job: components["schemas"]["JobDTO"] | null;
-            /** Label */
-            label: string;
             /** Last Sync */
             last_sync: string | null;
             /** Next Allowed At */
@@ -2377,8 +2369,6 @@ export interface components {
             cooldown_until: string | null;
             /** Id */
             id: string;
-            /** Label */
-            label: string;
             /** Last Sync */
             last_sync: string | null;
             /** Paused */
@@ -2390,18 +2380,8 @@ export interface components {
         };
         /** ProfileInput */
         ProfileInput: {
-            /**
-             * Label
-             * @default
-             */
-            label: string;
             /** Username */
             username: string;
-        };
-        /** ProfileMetadata */
-        ProfileMetadata: {
-            /** Label */
-            label: string;
         };
         /** ProviderResponseDTO */
         ProviderResponseDTO: {
@@ -4573,41 +4553,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeletionDTO"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    metadata_api_v1_profiles__profile_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                profile_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProfileMetadata"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProfileDTO"];
                 };
             };
             /** @description Validation Error */

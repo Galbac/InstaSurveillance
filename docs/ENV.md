@@ -22,7 +22,6 @@ Secrets не передаются frontend. API не получает owner/work
 | `INSTAGRAM_PENDING_ENCRYPTION_KEY` | `SecretStr` | `обязательно` |
 | `INSTAGRAM_SESSION_ENCRYPTION_KEY` | `SecretStr | None` | `секрет / см. правила доставки` |
 | `INSTAGRAM_PRIVATE_ENABLED` | `bool` | `True` |
-| `INSTAGRAM_SYNC_INTERVAL_HOURS` | `int` | `24` |
 | `INSTAGRAM_MANUAL_MIN_INTERVAL_HOURS` | `int` | `6` |
 | `INSTAGRAM_MAX_RUNS_PER_24H` | `int` | `2` |
 | `INSTAGRAM_REQUEST_BUDGET` | `int` | `100` |
