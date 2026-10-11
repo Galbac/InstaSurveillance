@@ -153,6 +153,8 @@ export function ExportButton({
 }
 export const errorCodes: Record<string, string> = {
   expired: "Попытка входа истекла. Введите данные заново.",
+  already_running:
+    "Для аккаунта уже выполняется сбор. Дождитесь завершения этой попытки и обновите страницу.",
   challenge_required:
     "Instagram просит подтвердить вход. Откройте официальное приложение, завершите проверку и переподключите аккаунт.",
   cooldown:
