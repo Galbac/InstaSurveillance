@@ -163,7 +163,7 @@ export default function AdminOverviewPage() {
         <KPICard
           title="Квота хранилища"
           value={formatBytes(overview.limits.storage_quota_bytes)}
-          subtitle={`Интервал: ${overview.limits.sync_hours}ч · Бюджет: ${overview.limits.request_budget}`}
+          subtitle={`Бюджет запросов: ${overview.limits.request_budget}`}
           icon={<Sliders className="w-4 h-4" />}
           href="/admin/limits"
         />
@@ -209,13 +209,9 @@ export default function AdminOverviewPage() {
               Изменить →
             </Link>
           </div>
-          <p className="text-xs text-slate-500">Глобальные ограничения защиты от блокировок Meta</p>
+          <p className="text-xs text-slate-500">Сбор Instagram запускается пользователем вручную</p>
 
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-xs font-medium text-slate-600">Минимальный интервал сбора</span>
-              <span className="text-sm font-bold text-slate-900">{overview.limits.sync_hours} ч</span>
-            </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Бюджет запросов на профиль</span>
               <span className="text-sm font-bold text-slate-900">{overview.limits.request_budget} запросов</span>

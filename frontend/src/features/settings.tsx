@@ -18,12 +18,11 @@ import {
   RefreshCw,
   Unlink,
   User as UserIcon,
-  Clock,
   Download,
 } from "lucide-react";
 import { api, post, ApiError, User, Profile } from "@/lib/api";
 import type { components } from "@/lib/generated-api";
-import { PublicConfig, useUrlValue, useVisible } from "@/lib/workflows";
+import { useUrlValue, useVisible } from "@/lib/workflows";
 import { ErrorNotice, ExportButton, Modal } from "./common";
 
 
@@ -77,26 +76,11 @@ export default function SettingsPanel({
 
   // Profile fields state
   const [profileLabel, setProfileLabel] = useState(profile?.label || "Демо");
-  const [profileInterval, setProfileInterval] = useState(
-    String(profile?.interval_hours || 24),
-  );
   const [isPaused, setIsPaused] = useState(profile?.paused || false);
   useEffect(() => {
     setIsPaused(profile?.paused || false);
-    if (profile) {
-      setProfileLabel(profile.label || "Демо");
-      setProfileInterval(String(profile.interval_hours));
-    }
-  }, [profile?.id, profile?.paused, profile?.label, profile?.interval_hours]);
-  const publicConfig = useQuery({
-    queryKey: ["config"],
-    queryFn: ({ signal }) => api<PublicConfig>("/config/public", { signal }),
-    enabled: !!profile && !demo,
-  });
-  const minSyncInterval = publicConfig.data?.sync_interval_hours ?? 24;
-  const intervalOptions = [...new Set([12, 24, 48, 72, Number(profileInterval)])]
-    .filter((hours) => Number.isFinite(hours) && hours >= minSyncInterval)
-    .sort((a, b) => a - b);
+    setProfileLabel(profile?.label || "Демо");
+  }, [profile?.id, profile?.paused, profile?.label]);
   const profileStatus = ({
         active: { label: "Активно", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
         syncing: { label: "Идёт сбор", color: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -238,10 +222,7 @@ export default function SettingsPanel({
       });
       await api(`/profiles/${profile.id}/connection`, {
         method: "PATCH",
-        body: JSON.stringify({
-          paused: isPaused,
-          interval_hours: Number(profileInterval),
-        }),
+        body: JSON.stringify({ paused: isPaused }),
       });
       qc.invalidateQueries({ queryKey: ["profiles"] });
       onNotice("Настройки подключения сохранены.");
@@ -277,7 +258,7 @@ export default function SettingsPanel({
       qc.setQueryData<Profile[]>(["profiles"], (current) =>
         current?.map((item) =>
           item.id === profile.id
-            ? { ...item, status: "disconnected", paused: true, next_sync: null, cooldown_until: null }
+            ? { ...item, status: "disconnected", paused: true, cooldown_until: null }
             : item,
         ),
       );
@@ -501,28 +482,6 @@ export default function SettingsPanel({
               </div>
             </div>
 
-            <div className="settings-v2-field">
-              <label className="settings-v2-label">
-                Интервал обновления, часов
-              </label>
-              <div className="settings-v2-input-wrap">
-                <Clock size={16} className="text-gray-400 shrink-0" />
-                <span className="text-sm font-semibold text-gray-800 flex-1">
-                  {profileInterval}
-                </span>
-                <ChevronDown size={16} className="text-gray-400 shrink-0" />
-                <select
-                  className="settings-v2-select-native"
-                  aria-label="Интервал обновления"
-                  value={profileInterval}
-                  onChange={(e) => setProfileInterval(e.target.value)}
-                >
-                  {intervalOptions.map((hours) => (
-                    <option key={hours} value={hours}>{hours}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
           </div>
 
           <div className="settings-v2-actions-row">

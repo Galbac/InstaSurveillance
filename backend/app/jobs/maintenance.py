@@ -269,58 +269,6 @@ def retain() -> None:
         db.commit()
 
 
-def schedule_profiles() -> None:
-    settings = get_settings()
-    if not settings.instagram_private_enabled:
-        return
-    with SessionLocal() as db:
-        identities = list(
-            db.scalars(
-                select(Profile.id)
-                .join(User)
-                .where(
-                    User.status == "active",
-                    Profile.paused.is_(False),
-                    Profile.status.in_(["active", "cooldown"]),
-                    Profile.next_sync <= now(),
-                )
-                .limit(200)
-            )
-        )
-    for identity in identities:
-        with SessionLocal() as db:
-            original = db.get(Profile, identity)
-            if not original:
-                continue
-            # Match publication lock order: owner, then profile.
-            db.scalar(select(User).where(User.id == original.user_id).with_for_update())
-            profile = db.scalar(
-                select(Profile).where(Profile.id == identity).with_for_update(skip_locked=True)
-            )
-            if not profile or profile.paused or profile.status not in ("active", "cooldown"):
-                continue
-            if profile.cooldown_until and profile.cooldown_until > now():
-                continue
-            if profile.last_sync:
-                earliest = profile.last_sync + timedelta(
-                    hours=max(profile.interval_hours, settings.instagram_sync_interval_hours)
-                )
-                if earliest > now():
-                    profile.next_sync = earliest
-                    db.commit()
-                    continue
-            if profile.status == "cooldown":
-                profile.status = "active"
-            from app.core.errors import AppError
-            from app.modules.data import request_sync
-
-            try:
-                request_sync(db, profile)
-            except AppError:
-                continue
-            db.commit()
-
-
 def maintain() -> None:
     from app.core.logging import prune_logs
 
@@ -336,7 +284,6 @@ def maintain() -> None:
     schedule_comparisons()
     cleanup_files()
     retain()
-    schedule_profiles()
     from redis import Redis
 
     from app.integrations import ledger

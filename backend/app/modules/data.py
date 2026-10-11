@@ -69,7 +69,6 @@ class ConfirmInput(BaseModel):
 
 class PauseInput(BaseModel):
     paused: bool
-    interval_hours: int | None = Field(default=None, ge=1, le=8760)
 
 
 class DeleteInput(BaseModel):
@@ -109,11 +108,9 @@ def profile_dict(x: Profile) -> dict:
         "id": x.id,
         "username": x.username,
         "label": x.label,
-        "interval_hours": x.interval_hours,
         "status": x.status,
         "paused": x.paused,
         "last_sync": x.last_sync,
-        "next_sync": x.next_sync,
         "cooldown_until": x.cooldown_until,
     }
 
@@ -212,7 +209,7 @@ def create_profile(db, user, username: str) -> Profile:
         >= s.max_profiles_per_user
     ):
         raise AppError("profile_limit", "Лимит подключенных профилей достигнут", 409)
-    profile = Profile(user_id=user.id, username=name, interval_hours=s.instagram_sync_interval_hours)
+    profile = Profile(user_id=user.id, username=name)
     db.add(profile)
     db.flush()
     return profile
@@ -361,10 +358,6 @@ def verify_connection(job_id: str, body: VerifyInput, user: Verified, db: DB, re
 @router.patch("/profiles/{profile_id}/connection", response_model=ProfileDTO)
 def pause(profile_id: str, body: PauseInput, user: Verified, db: DB):
     p = profile_owned(db, user, profile_id, True)
-    if body.interval_hours is not None:
-        if body.interval_hours < get_settings().instagram_sync_interval_hours:
-            raise AppError("interval_limit", "Интервал не может быть ниже минимального")
-        p.interval_hours = body.interval_hours
     p.paused = body.paused
     db.commit()
     return profile_dict(p)
@@ -387,7 +380,6 @@ def disconnect(profile_id: str, user: Verified, db: DB, response: Response):
     p.generation += 1
     p.status = "disconnected"
     p.paused = True
-    p.next_sync = None
     p.external_id = None
     db.execute(
         delete(SessionSecret)
@@ -466,7 +458,6 @@ def request_sync(db, p: Profile) -> Job:
     job = Job(user_id=p.user_id, profile_id=p.id, kind="sync", details={"generation": p.generation})
     enqueue(db, job)
     db.add(PlatformRun(external_hash=external_hash, job_reference=job.id))
-    p.next_sync = now() + timedelta(hours=max(p.interval_hours, s.instagram_sync_interval_hours))
     p.status = "syncing"
     return job
 
@@ -524,7 +515,6 @@ def public_config(db: DB):
         "local_email_verification": s.app_env == "local",
         "instagram_enabled": s.instagram_private_enabled,
         "max_upload_bytes": s.max_upload_bytes,
-        "sync_interval_hours": s.instagram_sync_interval_hours,
         "manual_min_interval_hours": s.instagram_manual_min_interval_hours,
         "max_runs_per_24h": s.instagram_max_runs_per_24h,
         "terms_version": s.terms_version,

@@ -12,7 +12,6 @@ export default function AdminLimitsPage() {
   const qc = useQueryClient();
   const { isPrivileged, isAdmin } = useAdminAuth();
 
-  const [syncHours, setSyncHours] = useState<number>(24);
   const [requestBudget, setRequestBudget] = useState<number>(600);
   const [quotaBytes, setQuotaBytes] = useState<number>(1073741824);
   const [reason, setReason] = useState("");
@@ -28,7 +27,6 @@ export default function AdminLimitsPage() {
     queryKey: ["admin", "limits"],
     queryFn: async ({ signal }) => {
       const data = await api<Record<string, number>>("/admin/limits", { signal });
-      if (data.instagram_sync_interval_hours) setSyncHours(data.instagram_sync_interval_hours);
       if (data.instagram_request_budget) setRequestBudget(data.instagram_request_budget);
       if (data.user_storage_quota_bytes) setQuotaBytes(data.user_storage_quota_bytes);
       return data;
@@ -46,7 +44,6 @@ export default function AdminLimitsPage() {
       await api("/admin/limits", {
         method: "PATCH",
         body: JSON.stringify({
-          instagram_sync_interval_hours: Number(syncHours),
           instagram_request_budget: Number(requestBudget),
           user_storage_quota_bytes: Number(quotaBytes),
           reason: reason.trim(),
@@ -87,9 +84,9 @@ export default function AdminLimitsPage() {
         <div>
           <span className="font-bold">Политика ужесточения лимитов:</span>
           <p className="mt-0.5">
-            Динамические лимиты могут только делать правила строже базовых настроек окружения
-            (увеличивать интервал между сборами, уменьшать бюджет запросов к Meta и уменьшать квоту
-            диска). Попытка смягчить правила ниже базовой конфигурации сервера будет отклонена с ошибкой.
+            Сбор Instagram начинается только по запросу пользователя. Динамические лимиты могут
+            только уменьшать бюджет запросов к Meta и квоту диска. Попытка смягчить правила ниже
+            базовой конфигурации сервера будет отклонена.
           </p>
         </div>
       </div>
@@ -105,30 +102,6 @@ export default function AdminLimitsPage() {
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Interval */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="sync-interval-input" className="text-xs font-semibold text-slate-700 uppercase">
-                Минимальный интервал Instagram (часов)
-              </label>
-              <span className="text-xs font-bold text-purple-700">{syncHours} ч</span>
-            </div>
-            <input
-              id="sync-interval-input"
-              type="number"
-              min={1}
-              max={8760}
-              required
-              disabled={!isAdmin || submitting}
-              value={syncHours}
-              onChange={(e) => setSyncHours(Number(e.target.value))}
-              className="w-full p-3 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Минимальное количество часов между регулярными автоматическими сборами данных профиля.
-            </p>
-          </div>
-
           {/* Budget */}
           <div>
             <div className="flex items-center justify-between mb-1.5">

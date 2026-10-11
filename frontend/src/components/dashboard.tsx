@@ -489,13 +489,27 @@ function Workspace({
             {view === "overview" && (
               <button
                 className={`button ${p?.status === "syncing" ? "secondary" : ""}`}
-                onClick={sync}
+                onClick={() => {
+                  if (!p || ["disconnected", "reconnect_required"].includes(p.status)) {
+                    go("connect");
+                  } else if (p.paused) {
+                    go("settings");
+                  } else {
+                    sync();
+                  }
+                }}
               >
                 <RefreshCw
                   size={17}
                   className={p?.status === "syncing" ? "animate-spin" : ""}
                 />
-                {p?.status === "syncing" ? "Идёт сбор данных…" : "Обновить данные"}
+                {p?.status === "syncing"
+                  ? "Идёт сбор данных…"
+                  : !p || ["disconnected", "reconnect_required"].includes(p.status)
+                    ? "Переподключить Instagram"
+                    : p.paused
+                      ? "Сбор приостановлен"
+                      : "Обновить данные"}
               </button>
             )}
           </div>
@@ -746,9 +760,7 @@ function Empty({
       </h2>
       <p>
         {profile?.status === "active"
-          ? profile.next_sync
-            ? `Первый сбор запланирован на ${date(profile.next_sync)}. Повторный вход не требуется; после сбора здесь появятся доступные списки.`
-            : "Повторный вход не требуется. Списки появятся после первого сбора."
+          ? "Данные обновляются только по вашему запросу. Нажмите «Обновить данные», чтобы начать сбор."
           : "Подключи Instagram, чтобы увидеть взаимность подписок. После следующего полного снимка станут доступны изменения."}
       </p>
       <div className="hero-buttons">

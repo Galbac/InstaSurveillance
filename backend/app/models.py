@@ -72,13 +72,11 @@ class Profile(Identified, Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     username: Mapped[str] = mapped_column(String(30))
     label: Mapped[str] = mapped_column(String(80), default="", server_default="")
-    interval_hours: Mapped[int] = mapped_column(Integer, default=24, server_default="24")
     external_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="disconnected")
     paused: Mapped[bool] = mapped_column(Boolean, default=False)
     generation: Mapped[int] = mapped_column(Integer, default=0)
     last_sync: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    next_sync: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cooldown_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

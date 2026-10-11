@@ -1050,17 +1050,13 @@ def test_operator_limits_are_audited_and_never_relax_env(context):
         db.commit()
     baseline = get_settings()
     values = {
-        "instagram_sync_interval_hours": baseline.instagram_sync_interval_hours + 1,
         "instagram_request_budget": max(1, baseline.instagram_request_budget - 1),
         "user_storage_quota_bytes": baseline.user_storage_quota_bytes - 1024,
         "reason": "Synthetic audit check",
     }
     response = mutate(c, "PATCH", "/admin/limits", json=values)
     assert response.status_code == 200, response.text
-    assert (
-        c.get("/api/v1/config/public").json()["sync_interval_hours"]
-        == values["instagram_sync_interval_hours"]
-    )
+    assert "sync_interval_hours" not in c.get("/api/v1/config/public").json()
     assert (
         c.get("/api/v1/admin/limits").json()["user_storage_quota_bytes"] == values["user_storage_quota_bytes"]
     )

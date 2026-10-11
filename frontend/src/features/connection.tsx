@@ -372,10 +372,7 @@ export default function ConnectionPanel({
           <Loader />
         ) : connection.data?.display_status === "active" || connection.data?.display_status === "paused_by_user" ? (
           <p role="status">
-            Аккаунт подключён. Повторный вход не требуется.
-            {connection.data.next_sync && !connection.data.last_sync && (
-              <> Первый сбор запланирован на {date(connection.data.next_sync)}.</>
-            )}
+            Аккаунт подключён. Сбор начинается только после нажатия «Обновить данные» в обзоре.
           </p>
         ) : (
           <form noValidate onSubmit={submit} style={{ width: "100%" }}>

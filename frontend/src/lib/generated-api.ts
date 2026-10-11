@@ -1458,13 +1458,9 @@ export interface components {
             has_connection: boolean;
             /** Id */
             id: string;
-            /** Interval Hours */
-            interval_hours: number;
             last_job: components["schemas"]["AdminJobSummaryDTO"] | null;
             /** Last Sync */
             last_sync: string | null;
-            /** Next Sync */
-            next_sync: string | null;
             /** Owner Email */
             owner_email: string | null;
             /** Paused */
@@ -1491,15 +1487,11 @@ export interface components {
             has_connection: boolean;
             /** Id */
             id: string;
-            /** Interval Hours */
-            interval_hours: number;
             /** Key Version */
             key_version: string | null;
             /** Last Sync */
             last_sync: string | null;
             latest_snapshot: components["schemas"]["AdminSnapshotDiagnosticsDTO"] | null;
-            /** Next Sync */
-            next_sync: string | null;
             /** Owner Email */
             owner_email: string | null;
             /** Owner Status */
@@ -1607,6 +1599,8 @@ export interface components {
             request_id: string | null;
             /** Status */
             status: string;
+            /** User Id */
+            user_id?: string | null;
         };
         /** AdminUserDTO */
         AdminUserDTO: {
@@ -1844,8 +1838,6 @@ export interface components {
             display_status: string;
             /** Id */
             id: string;
-            /** Interval Hours */
-            interval_hours: number;
             job: components["schemas"]["JobDTO"] | null;
             /** Label */
             label: string;
@@ -1853,8 +1845,6 @@ export interface components {
             last_sync: string | null;
             /** Next Allowed At */
             next_allowed_at: string | null;
-            /** Next Sync */
-            next_sync: string | null;
             /** Paused */
             paused: boolean;
             /** Provider Enabled */
@@ -2156,8 +2146,6 @@ export interface components {
         LimitInput: {
             /** Instagram Request Budget */
             instagram_request_budget: number;
-            /** Instagram Sync Interval Hours */
-            instagram_sync_interval_hours: number;
             /** Reason */
             reason: string;
             /** User Storage Quota Bytes */
@@ -2210,17 +2198,17 @@ export interface components {
         NotificationPreferences: {
             /**
              * Email Connection
-             * @default false
+             * @default true
              */
             email_connection: boolean;
             /**
              * Email Results
-             * @default false
+             * @default true
              */
             email_results: boolean;
             /**
              * Email Support
-             * @default false
+             * @default true
              */
             email_support: boolean;
             /**
@@ -2313,8 +2301,6 @@ export interface components {
         };
         /** PauseInput */
         PauseInput: {
-            /** Interval Hours */
-            interval_hours?: number | null;
             /** Paused */
             paused: boolean;
         };
@@ -2391,14 +2377,10 @@ export interface components {
             cooldown_until: string | null;
             /** Id */
             id: string;
-            /** Interval Hours */
-            interval_hours: number;
             /** Label */
             label: string;
             /** Last Sync */
             last_sync: string | null;
-            /** Next Sync */
-            next_sync: string | null;
             /** Paused */
             paused: boolean;
             /** Status */
@@ -2469,8 +2451,6 @@ export interface components {
             privacy_version: string;
             /** Support Email */
             support_email: string;
-            /** Sync Interval Hours */
-            sync_interval_hours: number;
             /** Terms Version */
             terms_version: string;
             /** User Storage Quota Bytes */
@@ -2517,6 +2497,11 @@ export interface components {
              * @default UTC
              */
             timezone: string;
+        };
+        /** ResendVerificationInput */
+        ResendVerificationInput: {
+            /** Email */
+            email?: string | null;
         };
         /** ResetInput */
         ResetInput: {
@@ -3520,7 +3505,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationInput"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {
@@ -3529,6 +3518,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageDTO"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

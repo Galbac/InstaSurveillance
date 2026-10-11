@@ -172,8 +172,6 @@ export default function AdminPanel() {
                   <label key={key}>
                     {(
                       {
-                        instagram_sync_interval_hours:
-                          "Минимальный интервал Instagram, часов",
                         instagram_request_budget: "Бюджет запросов на сбор",
                         user_storage_quota_bytes: "Квота пользователя, байт",
                       } as Record<string, string>

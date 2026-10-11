@@ -88,7 +88,6 @@ class TicketReply(BaseModel):
 
 
 class LimitInput(BaseModel):
-    instagram_sync_interval_hours: int = Field(ge=1, le=8760)
     instagram_request_budget: int = Field(ge=1, le=10000)
     user_storage_quota_bytes: int = Field(ge=1024, le=1125899906842624)
     reason: str = Field(min_length=5, max_length=500)
@@ -251,7 +250,6 @@ def overview(user: Operator, db: DB):
         "tickets_in_progress": tickets_in_progress,
         "partial_snapshots_7d": partial_snapshots_7d,
         "limits": {
-            "sync_hours": settings.instagram_sync_interval_hours,
             "request_budget": settings.instagram_request_budget,
             "storage_quota_bytes": settings.user_storage_quota_bytes,
         },
@@ -532,9 +530,7 @@ def profiles(
             "username": p.username,
             "status": p.status,
             "paused": p.paused,
-            "interval_hours": p.interval_hours,
             "last_sync": p.last_sync,
-            "next_sync": p.next_sync,
             "cooldown_until": p.cooldown_until,
             "has_connection": p.id in connected_ids,
             "owner_email": users_map.get(p.user_id),
@@ -618,10 +614,8 @@ def profile_detail(profile_id: str, user: Operator, db: DB):
         "username": profile.username,
         "status": profile.status,
         "paused": profile.paused,
-        "interval_hours": profile.interval_hours,
         "generation": profile.generation,
         "last_sync": profile.last_sync,
-        "next_sync": profile.next_sync,
         "cooldown_until": profile.cooldown_until,
         "has_connection": has_connection,
         "key_version": None,
@@ -969,8 +963,7 @@ def update_limits(body: LimitInput, user: Operator, db: DB, request: Request):
     baseline = get_settings()
     values = body.model_dump(exclude={"reason"})
     if (
-        body.instagram_sync_interval_hours < baseline.instagram_sync_interval_hours
-        or body.instagram_request_budget > baseline.instagram_request_budget
+        body.instagram_request_budget > baseline.instagram_request_budget
         or body.user_storage_quota_bytes > baseline.user_storage_quota_bytes
     ):
         raise AppError("unsafe_limit", "Лимиты могут только ужесточать политику env", 409)

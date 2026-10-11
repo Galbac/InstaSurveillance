@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     instagram_session_encryption_key: SecretStr | None = None
     instagram_proxy_url: SecretStr | None = None
     instagram_private_enabled: bool = True
-    instagram_sync_interval_hours: int = 24
     instagram_manual_min_interval_hours: int = 6
     instagram_max_runs_per_24h: int = 2
     instagram_unlimited_test_runs: bool = False
@@ -146,7 +145,6 @@ class Settings(BaseSettings):
             raise ValueError("Credentialed CORS never accepts wildcard origins")
         positive = [
             self.session_ttl_seconds,
-            self.instagram_sync_interval_hours,
             self.instagram_manual_min_interval_hours,
             self.instagram_max_runs_per_24h,
             self.instagram_request_budget,

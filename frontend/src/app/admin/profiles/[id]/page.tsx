@@ -189,9 +189,9 @@ export default function AdminProfileDetailPage() {
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase">Интервал опроса</span>
-          <div className="text-xl font-bold text-slate-900 pt-0.5">{profile.interval_hours} ч</div>
-          <p className="text-xs text-slate-500">Следующий сбор: {formatDateTime(profile.next_sync)}</p>
+          <span className="text-[11px] font-semibold text-slate-500 uppercase">Запуск сбора</span>
+          <div className="text-xl font-bold text-slate-900 pt-0.5">Вручную</div>
+          <p className="text-xs text-slate-500">Автоматический сбор отключён</p>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">
@@ -200,7 +200,7 @@ export default function AdminProfileDetailPage() {
             {hasCooldown ? formatDateTime(profile.cooldown_until) : "Не активна"}
           </div>
           <p className="text-xs text-slate-500">
-            {hasCooldown ? "Снижение риска санкций Instagram" : "Запросы разрешены по расписанию"}
+            {hasCooldown ? "Повторный ручной сбор пока запрещён" : "Следующий сбор запускает владелец профиля"}
           </p>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function AdminProfileDetailPage() {
           <form onSubmit={handlePauseResume} className="space-y-4 pt-2">
             <p className="text-xs text-slate-600 leading-relaxed">
               {profile.paused
-                ? "Профиль будет возвращён в очередь планировщика. Возобновление НЕ сбрасывает Instagram cooldown и НЕ запускает сбор мгновенно."
+                ? "Владелец снова сможет запускать сбор вручную. Снятие паузы не сбрасывает Instagram cooldown и не запускает сбор автоматически."
                 : "Профиль будет приостановлен. Поколение (generation) будет увеличено, что отменит все незавершённые фоновые сборы."}
             </p>
 

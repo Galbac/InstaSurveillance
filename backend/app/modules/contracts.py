@@ -154,11 +154,9 @@ class ProfileDTO(BaseModel):
     id: str
     username: str
     label: str
-    interval_hours: int
     status: str
     paused: bool
     last_sync: datetime | None
-    next_sync: datetime | None
     cooldown_until: datetime | None
 
 
@@ -255,7 +253,6 @@ class PublicConfigDTO(BaseModel):
     local_email_verification: bool
     instagram_enabled: bool
     max_upload_bytes: int
-    sync_interval_hours: int
     manual_min_interval_hours: int
     max_runs_per_24h: int
     terms_version: str
@@ -378,9 +375,7 @@ class AdminProfileDTO(BaseModel):
     username: str
     status: str
     paused: bool
-    interval_hours: int
     last_sync: datetime | None
-    next_sync: datetime | None
     cooldown_until: datetime | None
     has_connection: bool
     owner_email: str | None
@@ -410,10 +405,8 @@ class AdminProfileDetailDTO(BaseModel):
     username: str
     status: str
     paused: bool
-    interval_hours: int
     generation: int
     last_sync: datetime | None
-    next_sync: datetime | None
     cooldown_until: datetime | None
     has_connection: bool
     key_version: str | None

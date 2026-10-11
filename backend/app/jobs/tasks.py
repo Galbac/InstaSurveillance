@@ -328,8 +328,6 @@ def _process_instagram(guard, runner, clients):
                 raise ProviderError("identity_mismatch")
             from sqlalchemy import delete
 
-            from app.modules.data import request_sync
-
             with SessionLocal() as db:
                 owner = db.scalar(select(User).where(User.id == job.user_id).with_for_update())
                 profile = required(
@@ -359,12 +357,6 @@ def _process_instagram(guard, runner, clients):
                 )
                 current.status, current.stage = "completed", "connected"
                 current.finished_at = now()
-                try:
-                    request_sync(db, profile)
-                except AppError as error:
-                    if error.code not in ("sync_rate_limited", "heavy_job_limit"):
-                        raise
-                    profile.next_sync = now() + timedelta(hours=settings.instagram_manual_min_interval_hours)
                 db.commit()
             vault.delete("login:" + guard.job_id, "pending:" + guard.job_id, "code:" + guard.job_id)
         else:
