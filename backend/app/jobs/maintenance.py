@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from redis import Redis
 from sqlalchemy import delete, select
 
 from app.core.db import SessionLocal
@@ -23,6 +24,22 @@ from app.models import (
     Snapshot,
     User,
 )
+
+
+def release_abandoned_instagram_lock(profile: Profile, run_token: str | None, redis_url: str) -> None:
+    if not run_token:
+        return
+    lock_key = "instagram:" + (profile.external_id or profile.username)
+    client = Redis.from_url(redis_url)
+    try:
+        client.eval(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+            1,
+            lock_key,
+            run_token,
+        )
+    finally:
+        client.close()
 
 
 def cleanup_deletions() -> None:
@@ -113,6 +130,7 @@ def recover_jobs() -> None:
             )
         )
     for identity in identities:
+        abandoned_lock: tuple[Profile, str | None] | None = None
         with SessionLocal() as db:
             initial = db.get(Job, identity)
             if not initial:
@@ -179,6 +197,10 @@ def recover_jobs() -> None:
                     job.status = "partial" if job.kind == "sync" else "failed"
                     job.error_code = "worker_lost"
                     job.finished_at = now()
+                    if job.kind in ("sync", "connect") and job.profile_id:
+                        profile = db.get(Profile, job.profile_id)
+                        if profile:
+                            abandoned_lock = (profile, job.details.get("run_token"))
             if job.status in ("expired", "failed", "partial"):
                 for model in (Comparison, ExportJob):
                     child = db.scalar(select(model).where(model.job_id == job.id))
@@ -189,6 +211,8 @@ def recover_jobs() -> None:
                 if profile and profile.generation == job.details.get("generation"):
                     profile.status = "active" if job.kind == "sync" else "reconnect_required"
             db.commit()
+        if abandoned_lock:
+            release_abandoned_instagram_lock(*abandoned_lock, settings.redis_url)
 
 
 def cleanup_files() -> None:

@@ -196,7 +196,7 @@ def _process_instagram(guard, runner, clients):
     lock = Redis.from_url(settings.redis_url).lock(
         lock_key, timeout=settings.instagram_sync_hard_timeout + 60, blocking_timeout=0
     )
-    if not lock.acquire():
+    if not lock.acquire(token=guard.run_token):
         raise ProviderError("already_running")
     try:
         guard()
