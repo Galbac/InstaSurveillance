@@ -1790,6 +1790,108 @@ input[type="checkbox"] {
   line-height: 1.9;
   margin-top: 15px;
 }
+.archive-guide {
+  max-width: 880px;
+}
+.archive-guide-back {
+  margin: 0 0 32px !important;
+}
+.archive-guide-kicker {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.archive-guide h1 {
+  max-width: 700px;
+  margin-top: 12px;
+}
+.archive-guide .archive-guide-intro {
+  max-width: 680px;
+  font-size: 17px;
+}
+.archive-guide-open {
+  margin-top: 22px;
+}
+.archive-guide .archive-guide-url {
+  margin-top: 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.archive-guide-steps {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 32px 0;
+  list-style: none;
+  counter-reset: archive-step;
+}
+.archive-guide-steps li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px 18px 64px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  counter-increment: archive-step;
+}
+.archive-guide-steps li::before {
+  position: absolute;
+  top: 17px;
+  left: 18px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 10px;
+  background: #f1eaff;
+  color: var(--accent);
+  content: counter(archive-step);
+  font-weight: 800;
+}
+.archive-guide-steps strong {
+  color: var(--text);
+}
+.archive-guide-steps span {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.archive-guide-note {
+  padding: 18px 20px;
+  border: 1px solid #e8dcff;
+  border-radius: 16px;
+  background: #f7f2ff;
+  color: #5c4a78;
+  line-height: 1.7;
+}
+.archive-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.archive-guide-privacy {
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .archive-guide {
+    margin: 16px auto;
+    padding: 22px 18px;
+  }
+  .archive-guide h1 {
+    font-size: 28px;
+  }
+  .archive-guide-steps li {
+    padding: 16px 16px 16px 56px;
+  }
+  .archive-guide-steps li::before {
+    left: 14px;
+  }
+  .archive-guide-actions {
+    display: grid;
+  }
+}
 @media (min-width: 1500px) {
   .dashboard-content {
     padding-top: 45px;

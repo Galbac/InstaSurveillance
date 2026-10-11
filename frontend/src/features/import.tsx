@@ -87,11 +87,13 @@ export default function ImportPanel({
     <section className="panel import-panel">
       <h2>Импорт полного архива</h2>
       <p>
-        В официальном экспорте Instagram выберите «Подписчики и подписки»,
-        формат JSON и весь период. Загрузите один ZIP или все связанные
-        followers_*.json вместе с following.json одного профиля.
+        Получите полный архив в Центре аккаунтов Instagram, затем загрузите ZIP
+        или все связанные JSON-файлы одного профиля. Инструкция проведёт по
+        каждому шагу экспорта и импорта.
       </p>
-      <Link href="/help/import">Пошаговая инструкция</Link>
+      <Link className="text-link" href="/help/import">
+        Открыть пошаговую инструкцию ↗
+      </Link>
       <ErrorNotice error={error || q.error} />
       {!jobId ? (
         <form onSubmit={upload}>
